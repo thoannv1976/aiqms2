@@ -58,6 +58,9 @@ model Tenant {
   improvementKpis      ImprovementKpi[]
   improvementProgress  ImprovementProgressLog[]
   exportJobs           ExportJob[]
+  aiSettings           AiSettings?
+  aiRequests           AiRequest[]
+  aiDrafts             AiGeneratedDraft[]
   departments Department[]
 
   @@map("tenants")
@@ -887,4 +890,70 @@ model ExportJob {
   @@index([tenantId, status])
   @@index([tenantId, createdAt])
   @@map("export_jobs")
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// P8 — Lớp AI (tenant-scoped). AI là lớp service có kiểm soát: key mã hóa theo
+// tenant, đo token/chi phí, hạn mức, human-in-the-loop (nội dung AI = nháp tới khi duyệt).
+// ════════════════════════════════════════════════════════════════════════════
+model AiSettings {
+  id              String   @id @default(cuid())
+  tenantId        String   @unique
+  enabled         Boolean  @default(false)
+  provider        String?  // openai | azure | gemini | claude | local
+  baseUrl         String?
+  model           String?
+  apiKeyEnc       String?  // khóa API mã hóa (AES-256-GCM, có prefix phiên bản)
+  dailyTokenLimit Int      @default(200000)
+  enabledModules  Json?    // { summarize: true, draft: true, gap: true, ... }
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("ai_settings")
+}
+
+model AiRequest {
+  id         String   @id @default(cuid())
+  tenantId   String
+  module     String   // summarize_evidence | draft_sar | gap_check | ...
+  model      String?
+  promptChars Int     @default(0)
+  tokensIn   Int      @default(0)
+  tokensOut  Int      @default(0)
+  costUsd    Float    @default(0)
+  status     String   @default("ok") // ok | error
+  error      String?
+  actorId    String?
+  createdAt  DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, module])
+  @@map("ai_requests")
+}
+
+model AiGeneratedDraft {
+  id          String   @id @default(cuid())
+  tenantId    String
+  module      String   // draft_sar | summarize_evidence | ...
+  targetType  String?  // SarCriterionResponse | Evidence | ...
+  targetId    String?
+  field       String?  // trường đích nếu áp dụng (vd: analysis, strengths)
+  content     String   // nội dung do AI sinh (NHÁP)
+  source      String   @default("ai") // luôn đánh dấu nguồn = ai
+  status      String   @default("draft") // draft | approved | rejected
+  approvedBy  String?
+  approvedAt  DateTime?
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, status])
+  @@index([tenantId, targetType, targetId])
+  @@map("ai_generated_drafts")
 }

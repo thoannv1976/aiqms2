@@ -194,4 +194,33 @@ Xương sống đa-tiêu-chuẩn: bộ tiêu chuẩn là **dữ liệu cấu hì
   polling job, **cách ly tenant** (job A không thấy ở B). Tác vụ nặng qua job + Storage.
 - [x] Audit log; build/lint/tsc xanh.
 
-## [P8] Lớp AI (cuối cùng) — ⏳ Tiếp theo
+## [P8] Lớp AI (cuối cùng) — ✅ Done (MVP AI)
+
+Lớp AI là **service có kiểm soát** (bài học #5, #6), không phải lời gọi rải rác.
+
+### Added
+- **Schema (tenant-scoped)**: `AiSettings` (khóa API mã hóa, hạn mức, bật/tắt module),
+  `AiRequest` (log token/chi phí), `AiGeneratedDraft` (human-in-the-loop) — migration `p8_ai`.
+- **Mã hóa khóa API theo tenant**: AES-256-GCM, prefix phiên bản `v1:` để xoay khóa.
+- **Abstraction đa nhà cung cấp**: interface `LlmProvider` + `OpenAiProvider`
+  (OpenAI-compatible) + `MockProvider` (dev/test, không gửi dữ liệu ra ngoài).
+- **LLM service**: kill-switch toàn cục (`AI_ENABLED`) + bật theo tenant/module,
+  **hạn mức token/ngày**, **semaphore concurrency**, retry/backoff, **đo token + chi phí**,
+  validate output JSON bằng Zod (`aiCompleteJson`).
+- **Tính năng AI MVP** (đặc tả 12): tóm tắt minh chứng, **viết nháp SAR**, kiểm tra
+  khoảng trống. **Human-in-the-loop**: nội dung AI = `AiGeneratedDraft` (source=ai,
+  status=draft) — chỉ vào SAR chính thức **sau khi duyệt** (`approveDraft`).
+- **Endpoints**: `/api/ai/settings` (GET/PUT), `/api/ai/summarize-evidence`,
+  `/api/ai/draft-sar`, `/api/ai/drafts/[id]/approve|reject`, `/api/ai/gap-check`,
+  `/api/ai/usage` (chi phí/token cho admin).
+
+### DoD P8
+- [x] Migration `20260608150112_p8_ai`.
+- [x] Test trên Postgres (70 test): mã hóa khóa roundtrip, AI tắt → 403, nháp =
+  draft cho tới khi duyệt mới vào SAR, hạn mức token chặn, log token, gap-check chạy
+  khi AI tắt, **cách ly tenant** bản nháp. Audit log thao tác AI; build/lint/tsc xanh.
+
+### Hoãn sang P9 (cần thêm hạ tầng)
+- Chatbot RAG (pgvector embeddings + lọc quyền) và mock interview — ghi nhận trong P9.
+
+## [P9] Nâng cao — ⏳ Tiếp theo (một phần)

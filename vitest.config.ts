@@ -18,6 +18,7 @@ export default defineConfig({
     env: {
       NODE_ENV: "test",
       DATABASE_URL: testDbUrl,
+      AI_ENABLED: "true", // kill-switch toàn cục bật; gating thực qua AiSettings theo tenant
     },
     pool: "forks",
     fileParallelism: false,
