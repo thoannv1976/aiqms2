@@ -12,7 +12,16 @@ export const TENANT_SCOPED_MODELS = new Set<string>([
   "UserRole",
   "Faculty",
   "Department",
-  // P2+: AccreditationStandard, StandardVersion, Criterion, Requirement, ...
+  // P2: bộ tiêu chuẩn là GLOBAL -> KHÔNG nằm ở đây.
+  // P3: chương trình đào tạo + OBE.
+  "Programme",
+  "ProgrammeVersion",
+  "ProgrammeObjective",
+  "ProgrammeLearningOutcome",
+  "Course",
+  "CourseLearningOutcome",
+  "PloCourseMapping",
+  "CloPloMapping",
 ]);
 
 export function isTenantScoped(model: string | undefined): boolean {

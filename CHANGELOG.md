@@ -90,4 +90,25 @@ Xương sống đa-tiêu-chuẩn: bộ tiêu chuẩn là **dữ liệu cấu hì
   **thêm chuẩn mới = nạp dữ liệu, không sửa code lõi**; cấu hình chỉ super-admin (403).
 - [x] Audit log cho thao tác cấu hình; build/lint/tsc xanh (36 test).
 
-## [P3] Chương trình đào tạo + OBE — ⏳ Tiếp theo
+## [P3] Chương trình đào tạo + OBE — ✅ Done
+
+### Added
+- **Schema (tenant-scoped)**: `Programme`, `ProgrammeVersion` (vòng đời trạng thái),
+  `ProgrammeObjective` (PEO), `ProgrammeLearningOutcome` (PLO), `Course`,
+  `CourseLearningOutcome` (CLO), `PloCourseMapping`, `CloPloMapping` — migration `p3_programme_obe`.
+- **Helper** `withTenantId()`: gắn tenantId tường minh (thỏa type Prisma, bỏ cast `as unknown`).
+- **Service**: CTĐT (CRUD + đa phiên bản, state machine `draft→active→archived`),
+  PEO/PLO, học phần + CLO, ma trận PLO-học phần (mức I/R/M) + CLO-PLO.
+- **Cảnh báo độ phủ OBE** (`coverageWarnings`): PLO chưa có học phần, PLO chưa có CLO
+  đo lường, CLO mồ côi (chưa liên kết PLO) — tính trực tiếp từ dữ liệu.
+- **Endpoints**: `/api/programmes` (+`/[id]`, `/[id]/versions`), `/api/plos`,
+  `/api/courses` (+`/[id]/clos`), `/api/matrices/plo-course`, `/api/matrices/clo-plo`,
+  `/api/coverage` — phân trang + RBAC + audit.
+
+### DoD P3
+- [x] Migration `20260608142735_p3_programme_obe`; soft-delete Programme/Course.
+- [x] Test trên Postgres (40 test): vòng đời phiên bản, ma trận, cảnh báo độ phủ,
+  **cách ly tenant** (CTĐT A không lọt sang B; trùng mã theo tenant OK).
+- [x] List phân trang + index `(tenantId, …)`; audit log; build/lint/tsc xanh.
+
+## [P4] Đợt tự đánh giá + SAR — ⏳ Tiếp theo

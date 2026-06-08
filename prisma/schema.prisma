@@ -31,6 +31,14 @@ model Tenant {
   users       User[]
   userRoles   UserRole[]
   faculties   Faculty[]
+  programmes  Programme[]
+  programmeVersions ProgrammeVersion[]
+  peos        ProgrammeObjective[]
+  plos        ProgrammeLearningOutcome[]
+  courses     Course[]
+  clos        CourseLearningOutcome[]
+  ploCourseMappings PloCourseMapping[]
+  cloPloMappings    CloPloMapping[]
   departments Department[]
 
   @@map("tenants")
@@ -293,4 +301,174 @@ model SuggestedEvidence {
 
   @@index([criterionId])
   @@map("suggested_evidences")
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// P3 — Chương trình đào tạo + OBE (tenant-scoped)
+// CTĐT đa phiên bản, PEO/PLO/CLO, ma trận liên kết, cảnh báo độ phủ.
+// ════════════════════════════════════════════════════════════════════════════
+model Programme {
+  id           String    @id @default(cuid())
+  tenantId     String
+  facultyId    String?
+  code         String
+  name         String
+  nameEn       String?
+  level        String    @default("bachelor") // bachelor | master | doctor
+  totalCredits Int?
+  status       String    @default("active")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  createdBy    String?
+  updatedBy    String?
+  deletedAt    DateTime?
+
+  tenant   Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  versions ProgrammeVersion[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId, deletedAt])
+  @@index([tenantId, facultyId])
+  @@map("programmes")
+}
+
+model ProgrammeVersion {
+  id                    String    @id @default(cuid())
+  tenantId              String
+  programmeId           String
+  version               String
+  year                  Int?
+  status                String    @default("draft") // draft | active | archived
+  educationalPhilosophy String?
+  description           String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  createdBy             String?
+  updatedBy             String?
+  deletedAt             DateTime?
+
+  tenant     Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  programme  Programme              @relation(fields: [programmeId], references: [id], onDelete: Cascade)
+  peos       ProgrammeObjective[]
+  plos       ProgrammeLearningOutcome[]
+
+  @@unique([tenantId, programmeId, version])
+  @@index([tenantId, programmeId])
+  @@map("programme_versions")
+}
+
+model ProgrammeObjective {
+  id                 String   @id @default(cuid())
+  tenantId           String
+  programmeVersionId String
+  code               String // "PEO1"
+  description        String
+  order              Int      @default(1)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  tenant  Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  version ProgrammeVersion @relation(fields: [programmeVersionId], references: [id], onDelete: Cascade)
+
+  @@unique([programmeVersionId, code])
+  @@index([tenantId, programmeVersionId])
+  @@map("programme_objectives")
+}
+
+model ProgrammeLearningOutcome {
+  id                 String   @id @default(cuid())
+  tenantId           String
+  programmeVersionId String
+  code               String // "PLO1"
+  description        String
+  order              Int      @default(1)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  tenant         Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  version        ProgrammeVersion   @relation(fields: [programmeVersionId], references: [id], onDelete: Cascade)
+  courseMappings PloCourseMapping[]
+  cloMappings    CloPloMapping[]
+
+  @@unique([programmeVersionId, code])
+  @@index([tenantId, programmeVersionId])
+  @@map("programme_learning_outcomes")
+}
+
+model Course {
+  id        String    @id @default(cuid())
+  tenantId  String
+  code      String
+  name      String
+  credits   Int       @default(3)
+  status    String    @default("active")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  createdBy String?
+  updatedBy String?
+  deletedAt DateTime?
+
+  tenant   Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  clos     CourseLearningOutcome[]
+  ploMaps  PloCourseMapping[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId, deletedAt])
+  @@map("courses")
+}
+
+model CourseLearningOutcome {
+  id          String   @id @default(cuid())
+  tenantId    String
+  courseId    String
+  code        String // "CLO1"
+  description String
+  order       Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant      Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  course      Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  ploMappings CloPloMapping[]
+
+  @@unique([courseId, code])
+  @@index([tenantId, courseId])
+  @@map("course_learning_outcomes")
+}
+
+// Ma trận PLO-học phần (độ phủ: học phần đóng góp cho PLO ở mức I/R/M).
+model PloCourseMapping {
+  id        String   @id @default(cuid())
+  tenantId  String
+  ploId     String
+  courseId  String
+  level     String   @default("I") // I (Introduce) | R (Reinforce) | M (Master)
+  createdAt DateTime @default(now())
+
+  tenant Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  plo    ProgrammeLearningOutcome @relation(fields: [ploId], references: [id], onDelete: Cascade)
+  course Course                   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([ploId, courseId])
+  @@index([tenantId, ploId])
+  @@index([tenantId, courseId])
+  @@map("plo_course_mappings")
+}
+
+// Ma trận CLO-PLO.
+model CloPloMapping {
+  id        String   @id @default(cuid())
+  tenantId  String
+  cloId     String
+  ploId     String
+  createdAt DateTime @default(now())
+
+  tenant Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  clo    CourseLearningOutcome    @relation(fields: [cloId], references: [id], onDelete: Cascade)
+  plo    ProgrammeLearningOutcome @relation(fields: [ploId], references: [id], onDelete: Cascade)
+
+  @@unique([cloId, ploId])
+  @@index([tenantId, cloId])
+  @@index([tenantId, ploId])
+  @@map("clo_plo_mappings")
 }
