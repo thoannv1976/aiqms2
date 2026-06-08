@@ -57,6 +57,7 @@ model Tenant {
   improvementActions   ImprovementAction[]
   improvementKpis      ImprovementKpi[]
   improvementProgress  ImprovementProgressLog[]
+  exportJobs           ExportJob[]
   departments Department[]
 
   @@map("tenants")
@@ -861,4 +862,29 @@ model ImprovementProgressLog {
 
   @@index([tenantId, actionId])
   @@map("improvement_progress_logs")
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// P7 — Xuất báo cáo qua background job (tenant-scoped). Tác vụ nặng đẩy sang job,
+// có polling tiến độ; chế độ inline ở dev (JOB_MODE).
+// ════════════════════════════════════════════════════════════════════════════
+model ExportJob {
+  id        String   @id @default(cuid())
+  tenantId  String
+  type      String // sar_docx | sar_pdf | evidence_xlsx | evidence_zip
+  params    Json?
+  status    String   @default("pending") // pending | running | done | failed
+  progress  Int      @default(0)
+  resultKey String? // key file kết quả trong Storage
+  fileName  String?
+  error     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, status])
+  @@index([tenantId, createdAt])
+  @@map("export_jobs")
 }

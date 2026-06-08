@@ -176,4 +176,22 @@ Xương sống đa-tiêu-chuẩn: bộ tiêu chuẩn là **dữ liệu cấu hì
 - [x] Test trên Postgres (57 test): Kanban, PDCA + KPI + tiến độ, dashboard 3 cấp,
   **cách ly tenant**. Audit log; list phân trang + index; build/lint/tsc xanh.
 
-## [P7] Xuất báo cáo — ⏳ Tiếp theo
+## [P7] Xuất báo cáo — ✅ Done
+
+### Added
+- **Schema**: `ExportJob` (tenant-scoped) theo dõi tiến độ — migration `p7_export_jobs`.
+- **Exporters**: SAR → **Word** (`docx`), SAR → **PDF** (`pdf-lib`, không cần browser),
+  danh mục minh chứng → **Excel** (`exceljs`), **gói minh chứng .zip theo tiêu chí** (`jszip`,
+  lấy file từ lớp Storage).
+- **Job runner** (`src/lib/export/jobs.ts`): tạo job → xử lý (inline theo `JOB_MODE`,
+  đặt chỗ cho BullMQ/queue) → lưu kết quả vào Storage → polling tiến độ; lỗi ghi vào job.
+- **Endpoints**: `POST /api/exports` (tạo job), `GET /api/exports/[id]` (poll),
+  `GET /api/exports/[id]/download` (tải file) — quyền `report.export`.
+
+### DoD P7
+- [x] Migration `20260608…_p7_export_jobs`.
+- [x] Test trên Postgres (62 test): xuất Word/PDF/Excel/zip (kiểm tra magic bytes),
+  polling job, **cách ly tenant** (job A không thấy ở B). Tác vụ nặng qua job + Storage.
+- [x] Audit log; build/lint/tsc xanh.
+
+## [P8] Lớp AI (cuối cùng) — ⏳ Tiếp theo

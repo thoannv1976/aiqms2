@@ -43,6 +43,8 @@ export const TENANT_SCOPED_MODELS = new Set<string>([
   "ImprovementAction",
   "ImprovementKpi",
   "ImprovementProgressLog",
+  // P7: job xuất báo cáo.
+  "ExportJob",
 ]);
 
 export function isTenantScoped(model: string | undefined): boolean {
