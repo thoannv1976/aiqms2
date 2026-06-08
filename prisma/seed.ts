@@ -7,6 +7,7 @@ import {
   ROLES,
   ALL_PERMISSION_CODES,
 } from "../src/lib/rbac/permissions";
+import { seedAunqa } from "../src/lib/standards/seed";
 
 /**
  * Seed idempotent (bài học #seed): chạy lại nhiều lần không nhân bản, và VẪN tạo
@@ -106,6 +107,10 @@ async function main() {
     });
   }
   console.log(`✔ Tenant demo: ${demo.slug} | admin: ${demoAdminEmail}`);
+
+  // 5) Bộ tiêu chuẩn AUN-QA v4.0 (global, data-driven) ────────────────────────
+  const aun = await seedAunqa(prisma);
+  console.log(`✔ AUN-QA v4.0: 8 tiêu chí + thang 7 mức (version ${aun.versionId})`);
 
   await prisma.$disconnect();
 }

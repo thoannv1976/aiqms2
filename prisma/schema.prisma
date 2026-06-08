@@ -180,3 +180,117 @@ model AuditLog {
   @@index([tenantId, entity, entityId])
   @@map("audit_logs")
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+// P2 — Bộ tiêu chuẩn kiểm định (GLOBAL, data-driven — xương sống đa-tiêu-chuẩn)
+// KHÔNG tenant-scoped: catalog dùng chung; thêm chuẩn mới = nạp dữ liệu, không sửa
+// code lõi. Chỉ super-admin (platform) được sửa.
+// ════════════════════════════════════════════════════════════════════════════
+model AccreditationStandard {
+  id          String   @id @default(cuid())
+  code        String   @unique // "AUN-QA", "MOET", ...
+  name        String
+  description String?
+  level       String   @default("programme") // programme | institution
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  versions StandardVersion[]
+
+  @@map("accreditation_standards")
+}
+
+model StandardVersion {
+  id         String   @id @default(cuid())
+  standardId String
+  version    String // "4.0"
+  name       String?
+  isActive   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  standard     AccreditationStandard @relation(fields: [standardId], references: [id], onDelete: Cascade)
+  criteria     Criterion[]
+  ratingScales RatingScale[]
+
+  @@unique([standardId, version])
+  @@map("standard_versions")
+}
+
+model Criterion {
+  id                String   @id @default(cuid())
+  standardVersionId String
+  code              String // "C1".."C8"
+  order             Int
+  titleVi           String
+  titleEn           String?
+  description       String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  version            StandardVersion     @relation(fields: [standardVersionId], references: [id], onDelete: Cascade)
+  requirements       Requirement[]
+  suggestedEvidences SuggestedEvidence[]
+
+  @@unique([standardVersionId, code])
+  @@index([standardVersionId, order])
+  @@map("criteria")
+}
+
+model Requirement {
+  id          String   @id @default(cuid())
+  criterionId String
+  code        String // "1.1"
+  order       Int
+  title       String
+  description String?
+  guidance    String? // câu hỏi định hướng tự đánh giá
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  criterion  Criterion   @relation(fields: [criterionId], references: [id], onDelete: Cascade)
+  indicators Indicator[]
+
+  @@unique([criterionId, code])
+  @@index([criterionId, order])
+  @@map("requirements")
+}
+
+model Indicator {
+  id            String   @id @default(cuid())
+  requirementId String
+  code          String
+  description   String
+  createdAt     DateTime @default(now())
+
+  requirement Requirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+
+  @@unique([requirementId, code])
+  @@map("indicators")
+}
+
+model RatingScale {
+  id                String   @id @default(cuid())
+  standardVersionId String
+  level             Int // 1..7 (thang AUN-QA)
+  labelVi           String
+  labelEn           String?
+  description       String?
+
+  version StandardVersion @relation(fields: [standardVersionId], references: [id], onDelete: Cascade)
+
+  @@unique([standardVersionId, level])
+  @@map("rating_scales")
+}
+
+model SuggestedEvidence {
+  id          String  @id @default(cuid())
+  criterionId String
+  description String
+  type        String?
+
+  criterion Criterion @relation(fields: [criterionId], references: [id], onDelete: Cascade)
+
+  @@index([criterionId])
+  @@map("suggested_evidences")
+}

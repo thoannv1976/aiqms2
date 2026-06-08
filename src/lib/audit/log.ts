@@ -18,6 +18,9 @@ export async function writeAudit(input: {
   const ctx = getTenantContext();
   return prisma.auditLog.create({
     data: {
+      // Gán tenantId tường minh từ context: hoạt động cả khi bypassTenant
+      // (super-admin/seed) — lúc đó extension không tự chèn tenantId.
+      tenantId: ctx?.tenantId,
       action: input.action,
       entity: input.entity,
       entityId: input.entityId,

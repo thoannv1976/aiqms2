@@ -69,4 +69,25 @@ Hạ tầng đa-tenant + cấu hình, làm đúng từ ngày 0 (tránh bolt-on v
 - [x] Kiểm tra quyền ở server (RBAC) — thiếu quyền → 403.
 - [x] 32 test xanh, `npm run build` + `tsc` + `lint` xanh.
 
-## [P2] Cấu hình bộ tiêu chuẩn (data-driven) — ⏳ Tiếp theo
+## [P2] Cấu hình bộ tiêu chuẩn (data-driven) — ✅ Done
+
+Xương sống đa-tiêu-chuẩn: bộ tiêu chuẩn là **dữ liệu cấu hình GLOBAL**, không hard-code.
+
+### Added
+- **Schema (global)**: `AccreditationStandard`, `StandardVersion`, `Criterion`,
+  `Requirement`, `Indicator`, `RatingScale`, `SuggestedEvidence` — migration `p2_standards`.
+- **Dataset AUN-QA v4.0** (`src/lib/standards/aunqa-data.ts`): 8 tiêu chí (VI/EN),
+  thang đánh giá **7 mức** (nhãn chính thức AUN-QA), yêu cầu + minh chứng gợi ý đại diện.
+- **Hàm seed dùng chung** `seedAunqa()` (idempotent) — gọi từ seed + test.
+- **Service** `listStandards`/`getStandard` (đọc; gồm tiêu chí + yêu cầu + thang điểm),
+  `createStandard`/`createCriterion`/`createRequirement` (cấu hình super-admin).
+- **Endpoints**: `GET /api/standards`, `GET /api/standards/[id]` (đọc, DATA_VIEW);
+  `POST /api/standards`, `POST /api/criteria`, `POST /api/requirements` (super-admin).
+
+### DoD P2
+- [x] Migration `20260608142108_p2_standards`; seed AUN-QA (8 tiêu chí + 24 yêu cầu + 7 mức).
+- [x] Test trên Postgres: seed đúng số lượng; **bộ tiêu chuẩn global dùng chung mọi tenant**;
+  **thêm chuẩn mới = nạp dữ liệu, không sửa code lõi**; cấu hình chỉ super-admin (403).
+- [x] Audit log cho thao tác cấu hình; build/lint/tsc xanh (36 test).
+
+## [P3] Chương trình đào tạo + OBE — ⏳ Tiếp theo
