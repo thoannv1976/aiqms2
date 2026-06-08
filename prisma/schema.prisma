@@ -1,0 +1,52 @@
+// Prisma schema — Hệ thống Kiểm định CTĐT (AUN-QA, đa tiêu chuẩn)
+// Quy ước (xem CLAUDE.md):
+//   - Mọi bảng nghiệp vụ có: id, tenantId, createdAt, updatedAt, createdBy,
+//     updatedBy, status, deletedAt (soft-delete).
+//   - Bảng nghiệp vụ phải nằm trong TENANT_SCOPED_MODELS ở
+//     src/lib/prisma/tenant-models.ts để được lọc tenant tự động.
+//   - Mỗi thay đổi schema = đúng một migration. Không sửa DB tay.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+  runtime  = "nodejs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Registry tenant (KHÔNG tenant-scoped) ──────────────────────────────────
+// Đăng ký các trường đại học dùng nền tảng. Billing theo thời gian: validUntil.
+model Tenant {
+  id        String   @id @default(cuid())
+  slug      String   @unique // subdomain: <slug>.localhost
+  name      String
+  status    String   @default("active") // active | suspended
+  validUntil DateTime? // billing: hết hạn -> middleware chặn 403
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  auditLogs AuditLog[]
+
+  @@map("tenants")
+}
+
+// ─── Audit log (tenant-scoped) ──────────────────────────────────────────────
+// Ghi mọi thao tác quan trọng: tạo/sửa/xóa/duyệt/chấm điểm/thao tác AI.
+model AuditLog {
+  id        String   @id @default(cuid())
+  tenantId  String
+  action    String // ví dụ: "tenant.create", "sar.approve", "ai.draft"
+  entity    String // tên thực thể: "Tenant", "SelfAssessmentReport", ...
+  entityId  String?
+  actorId   String? // user id thực hiện (null = hệ thống/seed)
+  meta      Json? // dữ liệu phụ (diff, ghi chú...)
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, entity, entityId])
+  @@map("audit_logs")
+}

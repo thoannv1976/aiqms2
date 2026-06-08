@@ -1,0 +1,23 @@
+# Postgres cho dev/test (có pgvector sẵn cho RAG ở P8).
+# Test BẮT BUỘC chạy trên Postgres (bài học #2), không SQLite.
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: aiqms_db
+    environment:
+      POSTGRES_USER: aiqms
+      POSTGRES_PASSWORD: aiqms
+      POSTGRES_DB: aiqms
+    ports:
+      - "5432:5432"
+    volumes:
+      - aiqms_pgdata:/var/lib/postgresql/data
+      - ./scripts/init-test-db.sql:/docker-entrypoint-initdb.d/init-test-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aiqms"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  aiqms_pgdata:
