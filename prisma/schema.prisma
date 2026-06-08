@@ -45,6 +45,12 @@ model Tenant {
   sarComments       SarComment[]
   internalReviews   InternalReview[]
   internalReviewScores InternalReviewScore[]
+  evidences            Evidence[]
+  evidenceFiles        EvidenceFile[]
+  evidenceLinks        EvidenceLink[]
+  evidenceCriteria     EvidenceCriterionMapping[]
+  evidenceRequirements EvidenceRequirementMapping[]
+  evidenceVerifications EvidenceVerificationLog[]
   departments Department[]
 
   @@map("tenants")
@@ -610,4 +616,121 @@ model InternalReviewScore {
   @@unique([internalReviewId, criterionId])
   @@index([tenantId, internalReviewId])
   @@map("internal_review_scores")
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// P5 — Kho minh chứng (tenant-scoped). File qua lớp Storage (không ghi đĩa container).
+// Một minh chứng liên kết nhiều tiêu chí/yêu cầu; chống trùng bằng hash.
+// ════════════════════════════════════════════════════════════════════════════
+model Evidence {
+  id           String    @id @default(cuid())
+  tenantId     String
+  code         String // tự đánh mã: MC-0001
+  title        String
+  description  String?
+  type         String? // loại minh chứng
+  providerUnit String? // đơn vị cung cấp
+  programmeId  String?
+  academicYear String? // năm học áp dụng
+  status       String    @default("pending") // pending | valid | needs_more | invalid
+  note         String? // ghi chú kiểm tra
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  createdBy    String?
+  updatedBy    String?
+  deletedAt    DateTime?
+
+  tenant        Tenant                        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  files         EvidenceFile[]
+  links         EvidenceLink[]
+  criteria      EvidenceCriterionMapping[]
+  requirements  EvidenceRequirementMapping[]
+  verifications EvidenceVerificationLog[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId, status])
+  @@index([tenantId, academicYear])
+  @@index([tenantId, deletedAt])
+  @@map("evidences")
+}
+
+model EvidenceFile {
+  id          String   @id @default(cuid())
+  tenantId    String
+  evidenceId  String
+  fileName    String
+  storageKey  String // key trong lớp Storage (prefix theo tenant)
+  size        Int
+  contentType String?
+  hash        String // sha256 để chống trùng
+  createdAt   DateTime @default(now())
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  evidence Evidence @relation(fields: [evidenceId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, evidenceId])
+  @@index([tenantId, hash]) // dò trùng theo hash trong tenant
+  @@map("evidence_files")
+}
+
+model EvidenceLink {
+  id         String   @id @default(cuid())
+  tenantId   String
+  evidenceId String
+  url        String
+  label      String?
+  createdAt  DateTime @default(now())
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  evidence Evidence @relation(fields: [evidenceId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, evidenceId])
+  @@map("evidence_links")
+}
+
+model EvidenceCriterionMapping {
+  id          String   @id @default(cuid())
+  tenantId    String
+  evidenceId  String
+  criterionId String // Criterion (global)
+  createdAt   DateTime @default(now())
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  evidence Evidence @relation(fields: [evidenceId], references: [id], onDelete: Cascade)
+
+  @@unique([evidenceId, criterionId])
+  @@index([tenantId, criterionId])
+  @@map("evidence_criteria_mappings")
+}
+
+model EvidenceRequirementMapping {
+  id            String   @id @default(cuid())
+  tenantId      String
+  evidenceId    String
+  requirementId String
+  createdAt     DateTime @default(now())
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  evidence Evidence @relation(fields: [evidenceId], references: [id], onDelete: Cascade)
+
+  @@unique([evidenceId, requirementId])
+  @@index([tenantId, requirementId])
+  @@map("evidence_requirement_mappings")
+}
+
+model EvidenceVerificationLog {
+  id         String   @id @default(cuid())
+  tenantId   String
+  evidenceId String
+  fromStatus String?
+  toStatus   String
+  note       String?
+  actorId    String?
+  createdAt  DateTime @default(now())
+
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  evidence Evidence @relation(fields: [evidenceId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, evidenceId])
+  @@map("evidence_verification_logs")
 }

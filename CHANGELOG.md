@@ -133,4 +133,25 @@ Xương sống đa-tiêu-chuẩn: bộ tiêu chuẩn là **dữ liệu cấu hì
   state machine, chấm điểm + so sánh reviewer, **cách ly tenant SAR**.
 - [x] List phân trang + index; audit log; soft-delete; build/lint/tsc xanh.
 
-## [P5] Minh chứng — ⏳ Tiếp theo
+## [P5] Minh chứng — ✅ Done
+
+### Added
+- **Schema (tenant-scoped)**: `Evidence`, `EvidenceFile`, `EvidenceLink`,
+  `EvidenceCriterionMapping`, `EvidenceRequirementMapping`, `EvidenceVerificationLog`
+  — migration `p5_evidence`.
+- **Kho minh chứng tập trung**: tự đánh mã `MC-XXXX` (đếm theo tenant), upload nhiều
+  file **qua lớp Storage** (không ghi đĩa container), **hash sha256 chống trùng**,
+  liên kết một minh chứng với **nhiều tiêu chí/yêu cầu**, tìm/lọc theo tiêu chí/năm/
+  trạng thái, vòng đời xác minh + log.
+- **Endpoints**: `/api/evidence` (+`/[id]`, `/[id]/files` upload multipart,
+  `/[id]/verify`), `/api/files/[...key]` (phục vụ file, kiểm tra key thuộc tenant).
+- **Fix**: S3 driver import động bằng specifier dựng runtime → Turbopack không cố
+  resolve `@aws-sdk` khi build (dep chỉ bắt buộc ở prod dùng S3).
+
+### DoD P5
+- [x] Migration `20260608143810_p5_evidence`; soft-delete minh chứng.
+- [x] Test trên Postgres (51 test): tự đánh mã, upload + hash chống trùng, liên kết
+  nhiều tiêu chí, xác minh + log, lọc theo tiêu chí, **cách ly tenant** (mã đếm riêng).
+- [x] List phân trang + index; audit log; build/lint/tsc xanh.
+
+## [P6] Dashboard + Nhiệm vụ + Kế hoạch cải tiến (PDCA) — ⏳ Tiếp theo
