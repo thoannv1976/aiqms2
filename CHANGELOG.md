@@ -111,4 +111,26 @@ Xương sống đa-tiêu-chuẩn: bộ tiêu chuẩn là **dữ liệu cấu hì
   **cách ly tenant** (CTĐT A không lọt sang B; trùng mã theo tenant OK).
 - [x] List phân trang + index `(tenantId, …)`; audit log; build/lint/tsc xanh.
 
-## [P4] Đợt tự đánh giá + SAR — ⏳ Tiếp theo
+## [P4] Đợt tự đánh giá + SAR — ✅ Done
+
+### Added
+- **Schema (tenant-scoped)**: `AssessmentCycle`, `SelfAssessmentReport`,
+  `SarCriterionResponse`, `SarComment`, `InternalReview`, `InternalReviewScore` —
+  migration `p4_sar`.
+- **SAR state machine** (`src/lib/sar/state.ts`): 11 trạng thái theo đặc tả 4.13,
+  chặn chuyển trạng thái không hợp lệ.
+- **Service SAR**: tạo đợt; tạo SAR **tự sinh response cho từng tiêu chí** của bộ
+  tiêu chuẩn áp dụng; nhập liệu từng tiêu chí (điểm tự đánh giá **validate theo thang
+  7 mức**); đổi trạng thái; soft-delete.
+- **Đánh giá nội bộ**: mở phiên rà soát, chấm điểm theo tiêu chí, **tổng hợp/so sánh
+  điểm giữa các reviewer** (`aggregateScores`).
+- **Endpoints**: `/api/cycles`, `/api/sars` (+`/[id]`, `/[id]/status`,
+  `/[id]/reviews`), `/api/sar-responses/[id]`, `/api/reviews/[id]/scores`.
+
+### DoD P4
+- [x] Migration `20260608143320_p4_sar`.
+- [x] Test trên Postgres (45 test): SAR sinh đúng 8 response, validate điểm theo thang,
+  state machine, chấm điểm + so sánh reviewer, **cách ly tenant SAR**.
+- [x] List phân trang + index; audit log; soft-delete; build/lint/tsc xanh.
+
+## [P5] Minh chứng — ⏳ Tiếp theo

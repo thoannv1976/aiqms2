@@ -22,6 +22,13 @@ export const TENANT_SCOPED_MODELS = new Set<string>([
   "CourseLearningOutcome",
   "PloCourseMapping",
   "CloPloMapping",
+  // P4: đợt tự đánh giá + SAR.
+  "AssessmentCycle",
+  "SelfAssessmentReport",
+  "SarCriterionResponse",
+  "SarComment",
+  "InternalReview",
+  "InternalReviewScore",
 ]);
 
 export function isTenantScoped(model: string | undefined): boolean {

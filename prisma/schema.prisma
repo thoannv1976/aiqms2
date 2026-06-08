@@ -39,6 +39,12 @@ model Tenant {
   clos        CourseLearningOutcome[]
   ploCourseMappings PloCourseMapping[]
   cloPloMappings    CloPloMapping[]
+  assessmentCycles  AssessmentCycle[]
+  sars              SelfAssessmentReport[]
+  sarResponses      SarCriterionResponse[]
+  sarComments       SarComment[]
+  internalReviews   InternalReview[]
+  internalReviewScores InternalReviewScore[]
   departments Department[]
 
   @@map("tenants")
@@ -471,4 +477,137 @@ model CloPloMapping {
   @@index([tenantId, cloId])
   @@index([tenantId, ploId])
   @@map("clo_plo_mappings")
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// P4 — Đợt tự đánh giá + SAR (tenant-scoped) — module trung tâm
+// ════════════════════════════════════════════════════════════════════════════
+model AssessmentCycle {
+  id                String    @id @default(cuid())
+  tenantId          String
+  name              String
+  year              Int?
+  standardVersionId String // bộ tiêu chuẩn áp dụng (global)
+  status            String    @default("open") // open | closed
+  startDate         DateTime?
+  endDate           DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  createdBy         String?
+  updatedBy         String?
+  deletedAt         DateTime?
+
+  tenant  Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  reports SelfAssessmentReport[]
+
+  @@index([tenantId, status])
+  @@index([tenantId, deletedAt])
+  @@map("assessment_cycles")
+}
+
+model SelfAssessmentReport {
+  id                 String    @id @default(cuid())
+  tenantId           String
+  assessmentCycleId  String
+  programmeVersionId String
+  standardVersionId  String
+  title              String
+  status             String    @default("not_started") // vòng đời SAR (state machine)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  createdBy          String?
+  updatedBy          String?
+  deletedAt          DateTime?
+
+  tenant    Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  cycle     AssessmentCycle         @relation(fields: [assessmentCycleId], references: [id], onDelete: Cascade)
+  responses SarCriterionResponse[]
+  comments  SarComment[]
+  reviews   InternalReview[]
+
+  @@index([tenantId, status])
+  @@index([tenantId, assessmentCycleId])
+  @@index([tenantId, deletedAt])
+  @@map("self_assessment_reports")
+}
+
+model SarCriterionResponse {
+  id              String   @id @default(cuid())
+  tenantId        String
+  sarId           String
+  criterionId     String // tham chiếu Criterion (global)
+  currentState    String? // mô tả hiện trạng
+  analysis        String? // phân tích mức độ đáp ứng
+  strengths       String? // điểm mạnh
+  weaknesses      String? // điểm tồn tại
+  improvementDone String? // hoạt động cải tiến đã thực hiện
+  improvementPlan String? // kế hoạch cải tiến tiếp theo
+  selfScore       Int? // điểm tự đánh giá (theo thang 7 mức)
+  reviewerComment String?
+  status          String   @default("not_started") // not_started|in_progress|needs_more|completed|reviewed
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  updatedBy       String?
+
+  tenant Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sar    SelfAssessmentReport @relation(fields: [sarId], references: [id], onDelete: Cascade)
+
+  @@unique([sarId, criterionId])
+  @@index([tenantId, sarId])
+  @@map("sar_criterion_responses")
+}
+
+model SarComment {
+  id          String   @id @default(cuid())
+  tenantId    String
+  sarId       String
+  criterionId String?
+  authorId    String?
+  body        String
+  createdAt   DateTime @default(now())
+
+  tenant Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sar    SelfAssessmentReport @relation(fields: [sarId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, sarId])
+  @@map("sar_comments")
+}
+
+model InternalReview {
+  id        String   @id @default(cuid())
+  tenantId  String
+  sarId     String
+  reviewerId String
+  status    String   @default("in_progress") // in_progress | submitted
+  summary   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sar    SelfAssessmentReport    @relation(fields: [sarId], references: [id], onDelete: Cascade)
+  scores InternalReviewScore[]
+
+  @@unique([sarId, reviewerId])
+  @@index([tenantId, sarId])
+  @@map("internal_reviews")
+}
+
+model InternalReviewScore {
+  id             String   @id @default(cuid())
+  tenantId       String
+  internalReviewId String
+  criterionId    String
+  score          Int
+  strengths      String?
+  weaknesses     String?
+  recommendation String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  tenant Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  review InternalReview @relation(fields: [internalReviewId], references: [id], onDelete: Cascade)
+
+  @@unique([internalReviewId, criterionId])
+  @@index([tenantId, internalReviewId])
+  @@map("internal_review_scores")
 }

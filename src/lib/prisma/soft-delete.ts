@@ -13,6 +13,8 @@ export const SOFT_DELETE_MODELS = new Set<string>([
   "Programme",
   "ProgrammeVersion",
   "Course",
+  "AssessmentCycle",
+  "SelfAssessmentReport",
 ]);
 
 const READ_OPS = new Set([
