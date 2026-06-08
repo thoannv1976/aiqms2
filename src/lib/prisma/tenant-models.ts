@@ -36,6 +36,13 @@ export const TENANT_SCOPED_MODELS = new Set<string>([
   "EvidenceCriterionMapping",
   "EvidenceRequirementMapping",
   "EvidenceVerificationLog",
+  // P6: nhiệm vụ + cải tiến PDCA.
+  "Task",
+  "TaskComment",
+  "ImprovementPlan",
+  "ImprovementAction",
+  "ImprovementKpi",
+  "ImprovementProgressLog",
 ]);
 
 export function isTenantScoped(model: string | undefined): boolean {

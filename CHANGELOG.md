@@ -154,4 +154,26 @@ Xương sống đa-tiêu-chuẩn: bộ tiêu chuẩn là **dữ liệu cấu hì
   nhiều tiêu chí, xác minh + log, lọc theo tiêu chí, **cách ly tenant** (mã đếm riêng).
 - [x] List phân trang + index; audit log; build/lint/tsc xanh.
 
-## [P6] Dashboard + Nhiệm vụ + Kế hoạch cải tiến (PDCA) — ⏳ Tiếp theo
+## [P6] Dashboard + Nhiệm vụ + Kế hoạch cải tiến (PDCA) — ✅ Done
+
+### Added
+- **Schema (tenant-scoped)**: `Task`, `TaskComment`, `ImprovementPlan`,
+  `ImprovementAction`, `ImprovementKpi`, `ImprovementProgressLog` — migration
+  `p6_tasks_improvement`.
+- **Nhiệm vụ**: CRUD + bình luận, **Kanban board** (nhóm theo cột trạng thái),
+  calendar (sắp theo dueDate), gán việc, lọc theo trạng thái/người phụ trách.
+- **Kế hoạch cải tiến PDCA**: plan → action (phase plan/do/check/act) + KPI +
+  log tiến độ (tự cập nhật trạng thái action theo %).
+- **Dashboard 3 cấp** (đặc tả 4.1): cấp trường (số CTĐT, SAR theo trạng thái,
+  minh chứng theo trạng thái, nhiệm vụ quá hạn, kế hoạch cải tiến mở), cấp chương
+  trình (trạng thái từng tiêu chí + điểm tự đánh giá TB), cá nhân (việc được giao/quá hạn).
+- **Endpoints**: `/api/tasks` (+`/[id]`, `/[id]/comments`, `?view=board`),
+  `/api/improvement-plans` (+`/[id]`, `/actions`, `/kpis`),
+  `/api/improvement-actions/[id]/progress`, `/api/dashboard` (+`/me`, `/programme`).
+
+### DoD P6
+- [x] Migration `20260608144334_p6_tasks_improvement`; soft-delete Task/ImprovementPlan.
+- [x] Test trên Postgres (57 test): Kanban, PDCA + KPI + tiến độ, dashboard 3 cấp,
+  **cách ly tenant**. Audit log; list phân trang + index; build/lint/tsc xanh.
+
+## [P7] Xuất báo cáo — ⏳ Tiếp theo
