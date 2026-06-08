@@ -2,6 +2,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@/generated/prisma/client";
 import { env } from "@/config/env";
 import { tenantExtension } from "./tenant-extension";
+import { softDeleteExtension } from "./soft-delete";
 
 /**
  * Prisma client (singleton) đã gắn tenant extension.
@@ -19,7 +20,7 @@ function createPrisma() {
     adapter,
     log: env.NODE_ENV === "development" ? ["warn", "error"] : ["error"],
   });
-  return base.$extends(tenantExtension);
+  return base.$extends(tenantExtension).$extends(softDeleteExtension);
 }
 
 export type ExtendedPrismaClient = ReturnType<typeof createPrisma>;

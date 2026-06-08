@@ -39,4 +39,34 @@ Hạ tầng đa-tenant + cấu hình, làm đúng từ ngày 0 (tránh bolt-on v
 - [x] Client xử lý 204/empty.
 - [x] `npm run build` xanh, `tsc --noEmit` xanh.
 
-## [P1] Auth + RBAC + tenant + seed — ⏳ Tiếp theo
+## [P1] Auth + RBAC + tenant + seed — ✅ Done
+
+### Added
+- **Schema**: `Permission`, `Role`, `RolePermission` (global catalog), `User`,
+  `UserRole`, `Faculty`, `Department` (tenant-scoped) — migration `p1_auth_rbac`.
+- **Soft-delete extension** (`deletedAt: null` cho reads của User/Faculty/Department)
+  + helper `softDeleteData`.
+- **Auth**: hash mật khẩu bcrypt, JWT (jose) mang `tenantId`+roles, cookie phiên httpOnly.
+  Endpoints `POST /api/auth/login`, `POST /api/auth/logout` (204), `GET /api/auth/me`.
+- **RBAC khai báo bằng dữ liệu**: catalog 14 quyền + 8 vai trò (`src/lib/rbac/permissions.ts`);
+  `requirePermission()` kiểm tra ở server cho mọi endpoint.
+- **Route wrappers**: `authedRoute` (nạp JWT → context: actorId/roles/permissions),
+  `superAdminRoute` (platform, bypass tenant), `tenantRoute`.
+- **Quản lý user/khoa/bộ môn**: `/api/users` (+`/[id]` GET/PATCH/DELETE soft-delete),
+  `/api/faculties`, `/api/departments` — phân trang + validate Zod + audit log.
+- **Helper**: phân trang offset (`parsePagination`/`paginated`), `parseBody` (Zod).
+- **Seed idempotent mở rộng**: permissions + roles + role-permissions, **system tenant +
+  super-admin** (bootstrap được cả trên DB đã có dữ liệu), tenant demo + admin qa_office.
+
+### DoD P1
+- [x] Chạy local: seed idempotent (chạy lại không nhân bản), login/me end-to-end OK.
+- [x] Migration `20260608140406_p1_auth_rbac`.
+- [x] **Test cách ly tenant trên Postgres**: admin A không thấy user B; token tenant
+  khác → 403 (`tests/users/isolation.test.ts`). Billing hết hạn/khóa → 403 (không 500).
+- [x] List có phân trang; index `(tenantId, …)` trên users/faculties/departments.
+- [x] Audit log cho login + tạo/sửa/xóa user/khoa/bộ môn.
+- [x] Soft-delete user/khoa/bộ môn (không xóa cứng).
+- [x] Kiểm tra quyền ở server (RBAC) — thiếu quyền → 403.
+- [x] 32 test xanh, `npm run build` + `tsc` + `lint` xanh.
+
+## [P2] Cấu hình bộ tiêu chuẩn (data-driven) — ⏳ Tiếp theo

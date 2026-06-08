@@ -7,7 +7,11 @@
  */
 export const TENANT_SCOPED_MODELS = new Set<string>([
   "AuditLog",
-  // P1+: User, Role, UserRole, Faculty, Department, ...
+  // P1: assignment + đơn vị (Role/Permission/RolePermission là GLOBAL, không ở đây)
+  "User",
+  "UserRole",
+  "Faculty",
+  "Department",
   // P2+: AccreditationStandard, StandardVersion, Criterion, Requirement, ...
 ]);
 

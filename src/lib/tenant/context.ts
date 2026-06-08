@@ -11,8 +11,12 @@ export interface TenantContext {
   actorId?: string;
   /** true => bỏ qua bộ lọc tenant (chỉ dành cho super-admin / seed / job hệ thống). */
   bypassTenant?: boolean;
-  /** roles để kiểm tra quyền (RBAC). */
+  /** super-admin nền tảng (toàn quyền, xuyên tenant). */
+  isSuperAdmin?: boolean;
+  /** roles (code) của user. */
   roles?: string[];
+  /** quyền hiệu dụng (đã giải từ roles) để kiểm tra RBAC nhanh trong request. */
+  permissions?: Set<string>;
 }
 
 const storage = new AsyncLocalStorage<TenantContext>();

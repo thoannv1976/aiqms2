@@ -27,9 +27,139 @@ model Tenant {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  auditLogs AuditLog[]
+  auditLogs   AuditLog[]
+  users       User[]
+  userRoles   UserRole[]
+  faculties   Faculty[]
+  departments Department[]
 
   @@map("tenants")
+}
+
+// ─── RBAC khai báo bằng dữ liệu (GLOBAL — không tenant-scoped) ───────────────
+// Permission/Role là catalog dùng chung mọi tenant; assignment (UserRole) mới theo tenant.
+model Permission {
+  id          String   @id @default(cuid())
+  code        String   @unique // ví dụ "user.manage", "sar.write"
+  description String?
+  createdAt   DateTime @default(now())
+
+  roles RolePermission[]
+
+  @@map("permissions")
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  code        String   @unique // ví dụ "qa_office", "lecturer"
+  name        String
+  description String?
+  isSystem    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  permissions RolePermission[]
+  userRoles   UserRole[]
+
+  @@map("roles")
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+// ─── Người dùng (tenant-scoped) ─────────────────────────────────────────────
+model User {
+  id           String    @id @default(cuid())
+  tenantId     String
+  email        String
+  passwordHash String
+  fullName     String
+  isSuperAdmin Boolean   @default(false) // xuyên tenant (đường đi riêng)
+  status       String    @default("active") // active | disabled
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  createdBy    String?
+  updatedBy    String?
+  deletedAt    DateTime? // soft-delete
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userRoles UserRole[]
+
+  @@unique([tenantId, email])
+  @@index([tenantId, status])
+  @@index([tenantId, deletedAt])
+  @@map("users")
+}
+
+model UserRole {
+  id        String   @id @default(cuid())
+  tenantId  String
+  userId    String
+  roleId    String
+  facultyId String? // phạm vi: vai trò gắn với khoa cụ thể (tùy chọn)
+  createdAt DateTime @default(now())
+  createdBy String?
+
+  tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role    Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  faculty Faculty? @relation(fields: [facultyId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, roleId, facultyId])
+  @@index([tenantId, userId])
+  @@map("user_roles")
+}
+
+// ─── Đơn vị (tenant-scoped) ─────────────────────────────────────────────────
+model Faculty {
+  id        String    @id @default(cuid())
+  tenantId  String
+  code      String
+  name      String
+  status    String    @default("active")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  createdBy String?
+  updatedBy String?
+  deletedAt DateTime?
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  departments Department[]
+  userRoles   UserRole[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId, deletedAt])
+  @@map("faculties")
+}
+
+model Department {
+  id        String    @id @default(cuid())
+  tenantId  String
+  facultyId String
+  code      String
+  name      String
+  status    String    @default("active")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  createdBy String?
+  updatedBy String?
+  deletedAt DateTime?
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  faculty Faculty @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, code])
+  @@index([tenantId, facultyId])
+  @@index([tenantId, deletedAt])
+  @@map("departments")
 }
 
 // ─── Audit log (tenant-scoped) ──────────────────────────────────────────────
