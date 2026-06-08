@@ -223,4 +223,28 @@ Lớp AI là **service có kiểm soát** (bài học #5, #6), không phải l�
 ### Hoãn sang P9 (cần thêm hạ tầng)
 - Chatbot RAG (pgvector embeddings + lọc quyền) và mock interview — ghi nhận trong P9.
 
-## [P9] Nâng cao — ⏳ Tiếp theo (một phần)
+## [P9] Nâng cao — ✅ Done (phần trọng tâm)
+
+### Added
+- **Bộ tiêu chuẩn Bộ GD&ĐT (MOET) — thêm bằng NẠP DỮ LIỆU** (chứng minh quyết định
+  kiến trúc quan trọng nhất của P2): tổng quát hóa seeder thành `seedStandard(db, dataset)`,
+  thêm `StandardDataset` type + `MOET` dataset (11 tiêu chuẩn, thang 7 mức). Seed cùng
+  AUN-QA. **SAR chạy với MOET tự sinh 11 response — KHÔNG sửa code lõi.**
+- **Module khảo sát bên liên quan** (đặc tả 4.8): schema `StakeholderGroup`, `Survey`,
+  `SurveyQuestion`, `SurveyResponse` — migration `p9_surveys`. Vòng đời tạo → câu hỏi →
+  mở (token link công khai) → nộp ẩn danh qua token → phân tích kết quả (TB rating). Gắn
+  khảo sát với tiêu chí.
+- **Endpoints**: `/api/surveys` (+`/[id]`, `/questions`, `/open`, `/results`),
+  công khai `/api/survey/[token]` (GET form + POST nộp, không cần đăng nhập).
+
+### DoD P9
+- [x] Migration `p9_surveys`; soft-delete Survey.
+- [x] Test trên Postgres (75 test): MOET data-driven + SAR dùng MOET; vòng đời khảo
+  sát + phân tích + nộp công khai; **cách ly tenant**. Build/lint/tsc xanh.
+
+### Còn lại (advanced — cần hạ tầng/đầu mục riêng, ghi nhận để làm sau)
+- Chatbot RAG (pgvector embeddings + lọc quyền) và mock interview phỏng vấn (cần lớp
+  embeddings + AI thật).
+- Import đề cương học phần từ Word/Excel (parser tài liệu).
+- Tích hợp LMS/SIS/HRM (kết nối hệ thống ngoài).
+

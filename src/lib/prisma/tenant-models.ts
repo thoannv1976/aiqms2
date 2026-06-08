@@ -49,6 +49,11 @@ export const TENANT_SCOPED_MODELS = new Set<string>([
   "AiSettings",
   "AiRequest",
   "AiGeneratedDraft",
+  // P9: khảo sát bên liên quan.
+  "StakeholderGroup",
+  "Survey",
+  "SurveyQuestion",
+  "SurveyResponse",
 ]);
 
 export function isTenantScoped(model: string | undefined): boolean {

@@ -18,6 +18,7 @@ export const SOFT_DELETE_MODELS = new Set<string>([
   "Evidence",
   "Task",
   "ImprovementPlan",
+  "Survey",
 ]);
 
 const READ_OPS = new Set([

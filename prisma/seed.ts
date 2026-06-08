@@ -7,7 +7,8 @@ import {
   ROLES,
   ALL_PERMISSION_CODES,
 } from "../src/lib/rbac/permissions";
-import { seedAunqa } from "../src/lib/standards/seed";
+import { seedAunqa, seedStandard } from "../src/lib/standards/seed";
+import { MOET } from "../src/lib/standards/moet-data";
 
 /**
  * Seed idempotent (bài học #seed): chạy lại nhiều lần không nhân bản, và VẪN tạo
@@ -111,6 +112,10 @@ async function main() {
   // 5) Bộ tiêu chuẩn AUN-QA v4.0 (global, data-driven) ────────────────────────
   const aun = await seedAunqa(prisma);
   console.log(`✔ AUN-QA v4.0: 8 tiêu chí + thang 7 mức (version ${aun.versionId})`);
+
+  // 6) Bộ tiêu chuẩn Bộ GD&ĐT (P9) — thêm bằng NẠP DỮ LIỆU, không sửa code lõi.
+  const moet = await seedStandard(prisma, MOET);
+  console.log(`✔ MOET 2016: 11 tiêu chuẩn (version ${moet.versionId})`);
 
   await prisma.$disconnect();
 }

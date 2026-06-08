@@ -1,26 +1,27 @@
 import { AUNQA } from "./aunqa-data";
+import type { StandardDataset } from "./dataset";
 
 /**
- * Seed bộ tiêu chuẩn AUN-QA v4.0 (8 tiêu chí + thang 7 mức + yêu cầu đại diện).
- * Idempotent: upsert theo code/level/order. Nhận client Prisma (base hoặc extended)
- * — các model bộ tiêu chuẩn là GLOBAL nên không cần tenant context.
+ * Seed một bộ tiêu chuẩn từ dữ liệu (data-driven — thêm chuẩn mới = nạp dữ liệu,
+ * KHÔNG sửa code lõi). Idempotent. Nhận client Prisma (base/extended) — model bộ
+ * tiêu chuẩn là GLOBAL nên không cần tenant context.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function seedAunqa(db: any) {
+export async function seedStandard(db: any, dataset: StandardDataset) {
   const standard = await db.accreditationStandard.upsert({
-    where: { code: AUNQA.standard.code },
-    update: { name: AUNQA.standard.name, description: AUNQA.standard.description },
-    create: AUNQA.standard,
+    where: { code: dataset.standard.code },
+    update: { name: dataset.standard.name, description: dataset.standard.description },
+    create: dataset.standard,
   });
 
   const version = await db.standardVersion.upsert({
-    where: { standardId_version: { standardId: standard.id, version: AUNQA.version.version } },
-    update: { name: AUNQA.version.name, isActive: AUNQA.version.isActive },
-    create: { standardId: standard.id, ...AUNQA.version },
+    where: { standardId_version: { standardId: standard.id, version: dataset.version.version } },
+    update: { name: dataset.version.name, isActive: dataset.version.isActive },
+    create: { standardId: standard.id, ...dataset.version },
   });
 
-  // Thang đánh giá 7 mức.
-  for (const s of AUNQA.ratingScale) {
+  // Thang đánh giá.
+  for (const s of dataset.ratingScale) {
     await db.ratingScale.upsert({
       where: { standardVersionId_level: { standardVersionId: version.id, level: s.level } },
       update: { labelEn: s.labelEn, labelVi: s.labelVi },
@@ -28,8 +29,8 @@ export async function seedAunqa(db: any) {
     });
   }
 
-  // 8 tiêu chí + yêu cầu + minh chứng gợi ý.
-  for (const c of AUNQA.criteria) {
+  // Tiêu chí + yêu cầu + minh chứng gợi ý.
+  for (const c of dataset.criteria) {
     const criterion = await db.criterion.upsert({
       where: { standardVersionId_code: { standardVersionId: version.id, code: c.code } },
       update: { order: c.order, titleEn: c.titleEn, titleVi: c.titleVi },
@@ -66,4 +67,10 @@ export async function seedAunqa(db: any) {
   }
 
   return { standardId: standard.id, versionId: version.id };
+}
+
+/** Seed AUN-QA v4.0 (tương thích ngược). */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function seedAunqa(db: any) {
+  return seedStandard(db, AUNQA);
 }
