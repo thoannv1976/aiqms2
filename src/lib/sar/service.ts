@@ -202,3 +202,22 @@ export async function updateCriterionResponse(
   await writeAudit({ action: "sar.response.update", entity: "SarCriterionResponse", entityId: responseId });
   return updated;
 }
+
+// ─── Góp ý / Nhận xét SAR (rà soát cấp khoa & cấp trường) ───────────────────
+export async function listSarComments(sarId: string) {
+  return prisma.sarComment.findMany({
+    where: { sarId },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+export async function addSarComment(sarId: string, body: string, criterionId?: string) {
+  const ctx = requireTenantContext();
+  const sar = await prisma.selfAssessmentReport.findFirst({ where: { id: sarId } });
+  if (!sar) throw notFound("SAR không tồn tại");
+  const c = await prisma.sarComment.create({
+    data: withTenantId({ sarId, body, criterionId: criterionId ?? null, authorId: ctx.actorId }),
+  });
+  await writeAudit({ action: "sar.comment", entity: "SarComment", entityId: c.id });
+  return c;
+}

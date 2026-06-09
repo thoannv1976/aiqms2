@@ -36,6 +36,22 @@ const FIELDS: { key: FieldKey; label: string; ai?: boolean }[] = [
   { key: "improvementPlan", label: "Kế hoạch cải tiến" },
 ];
 
+// Nhãn tiếng Việt cho trạng thái SAR (vòng đời).
+const SAR_STATUS_VI: Record<string, string> = {
+  not_started: "Chưa bắt đầu",
+  collecting: "Đang thu thập dữ liệu",
+  drafting: "Đang viết báo cáo",
+  faculty_review: "Chờ rà soát cấp khoa",
+  needs_revision: "Cần chỉnh sửa",
+  university_review: "Chờ rà soát cấp trường",
+  internal_done: "Hoàn thành nội bộ",
+  ready_external: "Sẵn sàng đánh giá ngoài",
+  external_done: "Đã đánh giá ngoài",
+  improving: "Đang cải tiến",
+  completed: "Hoàn tất",
+};
+const sarStatusVi = (s: string) => SAR_STATUS_VI[s] ?? s;
+
 export default function SarEditorPage() {
   const { id } = useParams<{ id: string }>();
   const [sar, setSar] = useState<Sar | null>(null);
@@ -44,7 +60,7 @@ export default function SarEditorPage() {
   const [form, setForm] = useState<Partial<Response>>({});
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-  const [tab, setTab] = useState<"edit" | "review">("edit");
+  const [tab, setTab] = useState<"edit" | "review" | "comments">("edit");
 
   const load = useCallback(async () => {
     try {
@@ -105,7 +121,7 @@ export default function SarEditorPage() {
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={sar.status} />
             {nextStates.map((s) => (
-              <button key={s} className="btn-outline" onClick={() => changeStatus(s)}>→ {s}</button>
+              <button key={s} className="btn-outline" onClick={() => changeStatus(s)}>→ {sarStatusVi(s)}</button>
             ))}
             <ExportButton type="sar_docx" sarId={sar.id} label="Xuất Word" />
             <ExportButton type="sar_pdf" sarId={sar.id} label="Xuất PDF" />
@@ -113,9 +129,9 @@ export default function SarEditorPage() {
         }
       />
 
-      {/* Tab: Soạn báo cáo | Đánh giá nội bộ */}
+      {/* Tab: Soạn báo cáo | Đánh giá nội bộ | Nhận xét */}
       <div className="mb-4 flex gap-1 border-b border-slate-200">
-        {(["edit", "review"] as const).map((t) => (
+        {([["edit", "Soạn báo cáo"], ["review", "Đánh giá nội bộ"], ["comments", "Nhận xét / Góp ý"]] as const).map(([t, label]) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -123,7 +139,7 @@ export default function SarEditorPage() {
               tab === t ? "border-indigo-600 text-indigo-700" : "border-transparent text-slate-500 hover:text-slate-700"
             }`}
           >
-            {t === "edit" ? "Soạn báo cáo" : "Đánh giá nội bộ"}
+            {label}
           </button>
         ))}
       </div>
@@ -132,6 +148,13 @@ export default function SarEditorPage() {
         <ReviewTab
           sarId={sar.id}
           criteria={sar.responses.map((r) => ({ criterionId: r.criterionId, code: r.criterion?.code ?? "?", titleVi: r.criterion?.titleVi ?? "" }))}
+        />
+      )}
+
+      {tab === "comments" && (
+        <CommentsTab
+          sarId={sar.id}
+          criteria={sar.responses.map((r) => ({ criterionId: r.criterionId, code: r.criterion?.code ?? "?" }))}
         />
       )}
 
@@ -371,6 +394,75 @@ function ReviewTab({ sarId, criteria }: { sarId: string; criteria: CriterionRef[
             })}
           </tbody>
         </table>
+      </div>
+    </div>
+  );
+}
+
+interface SarComment { id: string; body: string; criterionId: string | null; authorId: string | null; createdAt: string }
+
+function CommentsTab({ sarId, criteria }: { sarId: string; criteria: { criterionId: string; code: string }[] }) {
+  const [comments, setComments] = useState<SarComment[]>([]);
+  const [body, setBody] = useState("");
+  const [criterionId, setCriterionId] = useState("");
+  const [note, setNote] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(async () => {
+    setComments((await api.get<SarComment[]>(`/api/sars/${sarId}/comments`)) ?? []);
+  }, [sarId]);
+  useEffect(() => { load(); }, [load]);
+
+  async function send() {
+    if (!body.trim()) return;
+    setBusy(true); setNote(null);
+    try {
+      await api.post(`/api/sars/${sarId}/comments`, { body, criterionId: criterionId || undefined });
+      setBody(""); setCriterionId("");
+      await load();
+    } catch (e) {
+      setNote(e instanceof ApiClientError ? e.message : "Lỗi gửi góp ý");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const codeOf = (cid: string | null) => (cid ? criteria.find((c) => c.criterionId === cid)?.code ?? "" : "");
+
+  return (
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <div className="lg:col-span-2">
+        <div className="card p-5">
+          <h3 className="mb-3 text-sm font-semibold text-slate-700">Góp ý rà soát (cấp khoa / cấp trường)</h3>
+          {comments.length === 0 ? (
+            <p className="text-sm text-slate-400">Chưa có góp ý nào.</p>
+          ) : (
+            <ul className="space-y-3">
+              {comments.map((c) => (
+                <li key={c.id} className="rounded-lg border border-slate-100 p-3">
+                  <div className="mb-1 flex items-center gap-2 text-xs text-slate-400">
+                    {c.criterionId && <span className="badge bg-indigo-100 text-indigo-700">{codeOf(c.criterionId)}</span>}
+                    <span>{new Date(c.createdAt).toLocaleString("vi-VN")}</span>
+                  </div>
+                  <p className="whitespace-pre-wrap text-sm text-slate-700">{c.body}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+      <div className="lg:col-span-1">
+        <div className="card p-5">
+          <h3 className="mb-3 text-sm font-semibold text-slate-700">Thêm góp ý</h3>
+          <label className="label">Gắn tiêu chí (tùy chọn)</label>
+          <select className="input mb-2" value={criterionId} onChange={(e) => setCriterionId(e.target.value)}>
+            <option value="">Góp ý chung</option>
+            {criteria.map((c) => <option key={c.criterionId} value={c.criterionId}>{c.code}</option>)}
+          </select>
+          <textarea className="input min-h-24" value={body} onChange={(e) => setBody(e.target.value)} placeholder="Nội dung góp ý…" />
+          <button className="btn-primary mt-2 w-full" onClick={send} disabled={busy}>{busy ? "Đang gửi…" : "Gửi góp ý"}</button>
+          {note && <p className="mt-2 text-sm text-amber-600">{note}</p>}
+        </div>
       </div>
     </div>
   );

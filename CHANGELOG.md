@@ -21,6 +21,14 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
 - **Lưu trữ GCS**: cài sẵn `@aws-sdk/client-s3` → driver S3 chạy với GCS (S3-compatible) chỉ
   bằng cấu hình env; hướng dẫn HMAC + bucket ở `DEPLOY.md` mục 7b.
 
+## [Góp ý rà soát SAR] — ✅ Done
+
+- **Nhận xét / góp ý SAR** (`SarComment`): tab **"Nhận xét / Góp ý"** trong trình soạn SAR
+  (`/sars/[id]`) cho cấp khoa & cấp trường ghi góp ý (gắn tiêu chí hoặc góp ý chung) trong
+  quy trình rà soát hồ sơ. API `GET/POST /api/sars/[id]/comments` (xem cần `data.view`; góp ý
+  cần một trong `sar.review`/`content.approve`/`sar.write`), có ghi audit `sar.comment`.
+- **Nhãn trạng thái SAR tiếng Việt** (`SAR_STATUS_VI`) hiển thị trên nút chuyển trạng thái.
+
 ## [Frontend nâng cao] — ✅ Done (4 nhiệm vụ)
 
 1. **Trình soạn SAR có panel AI** (`/sars/[id]`): nhập liệu từng tiêu chí + đổi trạng
