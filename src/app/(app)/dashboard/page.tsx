@@ -48,9 +48,43 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="mt-6">
-        <StatCard label="Kế hoạch cải tiến đang mở" value={data.openImprovementPlans} />
+      <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="card p-5">
+          <StatCard label="Kế hoạch cải tiến đang mở" value={data.openImprovementPlans} />
+        </div>
+        <MyTasks />
       </div>
+    </div>
+  );
+}
+
+interface Me { overdue: number; upcoming: { id: string; title: string; dueDate: string | null }[]; tasksByStatus: Record<string, number> }
+
+function MyTasks() {
+  const [me, setMe] = useState<Me | null>(null);
+  useEffect(() => { api.get<Me>("/api/dashboard/me").then(setMe).catch(() => {}); }, []);
+  return (
+    <div className="card p-5">
+      <h2 className="mb-3 text-sm font-semibold text-slate-700">Việc của tôi</h2>
+      {!me ? <p className="text-sm text-slate-400">Đang tải…</p> : (
+        <>
+          <p className="mb-3 text-sm">
+            <span className="badge bg-rose-100 text-rose-700">{me.overdue} quá hạn</span>
+          </p>
+          {me.upcoming.length === 0 ? (
+            <p className="text-sm text-slate-400">Không có nhiệm vụ sắp tới.</p>
+          ) : (
+            <ul className="space-y-2">
+              {me.upcoming.map((t) => (
+                <li key={t.id} className="flex items-center justify-between text-sm">
+                  <span className="text-slate-700">{t.title}</span>
+                  {t.dueDate && <span className="text-xs text-slate-400">{new Date(t.dueDate).toLocaleDateString("vi-VN")}</span>}
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
     </div>
   );
 }

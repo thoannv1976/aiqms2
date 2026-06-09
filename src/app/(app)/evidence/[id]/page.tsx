@@ -104,11 +104,71 @@ export default function EvidenceDetailPage() {
               </tbody>
             </table>
           </div>
+
+          {/* Liên kết tiêu chí */}
+          <CriteriaPanel evidenceId={ev.id} mapped={ev.criteria} onChanged={load} />
         </div>
 
         {/* Xác minh */}
         <VerifyPanel evidenceId={ev.id} current={ev.status} verifications={ev.verifications} onChanged={load} />
       </div>
+    </div>
+  );
+}
+
+interface CritOption { id: string; code: string; titleVi: string }
+
+function CriteriaPanel({ evidenceId, mapped, onChanged }: { evidenceId: string; mapped: { criterionId: string }[]; onChanged: () => void }) {
+  const [options, setOptions] = useState<CritOption[]>([]);
+  const [sel, setSel] = useState("");
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const stds = await api.get<{ id: string; activeVersion: { id: string } | null }[]>("/api/standards");
+        const withActive = (stds ?? []).filter((s) => s.activeVersion);
+        const all: CritOption[] = [];
+        for (const s of withActive) {
+          const d = await api.get<{ criteria: CritOption[] }>(`/api/standards/${s.id}`);
+          for (const c of d?.criteria ?? []) all.push(c);
+        }
+        setOptions(all);
+      } catch {
+        /* ignore */
+      }
+    })();
+  }, []);
+
+  const codeOf = (cid: string) => options.find((o) => o.id === cid)?.code ?? cid.slice(0, 6);
+
+  async function addMap() {
+    if (!sel) return;
+    setErr(null);
+    try {
+      await api.post(`/api/evidence/${evidenceId}/criteria`, { criterionId: sel });
+      setSel("");
+      onChanged();
+    } catch (e) {
+      setErr(e instanceof ApiClientError ? e.message : "Lỗi liên kết");
+    }
+  }
+
+  return (
+    <div className="card p-5">
+      <h3 className="mb-3 text-sm font-semibold text-slate-700">Tiêu chí liên kết ({mapped.length})</h3>
+      <div className="mb-3 flex flex-wrap gap-2">
+        {mapped.length === 0 && <span className="text-sm text-slate-400">Chưa gắn tiêu chí nào</span>}
+        {mapped.map((m) => <span key={m.criterionId} className="badge bg-indigo-100 text-indigo-700">{codeOf(m.criterionId)}</span>)}
+      </div>
+      <div className="flex gap-2">
+        <select className="input" value={sel} onChange={(e) => setSel(e.target.value)}>
+          <option value="">-- chọn tiêu chí --</option>
+          {options.map((o) => <option key={o.id} value={o.id}>{o.code} · {o.titleVi}</option>)}
+        </select>
+        <button className="btn-outline whitespace-nowrap" onClick={addMap} disabled={!sel}>+ Gắn</button>
+      </div>
+      {err && <div className="mt-2"><ErrorBox message={err} /></div>}
     </div>
   );
 }
