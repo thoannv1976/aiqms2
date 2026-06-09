@@ -1,0 +1,25 @@
+# Build artifacts & local-only — KHÔNG đưa vào image
+node_modules
+.next
+out
+build
+coverage
+
+# Prisma client sinh lại trong image (postinstall)
+src/generated
+
+# Secrets & dữ liệu local (cung cấp qua biến môi trường Cloud Run)
+.env
+.env.*
+!.env.example
+.storage
+
+# VCS & linh tinh
+.git
+.gitignore
+*.log
+.DS_Store
+
+# Test & tài liệu nặng (không cần khi chạy)
+tests
+docs/*.docx
