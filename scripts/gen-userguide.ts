@@ -2,10 +2,10 @@
  * Sinh tài liệu Word: "Tổng hợp chức năng & Hướng dẫn sử dụng AIQMS".
  * Chạy: npx tsx scripts/gen-userguide.ts
  */
-import { promises as fs } from "node:fs";
+import { promises as fs, readFileSync, existsSync } from "node:fs";
 import {
   Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType,
-  Table, TableRow, TableCell, WidthType, BorderStyle, LevelFormat,
+  Table, TableRow, TableCell, WidthType, BorderStyle, LevelFormat, ImageRun,
 } from "docx";
 
 const ACCENT = "1F4E79";
@@ -48,6 +48,22 @@ function table(headers: string[], rows: string[][], widths?: number[]) {
 
 const children: (Paragraph | Table)[] = [];
 
+// Nhúng ảnh chụp màn hình + ghi chú (1-2 dòng) ngay dưới ảnh.
+const IMG_W = 600, IMG_H = 375; // 1280x800 -> tỉ lệ 16:10
+function img(file: string, caption: string) {
+  const path = `docs/screenshots/${file}.png`;
+  if (existsSync(path)) {
+    children.push(new Paragraph({
+      spacing: { before: 100, after: 20 }, alignment: AlignmentType.CENTER,
+      children: [new ImageRun({ type: "png", data: readFileSync(path), transformation: { width: IMG_W, height: IMG_H } })],
+    }));
+  }
+  children.push(new Paragraph({
+    spacing: { after: 140 }, alignment: AlignmentType.CENTER,
+    children: [new TextRun({ text: "▲ " + caption, italics: true, size: 18, color: "555555" })],
+  }));
+}
+
 // ─── Trang bìa ───────────────────────────────────────────────────────────────
 children.push(
   new Paragraph({ spacing: { before: 1200, after: 120 }, alignment: AlignmentType.CENTER, children: [new TextRun({ text: "HỆ THỐNG AIQMS", bold: true, size: 56, color: ACCENT })] }),
@@ -85,6 +101,7 @@ children.push(step("Tại trang đăng nhập, nhập Mã trường (tenant) —
 children.push(step("Nhập Email và Mật khẩu được cấp, bấm Đăng nhập."));
 children.push(step("Sau khi vào, thanh menu bên trái hiển thị các chức năng theo quyền của bạn."));
 children.push(note("Mỗi tài khoản thuộc một trường (tenant). Dữ liệu giữa các trường được cách ly hoàn toàn. Đổi mật khẩu mặc định ngay sau lần đăng nhập đầu tiên."));
+img("01-login", "Màn hình đăng nhập: nhập Mã trường (tenant), Email, Mật khẩu rồi bấm Đăng nhập.");
 children.push(h2("Tài khoản mẫu (môi trường demo)"));
 children.push(table(
   ["Tài khoản", "Email", "Mật khẩu", "Mã trường"],
@@ -146,6 +163,7 @@ children.push(h1("5. Hướng dẫn sử dụng theo chức năng"));
 children.push(h2("5.1. Dashboard"));
 children.push(p("Hiển thị số liệu tổng quan: số CTĐT, số SAR, minh chứng hợp lệ, nhiệm vụ quá hạn, SAR/minh chứng theo trạng thái, kế hoạch cải tiến đang mở, và mục “Việc của tôi” (nhiệm vụ quá hạn/sắp tới)."));
 
+img("02-dashboard", "Dashboard: số liệu tổng quan toàn trường và mục “Việc của tôi”.");
 children.push(h2("5.2. Chương trình đào tạo"));
 children.push(step("Vào menu Chương trình đào tạo, bấm “+ Tạo CTĐT”, nhập mã ngành, tên, trình độ."));
 children.push(step("Bấm vào tên chương trình để mở trang chi tiết."));
@@ -153,6 +171,9 @@ children.push(step("Chọn/khởi tạo Phiên bản; mỗi phiên bản có vò
 children.push(step("Trong phiên bản, thêm Mục tiêu (PEO) và Chuẩn đầu ra (PLO)."));
 children.push(note("Quản lý đa phiên bản giúp theo dõi quá trình cải tiến CTĐT qua các năm."));
 
+img("03-programmes-list", "Danh sách CTĐT — bấm “+ Tạo CTĐT” để thêm, bấm tên để mở chi tiết.");
+img("04-programme-create", "Hộp thoại tạo CTĐT: nhập mã ngành, tên, trình độ.");
+img("05-programme-detail", "Chi tiết CTĐT: chọn phiên bản, đổi trạng thái, quản lý PEO/PLO.");
 children.push(h2("5.3. Ma trận PLO-CLO & độ phủ"));
 children.push(step("Chọn Chương trình và Phiên bản."));
 children.push(step("Thêm PLO và học phần (nếu chưa có)."));
@@ -160,19 +181,25 @@ children.push(step("Trong ma trận PLO × học phần, bấm vào ô để gá
 children.push(step("Liên kết CLO ↔ PLO theo từng học phần."));
 children.push(step("Xem bảng Cảnh báo độ phủ để phát hiện PLO chưa có học phần/CLO, CLO chưa liên kết PLO."));
 
+img("06-matrices", "Ma trận PLO×học phần (bấm ô đặt mức I/R/M), CLO↔PLO và cảnh báo độ phủ.");
 children.push(h2("5.4. Đề cương học phần"));
 children.push(step("Vào menu Đề cương học phần, bấm “+ Thêm học phần” (mã, tên, tín chỉ)."));
 children.push(step("Bấm tên học phần để mở chi tiết; nhập đề cương: mô tả, tiên quyết, nội dung, phương pháp giảng dạy, phương pháp đánh giá, tài liệu, rubric."));
 children.push(step("Thêm các CLO của học phần ở panel bên phải; bấm Lưu đề cương."));
 
+img("07-courses-list", "Danh sách học phần — bấm tên để mở đề cương.");
+img("08-course-detail", "Chi tiết đề cương học phần và quản lý CLO ở panel bên phải.");
 children.push(h2("5.5. Bộ tiêu chuẩn"));
 children.push(p("Xem danh sách bộ tiêu chuẩn (AUN-QA, MOET…), bấm để xem các tiêu chí và thang đánh giá. Việc thêm/sửa bộ tiêu chuẩn do Quản trị hệ thống thực hiện (nạp dữ liệu, không cần sửa phần mềm)."));
 
+img("09-standards", "Bộ tiêu chuẩn: chọn AUN-QA/MOET để xem tiêu chí và thang đánh giá 7 mức.");
 children.push(h2("5.6. Đợt tự đánh giá"));
 children.push(step("Vào menu Đợt tự đánh giá, bấm “+ Tạo đợt”, nhập tên, năm, chọn bộ tiêu chuẩn áp dụng."));
 children.push(step("Mở chi tiết đợt để tạo SAR cho từng chương trình, theo dõi danh sách SAR."));
 children.push(step("Khi hoàn tất, bấm “Đóng đợt”."));
 
+img("10-cycles-list", "Danh sách đợt tự đánh giá kèm số SAR và trạng thái.");
+img("11-cycle-detail", "Chi tiết đợt: đóng/mở đợt và tạo SAR cho từng chương trình.");
 children.push(h2("5.7. Báo cáo tự đánh giá (SAR) — module trung tâm"));
 children.push(h3("a) Tạo SAR"));
 children.push(step("Từ menu SAR (hoặc trong chi tiết Đợt), bấm “+ Tạo SAR”."));
@@ -193,6 +220,11 @@ children.push(step("Thành viên hội đồng bấm “Mở phiên rà soát c�
 children.push(step("Chấm điểm 1–7 và ghi khuyến nghị cho từng tiêu chí, bấm Lưu."));
 children.push(step("Cột “Tổng hợp hội đồng” hiển thị số người chấm, điểm trung bình, thấp nhất–cao nhất."));
 
+img("12-sars-list", "Danh sách SAR — bấm “+ Tạo SAR” hoặc bấm tiêu đề để soạn.");
+img("13-sar-create", "Hộp thoại tạo SAR: chọn CTĐT→phiên bản và đợt, nhập tiêu đề.");
+img("14-sar-editor", "Trình soạn SAR: nhập liệu từng tiêu chí, chấm điểm, đổi trạng thái.");
+img("15-sar-ai", "Panel AI: bấm “AI viết nháp”, xem bản nháp rồi “Duyệt & ghi vào báo cáo”.");
+img("16-sar-review", "Tab Đánh giá nội bộ: chấm điểm và tổng hợp/so sánh giữa các thành viên.");
 children.push(h2("5.8. Minh chứng"));
 children.push(step("Vào menu Minh chứng, bấm “+ Thêm minh chứng” (tên, năm học). Hệ thống tự đánh mã MC-XXXX."));
 children.push(step("Bấm tên minh chứng để mở chi tiết."));
@@ -200,33 +232,48 @@ children.push(step("Kéo-thả nhiều file vào vùng upload (hệ thống cả
 children.push(step("Ở panel “Tiêu chí liên kết”, chọn tiêu chí để gắn — một minh chứng có thể liên kết nhiều tiêu chí."));
 children.push(step("Ở panel Xác minh, cập nhật trạng thái: chờ xác minh / hợp lệ / cần bổ sung / không phù hợp."));
 
+img("17-evidence-list", "Kho minh chứng: tự đánh mã MC-XXXX, lọc, bấm tên để mở chi tiết.");
+img("18-evidence-detail", "Chi tiết minh chứng: kéo-thả upload file, liên kết tiêu chí, xác minh.");
 children.push(h2("5.9. Dữ liệu phục vụ tiêu chí (C5–C8)"));
 children.push(p("Bốn menu trong nhóm “Dữ liệu kiểm định” cho phép nhập và tra cứu: Đội ngũ giảng viên (C5), Người học & hỗ trợ (C6), Cơ sở vật chất (C7), Kết quả đầu ra (C8). Mỗi mục có nút “+ Thêm” và bảng danh sách có phân trang."));
 
+img("19-academic-staff", "Đội ngũ giảng viên (tiêu chí C5).");
+img("20-students", "Người học & dịch vụ hỗ trợ (tiêu chí C6).");
+img("21-facilities", "Cơ sở vật chất (tiêu chí C7).");
+img("22-outcomes", "Kết quả đầu ra (tiêu chí C8).");
 children.push(h2("5.10. Nhiệm vụ (Kanban)"));
 children.push(step("Bấm “+ Tạo nhiệm vụ” (tiêu đề, mô tả, ưu tiên, hạn)."));
 children.push(step("Kéo-thả thẻ giữa các cột Cần làm → Đang làm → Rà soát → Hoàn thành để cập nhật trạng thái."));
 
+img("23-tasks", "Bảng Kanban: kéo-thả thẻ giữa các cột để đổi trạng thái nhiệm vụ.");
 children.push(h2("5.11. Kế hoạch cải tiến (PDCA)"));
 children.push(step("Bấm “+ Tạo kế hoạch” (tiêu đề, vấn đề, nguyên nhân)."));
 children.push(step("Mở chi tiết để thêm Hành động theo pha PDCA (Plan/Do/Check/Act) và ghi nhận tiến độ (%)."));
 children.push(step("Thêm KPI (mục tiêu/đơn vị) để đo lường kết quả cải tiến."));
 
+img("24-improvement-list", "Danh sách kế hoạch cải tiến — bấm tên để mở chi tiết.");
+img("25-improvement-detail", "Chi tiết: hành động theo pha PDCA, log tiến độ và KPI.");
 children.push(h2("5.12. Khảo sát bên liên quan"));
 children.push(step("Bấm “+ Tạo khảo sát”, mở chi tiết và thêm câu hỏi (thang điểm/tự luận/lựa chọn)."));
 children.push(step("Bấm “Mở khảo sát” để sinh link công khai; gửi link cho sinh viên/cựu SV/nhà tuyển dụng."));
 children.push(step("Người ngoài mở link điền trực tiếp, không cần tài khoản."));
 children.push(step("Theo dõi Kết quả (số phản hồi, điểm trung bình) trong trang chi tiết."));
 
+img("26-surveys-list", "Danh sách khảo sát.");
+img("27-survey-detail", "Chi tiết khảo sát: thêm câu hỏi, mở khảo sát (sinh link công khai), xem kết quả.");
+img("28-survey-public", "Trang công khai: người ngoài điền khảo sát qua link, không cần đăng nhập.");
 children.push(h2("5.13. Xuất báo cáo"));
 children.push(step("Vào menu Xuất báo cáo, chọn loại (SAR→Word, SAR→PDF, Danh mục minh chứng→Excel, Gói minh chứng→ZIP)."));
 children.push(step("Nếu là SAR, chọn báo cáo cần xuất; bấm “Tạo & xuất”."));
 children.push(step("Khi trạng thái là “done”, bấm “Tải” ở dòng tương ứng để tải file."));
 
+img("29-exports", "Xuất báo cáo: chọn loại, tạo yêu cầu và tải file khi hoàn tất.");
 children.push(h2("5.14. Người dùng & đơn vị (Quản trị)"));
 children.push(step("Tab Người dùng: bấm “+ Tạo người dùng”, nhập họ tên/email/mật khẩu và tích chọn vai trò."));
 children.push(step("Tab Khoa/Bộ môn: thêm Khoa, sau đó thêm Bộ môn (chọn khoa)."));
 
+img("30-users", "Quản lý người dùng: tạo tài khoản và gán vai trò (RBAC).");
+img("31-users-org", "Quản lý Khoa/Bộ môn.");
 children.push(h2("5.15. AI hỗ trợ (Quản trị)"));
 children.push(step("Bật/tắt AI cho trường; chọn nhà cung cấp, model, nhập API Key (được mã hóa khi lưu) và hạn mức token/ngày."));
 children.push(step("Theo dõi chi phí & token đã dùng."));
@@ -234,6 +281,7 @@ children.push(step("Dùng công cụ “Kiểm tra khoảng trống”: chọn S
 children.push(note("Nếu không nhập API Key, hệ thống dùng chế độ mô phỏng (mock) để minh họa — không gửi dữ liệu ra ngoài."));
 
 // ─── 6. Hướng dẫn theo vai trò ───────────────────────────────────────────────
+img("32-ai-hub", "AI hỗ trợ: cấu hình AI, theo dõi chi phí/token, kiểm tra khoảng trống.");
 children.push(h1("6. Hướng dẫn theo từng vai trò"));
 
 children.push(h2("6.1. Quản trị hệ thống / Phòng ĐBCL"));
