@@ -42,6 +42,26 @@ async function main() {
   cookie = await login("admin@demo.local");
   const log = (m: string) => console.log("  • " + m);
 
+  // ── 0) Tự cấp đủ vai trò cho tài khoản seed ─────────────────────────────────
+  // Seed nền cũ có thể chỉ gán admin demo vai trò qa_office (thiếu sar.write,
+  // evidence.upload...). qa_office có quyền user.manage nên ta tự gán đủ vai trò
+  // rồi đăng nhập lại để JWT mang quyền mới — không cần đổi gì trên server.
+  try {
+    const me = await api<any>("GET", "/api/auth/me");
+    if (!me.isSuperAdmin) {
+      const need = ["qa_office", "programme_committee", "internal_reviewer"];
+      const cur: string[] = me.roles ?? [];
+      const merged = Array.from(new Set([...cur, ...need]));
+      if (need.some((r) => !cur.includes(r))) {
+        await api("PATCH", `/api/users/${me.user.id}`, { roleCodes: merged });
+        cookie = await login("admin@demo.local"); // làm mới JWT với vai trò mới
+        log(`Đã cấp đủ vai trò cho admin demo: ${merged.join(", ")}`);
+      }
+    }
+  } catch (e) {
+    console.log("  ! Không tự cấp được vai trò:", String(e).slice(0, 100));
+  }
+
   // ── 1) Người dùng theo vai trò ─────────────────────────────────────────────
   const users = [
     { email: "qa@demo.local", fullName: "Phòng Khảo thí & ĐBCL", roleCodes: ["qa_office"] },
@@ -97,8 +117,9 @@ async function main() {
     const r = await tryApi<any>("POST", "/api/plos", { programmeVersionId: versionId, code, description, order: 1 });
     if (r?.id) ploId[code] = r.id;
   }
-  // nếu đã tồn tại, lấy lại id
-  for (const p of await listItems<any>(`/api/plos?versionId=${versionId}`)) ploId[p.code] = p.id;
+  // nếu đã tồn tại (re-run), lấy lại id — /api/plos trả MẢNG thuần (không {items})
+  const ploList = (await tryApi<any[]>("GET", `/api/plos?versionId=${versionId}`)) ?? [];
+  for (const p of ploList) ploId[p.code] = p.id;
   log(`CTĐT SBI: 3 PEO, ${Object.keys(ploId).length} PLO`);
 
   // ── 4) Học phần + CLO + ma trận ─────────────────────────────────────────────
