@@ -44,6 +44,7 @@ export default function SarEditorPage() {
   const [form, setForm] = useState<Partial<Response>>({});
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [tab, setTab] = useState<"edit" | "review">("edit");
 
   const load = useCallback(async () => {
     try {
@@ -112,7 +113,30 @@ export default function SarEditorPage() {
         }
       />
 
+      {/* Tab: Soạn báo cáo | Đánh giá nội bộ */}
+      <div className="mb-4 flex gap-1 border-b border-slate-200">
+        {(["edit", "review"] as const).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium ${
+              tab === t ? "border-indigo-600 text-indigo-700" : "border-transparent text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            {t === "edit" ? "Soạn báo cáo" : "Đánh giá nội bộ"}
+          </button>
+        ))}
+      </div>
+
+      {tab === "review" && (
+        <ReviewTab
+          sarId={sar.id}
+          criteria={sar.responses.map((r) => ({ criterionId: r.criterionId, code: r.criterion?.code ?? "?", titleVi: r.criterion?.titleVi ?? "" }))}
+        />
+      )}
+
       {/* Chọn tiêu chí */}
+      {tab === "edit" && (
       <div className="mb-4 flex flex-wrap gap-2">
         {sar.responses.map((r) => (
           <button
@@ -126,8 +150,9 @@ export default function SarEditorPage() {
           </button>
         ))}
       </div>
+      )}
 
-      {selected && (
+      {tab === "edit" && selected && (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           {/* Cột soạn thảo */}
           <div className="space-y-4 lg:col-span-2">
@@ -244,6 +269,108 @@ function AiPanel({ responseId, onApplied }: { responseId: string; onApplied: () 
             </div>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+interface Agg { criterionId: string; reviewerCount: number; average: number; min: number; max: number }
+interface CriterionRef { criterionId: string; code: string; titleVi: string }
+
+function ReviewTab({ sarId, criteria }: { sarId: string; criteria: CriterionRef[] }) {
+  const [reviewId, setReviewId] = useState<string | null>(null);
+  const [agg, setAgg] = useState<Agg[]>([]);
+  const [note, setNote] = useState<string | null>(null);
+  const [scores, setScores] = useState<Record<string, { score: string; recommendation: string }>>({});
+
+  const loadAgg = useCallback(async () => {
+    try {
+      setAgg((await api.get<Agg[]>(`/api/sars/${sarId}/reviews`)) ?? []);
+    } catch {
+      /* SAR_REVIEW cần thiết */
+    }
+  }, [sarId]);
+  useEffect(() => { loadAgg(); }, [loadAgg]);
+
+  async function openReview() {
+    setNote(null);
+    try {
+      const r = await api.post<{ id: string }>(`/api/sars/${sarId}/reviews`);
+      setReviewId(r?.id ?? null);
+    } catch (e) {
+      setNote(e instanceof ApiClientError && e.status === 403 ? "Bạn không có quyền rà soát (cần vai trò hội đồng rà soát)." : "Lỗi mở phiên rà soát");
+    }
+  }
+
+  async function saveScore(criterionId: string) {
+    if (!reviewId) return;
+    const s = scores[criterionId];
+    const val = Number(s?.score);
+    if (!val || val < 1 || val > 7) { setNote("Điểm phải trong khoảng 1–7"); return; }
+    try {
+      await api.post(`/api/reviews/${reviewId}/scores`, { criterionId, score: val, recommendation: s?.recommendation || undefined });
+      setNote("Đã lưu điểm.");
+      await loadAgg();
+    } catch (e) {
+      setNote(e instanceof ApiClientError ? e.message : "Lỗi lưu điểm");
+    }
+  }
+
+  const aggOf = (cid: string) => agg.find((a) => a.criterionId === cid);
+
+  return (
+    <div className="space-y-4">
+      <div className="card flex items-center justify-between p-4">
+        <p className="text-sm text-slate-600">Chấm điểm độc lập từng tiêu chí; hệ thống tổng hợp & so sánh giữa các thành viên hội đồng.</p>
+        {reviewId ? (
+          <span className="badge bg-emerald-100 text-emerald-700">Đã mở phiên rà soát</span>
+        ) : (
+          <button className="btn-primary" onClick={openReview}>Mở phiên rà soát của tôi</button>
+        )}
+      </div>
+      {note && <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-700">{note}</div>}
+
+      <div className="card overflow-hidden">
+        <table className="w-full">
+          <thead className="bg-slate-50">
+            <tr>
+              <th className="th">Tiêu chí</th>
+              <th className="th w-32">Điểm của tôi</th>
+              <th className="th">Khuyến nghị</th>
+              <th className="th w-40">Tổng hợp hội đồng</th>
+            </tr>
+          </thead>
+          <tbody>
+            {criteria.map((c) => {
+              const a = aggOf(c.criterionId);
+              return (
+                <tr key={c.criterionId}>
+                  <td className="td"><span className="font-medium">{c.code}</span> {c.titleVi}</td>
+                  <td className="td">
+                    <input
+                      type="number" min={1} max={7} className="input h-9 py-1" disabled={!reviewId}
+                      value={scores[c.criterionId]?.score ?? ""}
+                      onChange={(e) => setScores({ ...scores, [c.criterionId]: { ...scores[c.criterionId], score: e.target.value, recommendation: scores[c.criterionId]?.recommendation ?? "" } })}
+                    />
+                  </td>
+                  <td className="td">
+                    <input
+                      className="input h-9 py-1" disabled={!reviewId} placeholder="Khuyến nghị cải tiến"
+                      value={scores[c.criterionId]?.recommendation ?? ""}
+                      onChange={(e) => setScores({ ...scores, [c.criterionId]: { ...scores[c.criterionId], recommendation: e.target.value, score: scores[c.criterionId]?.score ?? "" } })}
+                    />
+                  </td>
+                  <td className="td text-xs text-slate-500">
+                    {a ? `${a.reviewerCount} người · TB ${a.average} (${a.min}–${a.max})` : "—"}
+                    {reviewId && (
+                      <button className="ml-2 text-indigo-600 hover:underline" onClick={() => saveScore(c.criterionId)}>Lưu</button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
     </div>
   );

@@ -99,7 +99,7 @@ async function main() {
     },
   });
   // Demo: gán nhiều vai trò để 1 tài khoản chạy trọn workflow (viết + rà soát + duyệt).
-  for (const code of ["qa_office", "programme_committee"]) {
+  for (const code of ["qa_office", "programme_committee", "internal_reviewer"]) {
     const role = await prisma.role.findUniqueOrThrow({ where: { code } });
     const has = await prisma.userRole.findFirst({ where: { userId: demoAdmin.id, roleId: role.id } });
     if (!has) {
