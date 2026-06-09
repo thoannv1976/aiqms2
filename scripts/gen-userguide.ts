@@ -89,7 +89,8 @@ children.push(h2("Các nhóm chức năng chính"));
   "Kho minh chứng số: upload nhiều file, tự đánh mã, chống trùng, liên kết nhiều tiêu chí, xác minh.",
   "Dữ liệu phục vụ tiêu chí: đội ngũ giảng viên, người học & hỗ trợ, cơ sở vật chất, kết quả đầu ra.",
   "Quản lý nhiệm vụ (Kanban), kế hoạch cải tiến (PDCA), khảo sát các bên liên quan.",
-  "Xuất báo cáo: SAR ra Word/PDF, danh mục minh chứng ra Excel, gói minh chứng ZIP.",
+  "Nạp dữ liệu hàng loạt từ Excel: CTĐT/PEO/PLO, đề cương/CLO, ma trận PLO-CLO (I/R/M) và dữ liệu C5–C8.",
+  "Xuất báo cáo: SAR ra Word/PDF, danh mục minh chứng ra Excel, gói minh chứng ZIP, kế hoạch cải tiến ra Word/Excel.",
   "Trợ lý AI: tóm tắt minh chứng, viết nháp SAR (có người duyệt), kiểm tra khoảng trống hồ sơ.",
   "Trợ lý hướng dẫn theo màn hình: nút “?” ở mọi trang chỉ rõ “việc cần làm” + ô Hỏi AI.",
   "Quản trị: người dùng, vai trò, khoa/bộ môn; cấu hình AI; theo dõi chi phí token.",
@@ -170,6 +171,7 @@ children.push(step("Vào menu Chương trình đào tạo, bấm “+ Tạo CTĐ
 children.push(step("Bấm vào tên chương trình để mở trang chi tiết."));
 children.push(step("Chọn/khởi tạo Phiên bản; mỗi phiên bản có vòng đời: nháp → áp dụng → lưu trữ."));
 children.push(step("Trong phiên bản, thêm Mục tiêu (PEO) và Chuẩn đầu ra (PLO)."));
+children.push(step("Nạp nhanh bằng Excel: bấm “Import Excel” → “Tải file Excel mẫu”, điền 3 sheet ChuongTrinh, PEO, PLO rồi nạp (xem mục 5.17)."));
 children.push(note("Quản lý đa phiên bản giúp theo dõi quá trình cải tiến CTĐT qua các năm."));
 
 img("03-programmes-list", "Danh sách CTĐT — bấm “+ Tạo CTĐT” để thêm, bấm tên để mở chi tiết.");
@@ -181,12 +183,15 @@ children.push(step("Thêm PLO và học phần (nếu chưa có)."));
 children.push(step("Trong ma trận PLO × học phần, bấm vào ô để gán mức đóng góp I (giới thiệu) → R (củng cố) → M (thành thạo)."));
 children.push(step("Liên kết CLO ↔ PLO theo từng học phần."));
 children.push(step("Xem bảng Cảnh báo độ phủ để phát hiện PLO chưa có học phần/CLO, CLO chưa liên kết PLO."));
+children.push(step("Nạp nhanh bằng Excel: bấm “Nạp ma trận (Excel)” ở góc trên phải → “Tải file Excel mẫu”, điền 2 sheet MaTranPLO (Mã PLO | Mã học phần | Mức I/R/M) và CLO_PLO (Mã học phần | Mã CLO | Mã PLO) rồi chọn file để nạp. Mức chấp nhận cả nhãn tiếng Việt: Giới thiệu/Củng cố/Thành thạo."));
+children.push(note("PLO/học phần/CLO phải đã tồn tại (qua nhập tay hoặc import CTĐT/đề cương) trước khi nạp ma trận."));
 
 img("06-matrices", "Ma trận PLO×học phần (bấm ô đặt mức I/R/M), CLO↔PLO và cảnh báo độ phủ.");
 children.push(h2("5.4. Đề cương học phần"));
 children.push(step("Vào menu Đề cương học phần, bấm “+ Thêm học phần” (mã, tên, tín chỉ)."));
 children.push(step("Bấm tên học phần để mở chi tiết; nhập đề cương: mô tả, tiên quyết, nội dung, phương pháp giảng dạy, phương pháp đánh giá, tài liệu, rubric."));
 children.push(step("Thêm các CLO của học phần ở panel bên phải; bấm Lưu đề cương."));
+children.push(step("Nạp nhanh bằng Excel: bấm “Import Excel” → “Tải file Excel mẫu”, điền sheet HocPhan (mã, tên, tín chỉ, đề cương…) và CLO (Mã học phần | Mã | Mô tả) rồi nạp. Nạp lại idempotent — trùng mã sẽ cập nhật, không nhân bản."));
 
 img("07-courses-list", "Danh sách học phần — bấm tên để mở đề cương.");
 img("08-course-detail", "Chi tiết đề cương học phần và quản lý CLO ở panel bên phải.");
@@ -237,8 +242,11 @@ img("17-evidence-list", "Kho minh chứng: tự đánh mã MC-XXXX, lọc, bấm
 img("18-evidence-detail", "Chi tiết minh chứng: kéo-thả upload file, liên kết tiêu chí, xác minh.");
 children.push(h2("5.9. Dữ liệu phục vụ tiêu chí (C5–C8)"));
 children.push(p("Bốn menu trong nhóm “Dữ liệu kiểm định” cho phép nhập và tra cứu: Đội ngũ giảng viên (C5), Người học & hỗ trợ (C6), Cơ sở vật chất (C7), Kết quả đầu ra (C8). Mỗi mục có nút “+ Thêm” và bảng danh sách có phân trang."));
+children.push(step("Nạp nhanh bằng Excel: ở bất kỳ trang nào trong nhóm này, bấm “Nạp Excel C5–C8” → “Tải file Excel mẫu”. File mẫu có 4 sheet: C5_GiangVien, C6_NguoiHoc, C7_CoSoVatChat, C8_KetQua."));
+children.push(step("Điền dữ liệu vào các sheet cần dùng rồi nạp một lần — hệ thống đọc tất cả sheet có trong file. Các trường phân loại (hình thức GV, nhóm dịch vụ, loại CSVC, nhóm chỉ số) ghi bằng tiếng Việt, phần mềm tự quy đổi (vd “Phòng máy”→lab, “Toàn thời gian”→full_time)."));
+children.push(note("Bản ghi trùng (theo họ tên GV / nội dung dịch vụ / tên CSVC / tên chỉ số + năm học) sẽ được bỏ qua để tránh nhân bản khi nạp lại."));
 
-img("19-academic-staff", "Đội ngũ giảng viên (tiêu chí C5).");
+img("19-academic-staff", "Đội ngũ giảng viên (tiêu chí C5) — bấm “Nạp Excel C5–C8” để nạp hàng loạt.");
 img("20-students", "Người học & dịch vụ hỗ trợ (tiêu chí C6).");
 img("21-facilities", "Cơ sở vật chất (tiêu chí C7).");
 img("22-outcomes", "Kết quả đầu ra (tiêu chí C8).");
@@ -291,6 +299,22 @@ children.push(step("Đọc mục “Việc cần làm tại màn hình này” �
 children.push(step("Cần hỏi sâu hơn: gõ câu hỏi vào ô “Hỏi AI về màn hình này” rồi bấm “Hỏi AI” để nhận hướng dẫn từng bước."));
 children.push(note("Phần hướng dẫn hiển thị ngay cho mọi người dùng (không cần AI). Ô “Hỏi AI” cần Quản trị bật AI cho trường (menu AI hỗ trợ)."));
 img("33-help-assistant", "Bảng Trợ lý hướng dẫn: việc cần làm tại màn hình hiện tại + ô Hỏi AI.");
+
+children.push(h2("5.17. Nạp dữ liệu hàng loạt từ Excel"));
+children.push(p("Khi cần nạp nhiều dữ liệu cùng lúc (ví dụ chuẩn bị một đợt kiểm định), dùng các nút Import Excel trên từng màn hình. Quy trình chung gồm 3 bước: (1) bấm nút Import/“Nạp …”; (2) bấm “Tải file Excel mẫu” và điền theo đúng tên sheet/cột; (3) chọn file .xlsx và bấm “Nạp dữ liệu”. Kết quả hiển thị số bản ghi tạo mới/cập nhật và danh sách lỗi theo từng dòng (nếu có)."));
+children.push(p("Bảng dưới đây tổng hợp các loại dữ liệu nạp được và tên sheet/cột tương ứng trong file mẫu:"));
+children.push(table(
+  ["Màn hình (nút)", "Sheet trong Excel", "Các cột chính"],
+  [
+    ["Chương trình đào tạo (Import Excel)", "ChuongTrinh / PEO / PLO", "Mã CTĐT, Tên, Trình độ, Tổng tín chỉ, Phiên bản · (PEO/PLO) Mã CTĐT, Phiên bản, Mã, Mô tả"],
+    ["Đề cương học phần (Import Excel)", "HocPhan / CLO", "Mã học phần, Tên, Số tín chỉ, Mô tả, Tiên quyết, Nội dung, PP giảng dạy, PP đánh giá, Tài liệu, Rubric · (CLO) Mã học phần, Mã, Mô tả"],
+    ["Ma trận PLO-CLO (Nạp ma trận)", "MaTranPLO / CLO_PLO", "(PLO×HP) Mã PLO, Mã học phần, Mức (I/R/M) · (CLO-PLO) Mã học phần, Mã CLO, Mã PLO"],
+    ["Đội ngũ GV / Người học / CSVC / Kết quả (Nạp Excel C5–C8)", "C5_GiangVien / C6_NguoiHoc / C7_CoSoVatChat / C8_KetQua", "C5: Họ tên, Học hàm, Học vị, FTE, Hình thức, Giới tính… · C6: Nhóm, Nội dung, Đối tượng, Số người hưởng lợi · C7: Tên, Loại, Diện tích, Tình trạng… · C8: Tên chỉ số, Nhóm, Giá trị, Mục tiêu, Đối sánh…"],
+  ],
+  [28, 26, 46],
+));
+children.push(note("Tên cột dò linh hoạt (không phân biệt hoa/thường, khớp cả khi tiêu đề có chú thích như “Mức (I/R/M)”). Các trường phân loại ghi bằng tiếng Việt sẽ được tự quy đổi sang mã chuẩn. Người dùng & vai trò (RBAC) tạo ở màn hình Người dùng (không qua import)."));
+children.push(note("Minh chứng được nạp bằng cách upload file trực tiếp ở màn hình Minh chứng (hệ thống tự đánh mã MC-XXXX), không qua Excel."));
 
 children.push(h1("6. Hướng dẫn theo từng vai trò"));
 
