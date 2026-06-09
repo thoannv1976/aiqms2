@@ -69,11 +69,11 @@ function SettingsCard() {
               {["openai", "azure", "gemini", "claude", "local"].map((p) => <option key={p} value={p}>{p}</option>)}
             </select>
           </div>
-          <div><label className="label">Model</label><input className="input" value={s.model ?? ""} onChange={(e) => setS({ ...s, model: e.target.value })} placeholder="gpt-4o-mini" /></div>
+          <div><label className="label">Model</label><input className="input" value={s.model ?? ""} onChange={(e) => setS({ ...s, model: e.target.value })} placeholder="gpt-4o-mini" autoComplete="off" /></div>
         </div>
-        <div><label className="label">Base URL</label><input className="input" value={s.baseUrl ?? ""} onChange={(e) => setS({ ...s, baseUrl: e.target.value })} placeholder="https://api.openai.com/v1" /></div>
+        <div><label className="label">Base URL</label><input className="input" value={s.baseUrl ?? ""} onChange={(e) => setS({ ...s, baseUrl: e.target.value })} placeholder="https://api.openai.com/v1" autoComplete="off" /></div>
         <div><label className="label">API Key {s.hasApiKey && <span className="text-xs text-emerald-600">(đã có — để trống nếu giữ nguyên)</span>}</label>
-          <input className="input" type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder={s.hasApiKey ? "••••••" : "nhập khóa (sẽ được mã hóa)"} />
+          <input className="input" type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder={s.hasApiKey ? "••••••" : "nhập khóa (sẽ được mã hóa)"} autoComplete="new-password" />
         </div>
         <div><label className="label">Hạn mức token/ngày</label><input type="number" className="input" value={s.dailyTokenLimit} onChange={(e) => setS({ ...s, dailyTokenLimit: Number(e.target.value) })} /></div>
         {err && <ErrorBox message={err} />}
