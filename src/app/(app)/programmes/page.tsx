@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiClientError } from "@/lib/api/client";
 import { PageHeader, StatusBadge, ErrorBox } from "@/components/ui";
@@ -44,7 +45,7 @@ export default function ProgrammesPage() {
 
   const columns: Column<Programme>[] = [
     { header: "Mã", cell: (r) => <span className="font-mono text-xs">{r.code}</span> },
-    { header: "Tên chương trình", cell: (r) => <span className="font-medium text-slate-900">{r.name}</span> },
+    { header: "Tên chương trình", cell: (r) => <Link href={`/programmes/${r.id}`} className="font-medium text-indigo-600 hover:underline">{r.name}</Link> },
     { header: "Trình độ", cell: (r) => r.level },
     {
       header: "Phiên bản",
