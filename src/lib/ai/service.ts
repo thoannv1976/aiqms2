@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma/client";
 import { requireTenantContext } from "@/lib/tenant/context";
 import { withTenantId } from "@/lib/prisma/tenant-create";
 import { env } from "@/config/env";
-import { forbidden, badRequest } from "@/lib/http/responses";
+import { forbidden, badRequest, ApiError } from "@/lib/http/responses";
 import { decryptSecret } from "./crypto";
 import { Semaphore } from "./semaphore";
 import { MockProvider } from "./providers/mock";
@@ -39,8 +39,19 @@ async function resolveAi(): Promise<ResolvedAi> {
   const baseUrl = settings?.baseUrl ?? env.AI_BASE_URL;
   // Khóa API: ưu tiên khóa mã hóa theo tenant; fallback env (dev).
   let apiKey: string | undefined;
-  if (settings?.apiKeyEnc) apiKey = decryptSecret(settings.apiKeyEnc);
-  else if (env.AI_API_KEY) apiKey = env.AI_API_KEY;
+  if (settings?.apiKeyEnc) {
+    try {
+      apiKey = decryptSecret(settings.apiKeyEnc);
+    } catch {
+      // Key mã hóa bằng ENCRYPTION_KEY cũ (đổi env giữa các lần deploy) -> không giải mã được.
+      throw badRequest(
+        "Không giải mã được API key đã lưu (ENCRYPTION_KEY của server đã thay đổi?). Vào menu “AI hỗ trợ” nhập lại API key.",
+        "ai_key_decrypt_failed",
+      );
+    }
+  } else if (env.AI_API_KEY) {
+    apiKey = env.AI_API_KEY;
+  }
 
   const provider: LlmProvider = apiKey
     ? new OpenAiProvider(baseUrl, apiKey)
@@ -120,17 +131,26 @@ export async function aiComplete(
     });
     return result.text;
   } catch (e) {
+    const detail = e instanceof Error ? e.message : String(e);
     await prisma.aiRequest.create({
       data: withTenantId({
         module,
         model: cfg.model,
         promptChars,
         status: "error",
-        error: e instanceof Error ? e.message : String(e),
+        error: detail,
         actorId: ctx.actorId,
       }),
     });
-    throw e;
+    // Lỗi nghiệp vụ (đã có status rõ) giữ nguyên; lỗi gọi LLM (sai key/model/baseUrl,
+    // mạng…) chuyển thành 502 kèm chi tiết để người dùng tự xử lý — tránh 500 mù.
+    if (e instanceof ApiError) throw e;
+    throw new ApiError(
+      502,
+      `Không gọi được dịch vụ AI (model ${cfg.model}): ${detail.slice(0, 300)}. ` +
+        "Kiểm tra API key / Model / Base URL trong menu “AI hỗ trợ”.",
+      "ai_upstream_error",
+    );
   }
 }
 

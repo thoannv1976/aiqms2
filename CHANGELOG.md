@@ -21,6 +21,17 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
 - **Lưu trữ GCS**: cài sẵn `@aws-sdk/client-s3` → driver S3 chạy với GCS (S3-compatible) chỉ
   bằng cấu hình env; hướng dẫn HMAC + bucket ở `DEPLOY.md` mục 7b.
 
+## [Sửa lỗi "Hỏi AI" báo Lỗi hệ thống] — ✅ Done
+
+- **Lỗi**: khi gọi LLM thất bại (sai API key/model/Base URL, mạng…) hoặc API key đã lưu
+  không giải mã được (đổi `ENCRYPTION_KEY` giữa các lần deploy), provider ném `Error` thường
+  → API trả 500 "Lỗi hệ thống" không có manh mối.
+- **Fix**: `aiComplete` chuyển lỗi gọi LLM thành **502 `ai_upstream_error`** kèm chi tiết
+  upstream + hướng xử lý ("Kiểm tra API key / Model / Base URL trong menu AI hỗ trợ");
+  key không giải mã được → **400 `ai_key_decrypt_failed`** yêu cầu nhập lại key. Lỗi vẫn
+  được ghi `AiRequest` để theo dõi. Trợ lý màn hình, viết nháp SAR, tóm tắt MC… đều hiển thị
+  thông báo rõ thay vì "Lỗi hệ thống". 92 test (thêm 2 test lỗi upstream/giải mã).
+
 ## [Sửa lỗi upload minh chứng trên Cloud Run] — ✅ Done
 
 - **Lỗi**: trên Cloud Run (hệ thống file chỉ-đọc, chỉ `/tmp` ghi được), driver storage

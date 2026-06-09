@@ -159,6 +159,36 @@ describe("P8 — Lớp AI (service có kiểm soát, human-in-the-loop)", () => 
     });
   });
 
+  it("LLM gọi lỗi (sai key/baseUrl) -> 502 kèm hướng xử lý, không 500 mù", async () => {
+    const t = await createTenantFixture("demo");
+    await asTenant(t.id, async () => {
+      // baseUrl trỏ vào cổng đóng -> fetch fail, mô phỏng sai cấu hình AI ở prod.
+      await updateSettings({ enabled: true, apiKey: "sk-sai", baseUrl: "http://127.0.0.1:9/v1" });
+      const ev = await createEvidence({ title: "MC", criterionIds: [], requirementIds: [] });
+      await expect(summarizeEvidence(ev.id)).rejects.toMatchObject({
+        status: 502,
+        code: "ai_upstream_error",
+      });
+      // Lỗi vẫn được ghi log để theo dõi.
+      const reqs = await prisma.aiRequest.findMany({ where: { status: "error" } });
+      expect(reqs.length).toBeGreaterThan(0);
+    });
+  });
+
+  it("API key không giải mã được (đổi ENCRYPTION_KEY) -> báo nhập lại key, không 500 mù", async () => {
+    const t = await createTenantFixture("demo");
+    await asTenant(t.id, async () => {
+      await updateSettings({ enabled: true, apiKey: "sk-ok" });
+      // Giả lập key đã lưu bằng ENCRYPTION_KEY cũ: ghi đè chuỗi mã hóa rác.
+      await prisma.aiSettings.updateMany({ data: { apiKeyEnc: "v1:aaaa:bbbb:cccc" } });
+      const ev = await createEvidence({ title: "MC", criterionIds: [], requirementIds: [] });
+      await expect(summarizeEvidence(ev.id)).rejects.toMatchObject({
+        status: 400,
+        code: "ai_key_decrypt_failed",
+      });
+    });
+  });
+
   it("cách ly tenant: bản nháp AI của A không thấy ở B", async () => {
     const a = await createTenantFixture("a");
     const b = await createTenantFixture("b");
