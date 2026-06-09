@@ -49,9 +49,10 @@ describe("P8 — Lớp AI (service có kiểm soát, human-in-the-loop)", () => 
     });
   });
 
-  it("AI tắt -> tính năng bị chặn (403)", async () => {
+  it("AI tắt tường minh -> tính năng bị chặn (403)", async () => {
     const t = await createTenantFixture("demo");
     await asTenant(t.id, async () => {
+      await updateSettings({ enabled: false }); // trường chủ động TẮT AI
       const ev = await createEvidence({ title: "MC", criterionIds: [], requirementIds: [] });
       await expect(summarizeEvidence(ev.id)).rejects.toMatchObject({ status: 403 });
     });
@@ -112,6 +113,7 @@ describe("P8 — Lớp AI (service có kiểm soát, human-in-the-loop)", () => 
   it("gap-check vẫn tính được khoảng trống dù AI tắt", async () => {
     const t = await createTenantFixture("demo");
     await asTenant(t.id, async () => {
+      await updateSettings({ enabled: false }); // trường TẮT AI tường minh
       const prog = await createProgramme({ code: "IT", name: "CNTT", level: "bachelor", initialVersion: "2024" });
       const cycle = await createCycle({ name: "2024", standardVersionId: aunVersionId });
       const sar = await createSar({ assessmentCycleId: cycle.id, programmeVersionId: prog.versions[0].id, title: "SAR" });

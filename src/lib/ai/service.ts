@@ -27,10 +27,12 @@ async function resolveAi(): Promise<ResolvedAi> {
   const settings = await prisma.aiSettings.findFirst({ where: { tenantId: ctx.tenantId } });
 
   // Kill-switch toàn cục + bật theo tenant.
-  const globalOn = env.AI_ENABLED;
-  const tenantOn = settings?.enabled ?? false;
-  if (!globalOn || !tenantOn) {
-    throw forbidden("AI đang tắt cho tenant này");
+  // AI bật/tắt do CẤU HÌNH THEO TRƯỜNG quyết định (admin bật ở menu "AI hỗ trợ").
+  // env.AI_ENABLED chỉ là MẶC ĐỊNH cho trường CHƯA có cấu hình; không chặn khi
+  // trường đã chủ động bật (tránh trường hợp bật trong UI nhưng vẫn báo tắt do cờ env prod).
+  const tenantOn = settings ? settings.enabled : env.AI_ENABLED;
+  if (!tenantOn) {
+    throw forbidden("AI chưa được bật cho trường này. Vào menu “AI hỗ trợ” để bật.");
   }
 
   const model = settings?.model ?? env.AI_MODEL;
