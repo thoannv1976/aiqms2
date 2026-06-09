@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Prisma client sinh tự động.
     "src/generated/**",
+    // Script dev (sinh tài liệu, seed demo, chụp ảnh) — không thuộc mã ứng dụng.
+    "scripts/**",
   ]),
   {
     // Frontend: pattern fetch-trong-effect là cố ý và an toàn (có cờ huỷ/loading).

@@ -6,6 +6,7 @@ import { api, ApiClientError } from "@/lib/api/client";
 import { PageHeader, StatusBadge, ErrorBox } from "@/components/ui";
 import { DataTable, Pagination, type Column } from "@/components/DataTable";
 import { Modal } from "@/components/Modal";
+import { ImportButton } from "@/components/ImportButton";
 
 interface Programme {
   id: string;
@@ -67,7 +68,12 @@ export default function ProgrammesPage() {
       <PageHeader
         title="Chương trình đào tạo"
         subtitle="Quản lý CTĐT và các phiên bản"
-        action={<button className="btn-primary" onClick={() => setOpen(true)}>+ Tạo CTĐT</button>}
+        action={
+          <div className="flex items-center gap-2">
+            <ImportButton endpoint="/api/import/programmes" onDone={() => load(1)} />
+            <button className="btn-primary" onClick={() => setOpen(true)}>+ Tạo CTĐT</button>
+          </div>
+        }
       />
       {error && <div className="mb-4"><ErrorBox message={error} /></div>}
       <DataTable columns={columns} rows={data?.items ?? []} loading={loading} emptyMessage="Chưa có chương trình nào" />
