@@ -91,6 +91,7 @@ children.push(h2("Các nhóm chức năng chính"));
   "Quản lý nhiệm vụ (Kanban), kế hoạch cải tiến (PDCA), khảo sát các bên liên quan.",
   "Xuất báo cáo: SAR ra Word/PDF, danh mục minh chứng ra Excel, gói minh chứng ZIP.",
   "Trợ lý AI: tóm tắt minh chứng, viết nháp SAR (có người duyệt), kiểm tra khoảng trống hồ sơ.",
+  "Trợ lý hướng dẫn theo màn hình: nút “?” ở mọi trang chỉ rõ “việc cần làm” + ô Hỏi AI.",
   "Quản trị: người dùng, vai trò, khoa/bộ môn; cấu hình AI; theo dõi chi phí token.",
 ].forEach((t) => children.push(bullet(t)));
 
@@ -282,6 +283,15 @@ children.push(note("Nếu không nhập API Key, hệ thống dùng chế độ 
 
 // ─── 6. Hướng dẫn theo vai trò ───────────────────────────────────────────────
 img("32-ai-hub", "AI hỗ trợ: cấu hình AI, theo dõi chi phí/token, kiểm tra khoảng trống.");
+
+children.push(h2("5.16. Trợ lý hướng dẫn theo màn hình (AI)"));
+children.push(p("Ở MỌI màn hình đều có nút tròn “?” màu tím ở góc dưới bên phải. Bấm vào để mở bảng trợ lý hướng dẫn."));
+children.push(step("Bấm nút “?” (góc dưới phải) để mở bảng Trợ lý hướng dẫn."));
+children.push(step("Đọc mục “Việc cần làm tại màn hình này” — các bước thao tác cụ thể cho đúng màn hình bạn đang xem."));
+children.push(step("Cần hỏi sâu hơn: gõ câu hỏi vào ô “Hỏi AI về màn hình này” rồi bấm “Hỏi AI” để nhận hướng dẫn từng bước."));
+children.push(note("Phần hướng dẫn hiển thị ngay cho mọi người dùng (không cần AI). Ô “Hỏi AI” cần Quản trị bật AI cho trường (menu AI hỗ trợ)."));
+img("33-help-assistant", "Bảng Trợ lý hướng dẫn: việc cần làm tại màn hình hiện tại + ô Hỏi AI.");
+
 children.push(h1("6. Hướng dẫn theo từng vai trò"));
 
 children.push(h2("6.1. Quản trị hệ thống / Phòng ĐBCL"));
