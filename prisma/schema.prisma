@@ -432,6 +432,14 @@ model Course {
   name      String
   credits   Int       @default(3)
   status    String    @default("active")
+  // Đề cương học phần (spec 4.7)
+  description       String?
+  prerequisites     String?
+  content           String? // nội dung giảng dạy
+  teachingMethods   String? // phương pháp giảng dạy
+  assessmentMethods String? // phương pháp đánh giá
+  materials         String? // tài liệu học tập
+  rubric            String?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   createdBy String?

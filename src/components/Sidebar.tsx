@@ -20,6 +20,7 @@ const NAV: { section: string; items: NavItem[] }[] = [
     items: [
       { href: "/programmes", label: "Chương trình đào tạo", ready: true },
       { href: "/matrices", label: "Ma trận PLO‑CLO", ready: true },
+      { href: "/courses", label: "Đề cương học phần", ready: true },
       { href: "/standards", label: "Bộ tiêu chuẩn", ready: true },
       { href: "/sars", label: "Báo cáo tự đánh giá (SAR)", ready: true },
       { href: "/evidence", label: "Minh chứng", ready: true },

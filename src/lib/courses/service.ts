@@ -14,6 +14,36 @@ export const createCourseSchema = z.object({
   credits: z.number().int().positive().default(3),
 });
 
+export const updateCourseSchema = z.object({
+  name: z.string().min(1).optional(),
+  credits: z.number().int().positive().optional(),
+  description: z.string().optional(),
+  prerequisites: z.string().optional(),
+  content: z.string().optional(),
+  teachingMethods: z.string().optional(),
+  assessmentMethods: z.string().optional(),
+  materials: z.string().optional(),
+  rubric: z.string().optional(),
+});
+
+export async function getCourse(id: string) {
+  const course = await prisma.course.findFirst({
+    where: { id },
+    include: { clos: { orderBy: { order: "asc" } } },
+  });
+  if (!course) throw notFound("Học phần không tồn tại");
+  return course;
+}
+
+export async function updateCourse(id: string, input: z.infer<typeof updateCourseSchema>) {
+  const ctx = requireTenantContext();
+  const current = await prisma.course.findFirst({ where: { id } });
+  if (!current) throw notFound("Học phần không tồn tại");
+  const course = await prisma.course.update({ where: { id }, data: { ...input, updatedBy: ctx.actorId } });
+  await writeAudit({ action: "course.update", entity: "Course", entityId: id });
+  return course;
+}
+
 export async function listCourses(p: PageParams) {
   const where: Prisma.CourseWhereInput = p.search
     ? {
