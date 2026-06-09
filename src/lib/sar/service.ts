@@ -28,10 +28,37 @@ export async function createCycle(input: z.infer<typeof createCycleSchema>) {
 
 export async function listCycles(p: PageParams) {
   const [items, total] = await Promise.all([
-    prisma.assessmentCycle.findMany({ orderBy: { createdAt: "desc" }, skip: p.skip, take: p.take }),
+    prisma.assessmentCycle.findMany({
+      orderBy: { createdAt: "desc" },
+      skip: p.skip,
+      take: p.take,
+      include: { _count: { select: { reports: true } } },
+    }),
     prisma.assessmentCycle.count(),
   ]);
   return paginated(items, total, p);
+}
+
+export async function getCycle(id: string) {
+  const cycle = await prisma.assessmentCycle.findFirst({
+    where: { id },
+    include: { reports: { orderBy: { createdAt: "desc" } } },
+  });
+  if (!cycle) throw notFound("Đợt tự đánh giá không tồn tại");
+  return cycle;
+}
+
+export async function toggleCycleStatus(id: string) {
+  const ctx = requireTenantContext();
+  const c = await prisma.assessmentCycle.findFirst({ where: { id } });
+  if (!c) throw notFound("Đợt tự đánh giá không tồn tại");
+  const to = c.status === "open" ? "closed" : "open";
+  const updated = await prisma.assessmentCycle.update({
+    where: { id },
+    data: { status: to, updatedBy: ctx.actorId },
+  });
+  await writeAudit({ action: "cycle.status", entity: "AssessmentCycle", entityId: id, meta: { to } });
+  return updated;
 }
 
 // ─── SAR ────────────────────────────────────────────────────────────────────
