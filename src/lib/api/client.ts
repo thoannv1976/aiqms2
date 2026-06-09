@@ -84,6 +84,31 @@ function safeParse(text: string): unknown {
   }
 }
 
+/** Upload multipart/form-data (KHÔNG set Content-Type để trình duyệt tự thêm boundary). */
+export async function apiUpload<T = unknown>(url: string, form: FormData): Promise<T | null> {
+  let res: Response;
+  try {
+    res = await fetch(url, { method: "POST", headers: { ...tenantHeader() }, body: form });
+  } catch (err) {
+    throw new ApiClientError(0, `Lỗi mạng khi upload ${url}: ${String(err)}`, "network", url);
+  }
+  if (res.status === 204) return null;
+  const text = await res.text();
+  const body = text ? safeParse(text) : null;
+  if (!res.ok) {
+    const message = (body as { error?: string } | null)?.error ?? `HTTP ${res.status}`;
+    throw new ApiClientError(res.status, message, (body as { code?: string } | null)?.code, url);
+  }
+  return body as T | null;
+}
+
+/** Tạo URL tải file/route có auth bằng navigation (kèm ?tenant để resolve đúng trường). */
+export function authedUrl(path: string): string {
+  const t = getTenant();
+  if (!t) return path;
+  return `${path}${path.includes("?") ? "&" : "?"}tenant=${encodeURIComponent(t)}`;
+}
+
 export const api = {
   get: <T>(url: string) => apiFetch<T>(url),
   post: <T>(url: string, data?: unknown) =>

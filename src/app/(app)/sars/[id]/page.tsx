@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { api, ApiClientError } from "@/lib/api/client";
 import { PageHeader, StatusBadge, Spinner, ErrorBox } from "@/components/ui";
+import { ExportButton } from "@/components/ExportButton";
 import { SAR_TRANSITIONS } from "@/lib/sar/state";
 
 interface Criterion { code: string; titleVi: string }
@@ -100,11 +101,13 @@ export default function SarEditorPage() {
         title={sar.title}
         subtitle="Soạn báo cáo tự đánh giá theo từng tiêu chí — có AI hỗ trợ"
         action={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={sar.status} />
             {nextStates.map((s) => (
               <button key={s} className="btn-outline" onClick={() => changeStatus(s)}>→ {s}</button>
             ))}
+            <ExportButton type="sar_docx" sarId={sar.id} label="Xuất Word" />
+            <ExportButton type="sar_pdf" sarId={sar.id} label="Xuất PDF" />
           </div>
         }
       />

@@ -1,10 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiClientError } from "@/lib/api/client";
 import { PageHeader, StatusBadge, ErrorBox } from "@/components/ui";
 import { DataTable, Pagination, type Column } from "@/components/DataTable";
 import { Modal } from "@/components/Modal";
+import { ExportButton } from "@/components/ExportButton";
 
 interface Evidence {
   id: string;
@@ -39,7 +41,7 @@ export default function EvidencePage() {
 
   const columns: Column<Evidence>[] = [
     { header: "Mã", cell: (r) => <span className="font-mono text-xs">{r.code}</span> },
-    { header: "Tên minh chứng", cell: (r) => <span className="font-medium text-slate-900">{r.title}</span> },
+    { header: "Tên minh chứng", cell: (r) => <Link href={`/evidence/${r.id}`} className="font-medium text-indigo-600 hover:underline">{r.title}</Link> },
     { header: "Năm học", cell: (r) => r.academicYear ?? "—" },
     { header: "Số file", cell: (r) => r._count.files },
     { header: "Trạng thái", cell: (r) => <StatusBadge status={r.status} /> },
@@ -50,7 +52,12 @@ export default function EvidencePage() {
       <PageHeader
         title="Kho minh chứng"
         subtitle="Lưu qua lớp Storage, tự đánh mã, chống trùng"
-        action={<button className="btn-primary" onClick={() => setOpen(true)}>+ Thêm minh chứng</button>}
+        action={
+          <div className="flex items-center gap-2">
+            <ExportButton type="evidence_xlsx" label="Xuất Excel danh mục" />
+            <button className="btn-primary" onClick={() => setOpen(true)}>+ Thêm minh chứng</button>
+          </div>
+        }
       />
       {error && <div className="mb-4"><ErrorBox message={error} /></div>}
       <DataTable columns={columns} rows={data?.items ?? []} loading={loading} emptyMessage="Chưa có minh chứng nào" />
