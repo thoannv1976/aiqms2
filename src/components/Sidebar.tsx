@@ -47,7 +47,7 @@ const NAV: { section: string; items: NavItem[] }[] = [
     section: "Quản trị",
     items: [
       { href: "/users", label: "Người dùng & đơn vị", ready: true },
-      { href: "/ai", label: "AI hỗ trợ", ready: false },
+      { href: "/ai", label: "AI hỗ trợ", ready: true },
     ],
   },
 ];
