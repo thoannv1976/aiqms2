@@ -11,14 +11,24 @@ import { buildSarDocx } from "./sar-docx";
 import { buildSarPdf } from "./sar-pdf";
 import { buildEvidenceXlsx } from "./evidence-xlsx";
 import { buildEvidenceZip } from "./evidence-zip";
+import { buildImprovementDocx } from "./improvement-docx";
+import { buildImprovementXlsx } from "./improvement-xlsx";
 
-export const EXPORT_TYPES = ["sar_docx", "sar_pdf", "evidence_xlsx", "evidence_zip"] as const;
+export const EXPORT_TYPES = [
+  "sar_docx",
+  "sar_pdf",
+  "evidence_xlsx",
+  "evidence_zip",
+  "improvement_docx",
+  "improvement_xlsx",
+] as const;
 export type ExportType = (typeof EXPORT_TYPES)[number];
 
 export const createExportSchema = z.object({
   type: z.enum(EXPORT_TYPES),
   sarId: z.string().optional(),
   criterionId: z.string().optional(),
+  planId: z.string().optional(),
 });
 
 type Params = z.infer<typeof createExportSchema>;
@@ -28,6 +38,8 @@ const MIME: Record<ExportType, { ext: string; contentType: string }> = {
   sar_pdf: { ext: "pdf", contentType: "application/pdf" },
   evidence_xlsx: { ext: "xlsx", contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" },
   evidence_zip: { ext: "zip", contentType: "application/zip" },
+  improvement_docx: { ext: "docx", contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" },
+  improvement_xlsx: { ext: "xlsx", contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" },
 };
 
 async function runExporter(type: ExportType, params: Params): Promise<Buffer> {
@@ -42,6 +54,11 @@ async function runExporter(type: ExportType, params: Params): Promise<Buffer> {
       return buildEvidenceXlsx();
     case "evidence_zip":
       return buildEvidenceZip(params.criterionId);
+    case "improvement_docx":
+      if (!params.planId) throw badRequest("improvement_docx cần planId");
+      return buildImprovementDocx(params.planId);
+    case "improvement_xlsx":
+      return buildImprovementXlsx();
   }
 }
 

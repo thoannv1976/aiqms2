@@ -15,6 +15,11 @@ export const academicStaffSchema = z.object({
   specialization: z.string().optional(),
   position: z.string().optional(),
   publications: z.number().int().min(0).default(0),
+  fte: z.number().min(0).optional(),
+  employmentType: z.enum(["full_time", "part_time", "visiting"]).optional(),
+  gender: z.enum(["male", "female", "other"]).optional(),
+  recruitedYear: z.number().int().optional(),
+  trainingActivities: z.string().optional(),
   note: z.string().optional(),
 });
 
@@ -40,6 +45,9 @@ export const studentServiceSchema = z.object({
   description: z.string().optional(),
   academicYear: z.string().optional(),
   metricValue: z.number().optional(),
+  targetGroup: z.string().optional(),
+  responsibleUnit: z.string().optional(),
+  beneficiaries: z.number().int().optional(),
   note: z.string().optional(),
 });
 
@@ -66,6 +74,10 @@ export const facilitySchema = z.object({
   quantity: z.number().int().optional(),
   capacity: z.number().int().optional(),
   location: z.string().optional(),
+  area: z.number().min(0).optional(),
+  condition: z.enum(["good", "fair", "poor"]).optional(),
+  utilizationRate: z.number().min(0).max(100).optional(),
+  usableYear: z.number().int().optional(),
   note: z.string().optional(),
 });
 
@@ -91,6 +103,10 @@ export const outcomeSchema = z.object({
   academicYear: z.string().optional(),
   value: z.number().optional(),
   unit: z.string().optional(),
+  target: z.number().optional(),
+  benchmark: z.number().optional(),
+  cohort: z.string().optional(),
+  dataSource: z.string().optional(),
   note: z.string().optional(),
 });
 

@@ -21,6 +21,26 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
 - **Lưu trữ GCS**: cài sẵn `@aws-sdk/client-s3` → driver S3 chạy với GCS (S3-compatible) chỉ
   bằng cấu hình env; hướng dẫn HMAC + bucket ở `DEPLOY.md` mục 7b.
 
+## [Hoàn thiện vận hành kiểm định SBI] — ✅ Done
+
+- **Picker người phụ trách (Nhiệm vụ)**: chọn người được giao bằng dropdown (endpoint
+  `GET /api/members` — danh sách rút gọn id+tên, quyền `data.view`); thẻ Kanban hiển thị
+  tên + avatar chữ cái người phụ trách (`boardView` join tên người dùng).
+- **Xuất Kế hoạch cải tiến**: thêm loại xuất `improvement_docx` (một kế hoạch → Word, kèm
+  vấn đề/nguyên nhân + hành động PDCA + KPI) và `improvement_xlsx` (tất cả kế hoạch → Excel,
+  2 sheet Hành động/KPI). Nút **"Xuất Word"** ngay trên trang chi tiết + lựa chọn ở trang Xuất.
+- **Chỉ số AUN-QA phong phú cho C5–C8** (migration `institutional_aunqa_fields`):
+  GV thêm FTE/hình thức tuyển dụng/giới tính/năm tuyển dụng/bồi dưỡng; CSVC thêm diện tích/
+  tình trạng/tỷ lệ sử dụng/năm sử dụng; Outcomes thêm mục tiêu/đối sánh/khóa/nguồn dữ liệu;
+  Hỗ trợ người học thêm đối tượng/đơn vị/số người hưởng lợi. Cập nhật form + cột danh sách.
+- **Nhãn trạng thái SAR tiếng Việt dùng chung** (`SAR_STATE_LABELS`/`sarStateLabel` trong
+  state machine) — áp dụng nhất quán ở trình soạn SAR, danh sách SAR và bản xuất Word.
+  `StatusBadge` nhận `label` để giữ màu theo trạng thái nhưng hiển thị tiếng Việt.
+- **AI hỗ trợ cải tiến (human-in-the-loop)**: `POST /api/ai/suggest-improvement` gợi ý hành
+  động PDCA + KPI theo vấn đề/nguyên nhân (validate Zod, không tự ghi DB — người dùng bấm
+  "Thêm" mới đưa vào kế hoạch). MockProvider trả JSON "superset" để chạy ổn định ở dev/test.
+- 87 test (thêm xuất kế hoạch cải tiến, gợi ý cải tiến AI + chặn khi AI tắt, chỉ số C5–C8).
+
 ## [Góp ý rà soát SAR] — ✅ Done
 
 - **Nhận xét / góp ý SAR** (`SarComment`): tab **"Nhận xét / Góp ý"** trong trình soạn SAR

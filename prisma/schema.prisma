@@ -1060,6 +1060,12 @@ model AcademicStaff {
   specialization String? // chuyên môn
   position       String?
   publications   Int       @default(0)
+  // Chỉ số AUN-QA tiêu chí 6 (Academic Staff Quality)
+  fte            Float? // quy đổi toàn thời gian (FTE)
+  employmentType String? // full_time | part_time | visiting
+  gender         String? // male | female | other
+  recruitedYear  Int? // năm tuyển dụng
+  trainingActivities String? // bồi dưỡng/phát triển chuyên môn
   note           String?
   status         String    @default("active")
   createdAt      DateTime  @default(now())
@@ -1083,6 +1089,10 @@ model StudentService {
   description  String?
   academicYear String?
   metricValue  Float?
+  // Chỉ số AUN-QA tiêu chí 7 (Student Quality and Support)
+  targetGroup    String? // đối tượng phục vụ
+  responsibleUnit String? // đơn vị phụ trách
+  beneficiaries  Int? // số người hưởng lợi
   note         String?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
@@ -1106,6 +1116,11 @@ model Facility {
   quantity  Int?
   capacity  Int?
   location  String?
+  // Chỉ số AUN-QA tiêu chí 9 (Facilities and Infrastructure)
+  area            Float? // diện tích (m²)
+  condition       String? // good | fair | poor
+  utilizationRate Float? // tỷ lệ sử dụng (%)
+  usableYear      Int? // năm đưa vào sử dụng
   note      String?
   status    String    @default("active")
   createdAt DateTime  @default(now())
@@ -1129,6 +1144,11 @@ model OutcomeMetric {
   academicYear String?
   value        Float?
   unit         String?
+  // Chỉ số AUN-QA tiêu chí 8 (Output and Outcomes)
+  target       Float? // chỉ tiêu/mục tiêu
+  benchmark    Float? // mốc so sánh (đối sánh)
+  cohort       String? // khóa/cohort
+  dataSource   String? // nguồn dữ liệu
   note         String?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt

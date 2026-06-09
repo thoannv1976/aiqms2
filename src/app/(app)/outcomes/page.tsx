@@ -2,7 +2,7 @@
 
 import { ResourcePage, type Column } from "@/components/ResourcePage";
 
-interface Metric { id: string; name: string; category: string; academicYear: string | null; value: number | null; unit: string | null }
+interface Metric { id: string; name: string; category: string; academicYear: string | null; value: number | null; unit: string | null; target: number | null; benchmark: number | null }
 
 const CATS: Record<string, string> = {
   graduation: "Tốt nghiệp", employment: "Việc làm", satisfaction: "Hài lòng",
@@ -14,6 +14,8 @@ const columns: Column<Metric>[] = [
   { header: "Nhóm", cell: (r) => CATS[r.category] ?? r.category },
   { header: "Năm học", cell: (r) => r.academicYear ?? "—" },
   { header: "Giá trị", cell: (r) => (r.value != null ? `${r.value}${r.unit ? " " + r.unit : ""}` : "—") },
+  { header: "Mục tiêu", cell: (r) => (r.target != null ? r.target : "—") },
+  { header: "Đối sánh", cell: (r) => (r.benchmark != null ? r.benchmark : "—") },
 ];
 
 export default function OutcomesPage() {
@@ -28,8 +30,12 @@ export default function OutcomesPage() {
         { name: "name", label: "Tên chỉ số", required: true, placeholder: "Tỷ lệ có việc làm sau 12 tháng" },
         { name: "category", label: "Nhóm", type: "select", required: true, options: Object.entries(CATS).map(([value, label]) => ({ value, label })) },
         { name: "academicYear", label: "Năm học", placeholder: "2023-2024" },
+        { name: "cohort", label: "Khóa / Cohort", placeholder: "K60" },
         { name: "value", label: "Giá trị", type: "number" },
         { name: "unit", label: "Đơn vị", placeholder: "%" },
+        { name: "target", label: "Mục tiêu", type: "number" },
+        { name: "benchmark", label: "Mốc đối sánh", type: "number" },
+        { name: "dataSource", label: "Nguồn dữ liệu", placeholder: "Khảo sát cựu SV 2024" },
       ]}
     />
   );

@@ -1,10 +1,11 @@
+import { z } from "zod";
 import { prisma } from "@/lib/prisma/client";
 import { requireTenantContext } from "@/lib/tenant/context";
 import { withTenantId } from "@/lib/prisma/tenant-create";
 import { writeAudit } from "@/lib/audit/log";
 import { notFound, badRequest } from "@/lib/http/responses";
 import { getSar } from "@/lib/sar/service";
-import { aiComplete } from "./service";
+import { aiComplete, aiCompleteJson } from "./service";
 
 const SYSTEM_VI =
   "Bạn là trợ lý kiểm định AUN-QA. Chỉ dựa trên dữ liệu được cung cấp, KHÔNG bịa minh chứng. Viết tiếng Việt học thuật, ngắn gọn.";
@@ -134,6 +135,54 @@ export async function gapCheck(sarId: string) {
   }
 
   return { sarId, gapCount: gaps.length, gaps, aiComment };
+}
+
+/**
+ * AI gợi ý hành động cải tiến (PDCA) + KPI cho một Kế hoạch cải tiến.
+ * Human-in-the-loop: CHỈ trả về gợi ý (không tự ghi vào DB) — người phụ trách
+ * xem rồi chọn "Thêm" từng mục mới đưa vào kế hoạch chính thức.
+ */
+const improvementSuggestionSchema = z.object({
+  actions: z
+    .array(
+      z.object({
+        action: z.string(),
+        pdcaPhase: z.enum(["plan", "do", "check", "act"]).default("plan"),
+        responsibleUnit: z.string().optional(),
+      }),
+    )
+    .max(8),
+  kpis: z
+    .array(z.object({ name: z.string(), unit: z.string().optional(), target: z.number().optional() }))
+    .max(6),
+});
+export type ImprovementSuggestion = z.infer<typeof improvementSuggestionSchema>;
+
+export async function suggestImprovementActions(planId: string): Promise<ImprovementSuggestion> {
+  const plan = await prisma.improvementPlan.findFirst({ where: { id: planId } });
+  if (!plan) throw notFound("Kế hoạch cải tiến không tồn tại");
+  const criterion = plan.criterionId
+    ? await prisma.criterion.findUnique({ where: { id: plan.criterionId } })
+    : null;
+
+  const result = await aiCompleteJson(
+    "suggest_improvement",
+    [
+      { role: "system", content: SYSTEM_VI },
+      {
+        role: "user",
+        content:
+          `Đề xuất kế hoạch cải tiến theo chu trình PDCA cho vấn đề kiểm định AUN-QA sau.\n` +
+          `Tiêu chí: ${criterion ? `${criterion.code} - ${criterion.titleVi}` : "—"}\n` +
+          `Kế hoạch: ${plan.title}\nVấn đề: ${plan.issue ?? "—"}\nNguyên nhân: ${plan.cause ?? "—"}\n\n` +
+          `Trả về JSON thuần đúng cấu trúc: {"actions":[{"action","pdcaPhase":"plan|do|check|act","responsibleUnit"}],` +
+          `"kpis":[{"name","unit","target"}]}. Tối đa 8 hành động, 6 KPI. Bằng tiếng Việt.`,
+      },
+    ],
+    improvementSuggestionSchema,
+  );
+  await writeAudit({ action: "ai.suggest", entity: "ImprovementPlan", entityId: planId, meta: { module: "suggest_improvement" } });
+  return result;
 }
 
 /** AI trợ lý hướng dẫn theo màn hình: trả lời câu hỏi của người dùng dựa trên

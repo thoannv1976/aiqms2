@@ -7,6 +7,7 @@ import { createProgramme } from "@/lib/programmes/service";
 import { createCycle, createSar, getSar, updateCriterionResponse } from "@/lib/sar/service";
 import { addFile, createEvidence } from "@/lib/evidence/service";
 import { createExportJob, downloadJob, getJob } from "@/lib/export/jobs";
+import { addAction, addKpi, createPlan } from "@/lib/improvement/service";
 
 let aunVersionId: string;
 const asTenant = <T>(tenantId: string, fn: () => Promise<T>) =>
@@ -82,6 +83,33 @@ describe("P7 — Xuất báo cáo (background job)", () => {
       const dl = await downloadJob(job.id);
       expect(isZip(dl.body)).toBe(true);
       expect(dl.body.byteLength).toBeGreaterThan(0);
+    });
+  });
+
+  it("xuất Kế hoạch cải tiến ra Word (.docx) — cần planId", async () => {
+    const t = await createTenantFixture("demo");
+    await asTenant(t.id, async () => {
+      const plan = await createPlan({ title: "Cải tiến C1", issue: "Thiếu rà soát PLO", cause: "Chưa có quy trình" });
+      await addAction(plan.id, { action: "Xây dựng quy trình rà soát PLO", pdcaPhase: "plan" });
+      await addKpi(plan.id, { name: "Tỷ lệ PLO được rà soát", unit: "%", target: 100 });
+      await expect(createExportJob({ type: "improvement_docx" })).resolves.toMatchObject({ status: "failed" });
+      const job = await createExportJob({ type: "improvement_docx", planId: plan.id });
+      expect(job.status).toBe("done");
+      const dl = await downloadJob(job.id);
+      expect(isZip(dl.body)).toBe(true); // docx là zip container
+      expect(dl.fileName).toMatch(/\.docx$/);
+    });
+  });
+
+  it("xuất tất cả Kế hoạch cải tiến ra Excel (.xlsx)", async () => {
+    const t = await createTenantFixture("demo");
+    await asTenant(t.id, async () => {
+      const plan = await createPlan({ title: "Cải tiến C2" });
+      await addAction(plan.id, { action: "Hành động X", pdcaPhase: "do", responsibleUnit: "Khoa" });
+      const job = await createExportJob({ type: "improvement_xlsx" });
+      expect(job.status).toBe("done");
+      const dl = await downloadJob(job.id);
+      expect(isZip(dl.body)).toBe(true);
     });
   });
 

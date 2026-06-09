@@ -52,11 +52,18 @@ export async function listTasks(
   return paginated(items, total, p);
 }
 
-/** Kanban board: nhiệm vụ nhóm theo cột trạng thái. */
+/** Kanban board: nhiệm vụ nhóm theo cột trạng thái (kèm tên người phụ trách). */
 export async function boardView() {
   const tasks = await prisma.task.findMany({ orderBy: { dueDate: "asc" } });
-  const columns: Record<string, typeof tasks> = { todo: [], in_progress: [], review: [], done: [] };
-  for (const t of tasks) (columns[t.status] ??= []).push(t);
+  // Gắn tên người phụ trách (một truy vấn cho toàn bộ assignee).
+  const assigneeIds = [...new Set(tasks.map((t) => t.assigneeId).filter((v): v is string => !!v))];
+  const users = assigneeIds.length
+    ? await prisma.user.findMany({ where: { id: { in: assigneeIds } }, select: { id: true, fullName: true } })
+    : [];
+  const nameById = new Map(users.map((u) => [u.id, u.fullName]));
+  const withName = tasks.map((t) => ({ ...t, assigneeName: t.assigneeId ? nameById.get(t.assigneeId) ?? null : null }));
+  const columns: Record<string, typeof withName> = { todo: [], in_progress: [], review: [], done: [] };
+  for (const t of withName) (columns[t.status] ??= []).push(t);
   return TASK_STATUSES.map((status) => ({ status, tasks: columns[status] ?? [] }));
 }
 

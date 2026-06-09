@@ -11,7 +11,9 @@ import {
   gapCheck,
   summarizeEvidence,
   assistantAnswer,
+  suggestImprovementActions,
 } from "@/lib/ai/features";
+import { createPlan } from "@/lib/improvement/service";
 import { createEvidence } from "@/lib/evidence/service";
 import { createProgramme } from "@/lib/programmes/service";
 import { createCycle, createSar, getSar } from "@/lib/sar/service";
@@ -130,6 +132,30 @@ describe("P8 — Lớp AI (service có kiểm soát, human-in-the-loop)", () => 
       await updateSettings({ enabled: true });
       const ans = await assistantAnswer("/sars/abc", "Làm sao nhập điểm tự đánh giá?");
       expect(ans).toContain("Báo cáo tự đánh giá"); // ngữ cảnh màn hình SAR được đưa vào
+    });
+  });
+
+  it("AI gợi ý cải tiến PDCA: trả structured đúng schema, KHÔNG tự ghi vào kế hoạch", async () => {
+    const t = await createTenantFixture("demo");
+    await asTenant(t.id, async () => {
+      await updateSettings({ enabled: true });
+      const plan = await createPlan({ title: "Cải tiến C1", issue: "Thiếu rà soát PLO", cause: "Chưa có quy trình" });
+      const sugg = await suggestImprovementActions(plan.id);
+      expect(Array.isArray(sugg.actions)).toBe(true);
+      expect(sugg.actions.length).toBeGreaterThan(0);
+      expect(["plan", "do", "check", "act"]).toContain(sugg.actions[0].pdcaPhase);
+      // Human-in-the-loop: gợi ý không tự tạo action trong DB.
+      const count = await prisma.improvementAction.count({ where: { planId: plan.id } });
+      expect(count).toBe(0);
+    });
+  });
+
+  it("AI tắt -> gợi ý cải tiến bị chặn (403)", async () => {
+    const t = await createTenantFixture("demo");
+    await asTenant(t.id, async () => {
+      await updateSettings({ enabled: false });
+      const plan = await createPlan({ title: "KH" });
+      await expect(suggestImprovementActions(plan.id)).rejects.toMatchObject({ status: 403 });
     });
   });
 

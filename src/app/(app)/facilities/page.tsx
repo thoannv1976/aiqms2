@@ -2,7 +2,9 @@
 
 import { ResourcePage, type Column } from "@/components/ResourcePage";
 
-interface Fac { id: string; name: string; type: string; quantity: number | null; capacity: number | null; location: string | null }
+interface Fac { id: string; name: string; type: string; quantity: number | null; capacity: number | null; location: string | null; area: number | null; condition: string | null }
+
+const COND: Record<string, string> = { good: "Tốt", fair: "Trung bình", poor: "Kém" };
 
 const TYPES: Record<string, string> = {
   classroom: "Phòng học", lab: "Phòng thí nghiệm", library: "Thư viện", it: "Hạ tầng CNTT",
@@ -14,6 +16,8 @@ const columns: Column<Fac>[] = [
   { header: "Loại", cell: (r) => TYPES[r.type] ?? r.type },
   { header: "Số lượng", cell: (r) => r.quantity ?? "—" },
   { header: "Sức chứa", cell: (r) => r.capacity ?? "—" },
+  { header: "Diện tích (m²)", cell: (r) => r.area ?? "—" },
+  { header: "Tình trạng", cell: (r) => (r.condition ? COND[r.condition] ?? r.condition : "—") },
   { header: "Vị trí", cell: (r) => r.location ?? "—" },
 ];
 
@@ -31,6 +35,10 @@ export default function FacilitiesPage() {
         { name: "code", label: "Mã (nếu có)" },
         { name: "quantity", label: "Số lượng", type: "number" },
         { name: "capacity", label: "Sức chứa", type: "number" },
+        { name: "area", label: "Diện tích (m²)", type: "number" },
+        { name: "condition", label: "Tình trạng", type: "select", options: Object.entries(COND).map(([value, label]) => ({ value, label })) },
+        { name: "utilizationRate", label: "Tỷ lệ sử dụng (%)", type: "number" },
+        { name: "usableYear", label: "Năm đưa vào sử dụng", type: "number" },
         { name: "location", label: "Vị trí" },
       ]}
     />

@@ -39,8 +39,8 @@ const STATUS_STYLES: Record<string, string> = {
   suspended: "bg-rose-100 text-rose-700",
 };
 
-export function StatusBadge({ status }: { status: string }) {
-  return <span className={`badge ${STATUS_STYLES[status] ?? "bg-slate-100 text-slate-600"}`}>{status}</span>;
+export function StatusBadge({ status, label }: { status: string; label?: string }) {
+  return <span className={`badge ${STATUS_STYLES[status] ?? "bg-slate-100 text-slate-600"}`}>{label ?? status}</span>;
 }
 
 export function Spinner() {

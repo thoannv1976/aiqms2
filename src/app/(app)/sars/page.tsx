@@ -6,6 +6,7 @@ import { api, ApiClientError } from "@/lib/api/client";
 import { PageHeader, StatusBadge, ErrorBox } from "@/components/ui";
 import { DataTable, Pagination, type Column } from "@/components/DataTable";
 import { Modal } from "@/components/Modal";
+import { sarStateLabel } from "@/lib/sar/state";
 
 interface Sar {
   id: string;
@@ -44,7 +45,7 @@ export default function SarsPage() {
       ),
     },
     { header: "Đợt", cell: (r) => r.cycle?.name ?? "—" },
-    { header: "Trạng thái", cell: (r) => <StatusBadge status={r.status} /> },
+    { header: "Trạng thái", cell: (r) => <StatusBadge status={r.status} label={sarStateLabel(r.status)} /> },
     { header: "Ngày tạo", cell: (r) => new Date(r.createdAt).toLocaleDateString("vi-VN") },
   ];
 

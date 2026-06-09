@@ -54,6 +54,16 @@ export async function listUsers(p: PageParams) {
   return paginated(items, total, p);
 }
 
+/** Danh sách rút gọn (id + tên) để chọn người phụ trách — mọi vai trò có quyền xem đều dùng được. */
+export async function listMembers() {
+  return prisma.user.findMany({
+    where: { status: "active" },
+    select: { id: true, fullName: true, email: true },
+    orderBy: { fullName: "asc" },
+    take: 500,
+  });
+}
+
 export async function getUser(id: string) {
   const user = await prisma.user.findFirst({ where: { id }, select: userSelect });
   if (!user) throw notFound("Người dùng không tồn tại");

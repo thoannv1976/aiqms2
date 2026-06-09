@@ -29,6 +29,9 @@ export default function StudentsPage() {
         { name: "title", label: "Nội dung", required: true },
         { name: "description", label: "Mô tả", type: "textarea" },
         { name: "academicYear", label: "Năm học", placeholder: "2023-2024" },
+        { name: "targetGroup", label: "Đối tượng phục vụ", placeholder: "Sinh viên năm 1" },
+        { name: "responsibleUnit", label: "Đơn vị phụ trách" },
+        { name: "beneficiaries", label: "Số người hưởng lợi", type: "number" },
         { name: "metricValue", label: "Chỉ số (nếu có)", type: "number" },
       ]}
     />

@@ -8,12 +8,15 @@ import { DataTable, Pagination, type Column } from "@/components/DataTable";
 interface Job { id: string; type: string; status: string; fileName: string | null; createdAt: string }
 interface PageData { items: Job[]; total: number; page: number; totalPages: number }
 interface Sar { id: string; title: string }
+interface Plan { id: string; title: string }
 
-const TYPES: { value: string; label: string; needsSar?: boolean }[] = [
+const TYPES: { value: string; label: string; needsSar?: boolean; needsPlan?: boolean }[] = [
   { value: "sar_docx", label: "SAR → Word", needsSar: true },
   { value: "sar_pdf", label: "SAR → PDF", needsSar: true },
   { value: "evidence_xlsx", label: "Danh mục minh chứng → Excel" },
   { value: "evidence_zip", label: "Gói minh chứng → ZIP" },
+  { value: "improvement_docx", label: "Kế hoạch cải tiến → Word", needsPlan: true },
+  { value: "improvement_xlsx", label: "Tất cả kế hoạch cải tiến → Excel" },
 ];
 
 export default function ExportsPage() {
@@ -22,8 +25,10 @@ export default function ExportsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sars, setSars] = useState<Sar[]>([]);
+  const [plans, setPlans] = useState<Plan[]>([]);
   const [type, setType] = useState("evidence_xlsx");
   const [sarId, setSarId] = useState("");
+  const [planId, setPlanId] = useState("");
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async (p: number) => {
@@ -38,14 +43,17 @@ export default function ExportsPage() {
   }, []);
   useEffect(() => { load(page); }, [page, load]);
   useEffect(() => { api.get<{ items: Sar[] }>("/api/sars?pageSize=100").then((d) => setSars(d?.items ?? [])).catch(() => {}); }, []);
+  useEffect(() => { api.get<{ items: Plan[] }>("/api/improvement-plans?pageSize=100").then((d) => setPlans(d?.items ?? [])).catch(() => {}); }, []);
 
-  const needsSar = TYPES.find((t) => t.value === type)?.needsSar;
+  const typeDef = TYPES.find((t) => t.value === type);
+  const needsSar = typeDef?.needsSar;
+  const needsPlan = typeDef?.needsPlan;
 
   async function createJob(e: React.FormEvent) {
     e.preventDefault();
     setError(null); setBusy(true);
     try {
-      await api.post("/api/exports", { type, sarId: needsSar ? sarId : undefined });
+      await api.post("/api/exports", { type, sarId: needsSar ? sarId : undefined, planId: needsPlan ? planId : undefined });
       await new Promise((r) => setTimeout(r, 400)); // job chạy inline
       await load(1); setPage(1);
     } catch (e2) {
@@ -86,6 +94,15 @@ export default function ExportsPage() {
             <select className="input" value={sarId} onChange={(e) => setSarId(e.target.value)} required>
               <option value="">-- chọn --</option>
               {sars.map((s) => <option key={s.id} value={s.id}>{s.title}</option>)}
+            </select>
+          </div>
+        )}
+        {needsPlan && (
+          <div className="min-w-56">
+            <label className="label">Chọn kế hoạch cải tiến</label>
+            <select className="input" value={planId} onChange={(e) => setPlanId(e.target.value)} required>
+              <option value="">-- chọn --</option>
+              {plans.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
             </select>
           </div>
         )}

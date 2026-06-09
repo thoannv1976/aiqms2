@@ -12,8 +12,11 @@ interface Task {
   status: string;
   priority: string;
   dueDate: string | null;
+  assigneeId: string | null;
+  assigneeName: string | null;
 }
 interface Column { status: string; tasks: Task[] }
+interface Member { id: string; fullName: string }
 
 const COLS: { status: string; label: string }[] = [
   { status: "todo", label: "Cần làm" },
@@ -29,6 +32,7 @@ export default function TasksPage() {
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
+  const [members, setMembers] = useState<Member[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -41,6 +45,7 @@ export default function TasksPage() {
     }
   }, []);
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { api.get<Member[]>("/api/members").then((m) => setMembers(m ?? [])).catch(() => {}); }, []);
 
   async function moveTo(taskId: string, status: string) {
     // Optimistic: cập nhật UI ngay rồi gọi API.
@@ -100,6 +105,12 @@ export default function TasksPage() {
                         <span className={`badge ${PRIORITY[t.priority] ?? ""}`}>{t.priority}</span>
                         {t.dueDate && <span className="text-xs text-slate-400">{new Date(t.dueDate).toLocaleDateString("vi-VN")}</span>}
                       </div>
+                      {t.assigneeName && (
+                        <div className="mt-1 flex items-center gap-1 text-xs text-slate-500">
+                          <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-indigo-100 text-[10px] font-medium text-indigo-700">{t.assigneeName.charAt(0)}</span>
+                          {t.assigneeName}
+                        </div>
+                      )}
                     </div>
                   ))}
                   {tasks.length === 0 && <p className="px-1 py-4 text-center text-xs text-slate-400">Trống</p>}
@@ -110,16 +121,17 @@ export default function TasksPage() {
         </div>
       )}
 
-      <CreateTask open={open} onClose={() => setOpen(false)} onCreated={() => { setOpen(false); load(); }} />
+      <CreateTask open={open} members={members} onClose={() => setOpen(false)} onCreated={() => { setOpen(false); load(); }} />
     </div>
   );
 }
 
-function CreateTask({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated: () => void }) {
+function CreateTask({ open, members, onClose, onCreated }: { open: boolean; members: Member[]; onClose: () => void; onCreated: () => void }) {
   const [title, setTitle] = useState("");
   const [description, setDesc] = useState("");
   const [priority, setPriority] = useState("normal");
   const [dueDate, setDueDate] = useState("");
+  const [assigneeId, setAssigneeId] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -130,8 +142,9 @@ function CreateTask({ open, onClose, onCreated }: { open: boolean; onClose: () =
       await api.post("/api/tasks", {
         title, description: description || undefined, priority,
         dueDate: dueDate || undefined,
+        assigneeId: assigneeId || undefined,
       });
-      setTitle(""); setDesc(""); setDueDate("");
+      setTitle(""); setDesc(""); setDueDate(""); setAssigneeId("");
       onCreated();
     } catch (e2) {
       setErr(e2 instanceof ApiClientError ? e2.message : "Lỗi tạo nhiệm vụ");
@@ -153,6 +166,13 @@ function CreateTask({ open, onClose, onCreated }: { open: boolean; onClose: () =
             </select>
           </div>
           <div><label className="label">Hạn</label><input type="date" className="input" value={dueDate} onChange={(e) => setDueDate(e.target.value)} /></div>
+        </div>
+        <div>
+          <label className="label">Người phụ trách</label>
+          <select className="input" value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)}>
+            <option value="">— Chưa giao —</option>
+            {members.map((m) => <option key={m.id} value={m.id}>{m.fullName}</option>)}
+          </select>
         </div>
         {err && <ErrorBox message={err} />}
         <div className="flex justify-end gap-2">

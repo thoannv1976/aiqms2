@@ -6,6 +6,7 @@ import {
   TextRun,
 } from "docx";
 import { getSar } from "@/lib/sar/service";
+import { sarStateLabel } from "@/lib/sar/state";
 
 /** Xuất SAR ra Word (.docx): thông tin chung + phân tích từng tiêu chí. */
 export async function buildSarDocx(sarId: string): Promise<Buffer> {
@@ -14,7 +15,7 @@ export async function buildSarDocx(sarId: string): Promise<Buffer> {
   const children: Paragraph[] = [
     new Paragraph({ text: sar.title, heading: HeadingLevel.TITLE }),
     new Paragraph({
-      children: [new TextRun({ text: `Trạng thái: ${sar.status}`, italics: true })],
+      children: [new TextRun({ text: `Trạng thái: ${sarStateLabel(sar.status)}`, italics: true })],
     }),
     new Paragraph({ text: "Phân tích theo tiêu chí", heading: HeadingLevel.HEADING_1 }),
   ];

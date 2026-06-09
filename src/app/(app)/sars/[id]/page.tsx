@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { api, ApiClientError } from "@/lib/api/client";
 import { PageHeader, StatusBadge, Spinner, ErrorBox } from "@/components/ui";
 import { ExportButton } from "@/components/ExportButton";
-import { SAR_TRANSITIONS } from "@/lib/sar/state";
+import { SAR_TRANSITIONS, sarStateLabel } from "@/lib/sar/state";
 
 interface Criterion { code: string; titleVi: string }
 interface Response {
@@ -36,21 +36,8 @@ const FIELDS: { key: FieldKey; label: string; ai?: boolean }[] = [
   { key: "improvementPlan", label: "Kế hoạch cải tiến" },
 ];
 
-// Nhãn tiếng Việt cho trạng thái SAR (vòng đời).
-const SAR_STATUS_VI: Record<string, string> = {
-  not_started: "Chưa bắt đầu",
-  collecting: "Đang thu thập dữ liệu",
-  drafting: "Đang viết báo cáo",
-  faculty_review: "Chờ rà soát cấp khoa",
-  needs_revision: "Cần chỉnh sửa",
-  university_review: "Chờ rà soát cấp trường",
-  internal_done: "Hoàn thành nội bộ",
-  ready_external: "Sẵn sàng đánh giá ngoài",
-  external_done: "Đã đánh giá ngoài",
-  improving: "Đang cải tiến",
-  completed: "Hoàn tất",
-};
-const sarStatusVi = (s: string) => SAR_STATUS_VI[s] ?? s;
+// Nhãn tiếng Việt cho trạng thái SAR — dùng chung từ state machine.
+const sarStatusVi = sarStateLabel;
 
 export default function SarEditorPage() {
   const { id } = useParams<{ id: string }>();
@@ -119,7 +106,7 @@ export default function SarEditorPage() {
         subtitle="Soạn báo cáo tự đánh giá theo từng tiêu chí — có AI hỗ trợ"
         action={
           <div className="flex flex-wrap items-center gap-2">
-            <StatusBadge status={sar.status} />
+            <StatusBadge status={sar.status} label={sarStatusVi(sar.status)} />
             {nextStates.map((s) => (
               <button key={s} className="btn-outline" onClick={() => changeStatus(s)}>→ {sarStatusVi(s)}</button>
             ))}
