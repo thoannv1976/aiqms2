@@ -10,6 +10,7 @@ import {
   draftSarCriterion,
   gapCheck,
   summarizeEvidence,
+  assistantAnswer,
 } from "@/lib/ai/features";
 import { createEvidence } from "@/lib/evidence/service";
 import { createProgramme } from "@/lib/programmes/service";
@@ -118,6 +119,15 @@ describe("P8 — Lớp AI (service có kiểm soát, human-in-the-loop)", () => 
       expect(result.gapCount).toBe(8); // 8 tiêu chí đều thiếu minh chứng/phân tích/điểm
       expect(result.aiComment).toBeNull();
       expect(result.gaps[0].issues).toContain("Chưa có minh chứng liên kết");
+    });
+  });
+
+  it("trợ lý hướng dẫn theo màn hình trả lời bám ngữ cảnh", async () => {
+    const t = await createTenantFixture("demo");
+    await asTenant(t.id, async () => {
+      await updateSettings({ enabled: true });
+      const ans = await assistantAnswer("/sars/abc", "Làm sao nhập điểm tự đánh giá?");
+      expect(ans).toContain("Báo cáo tự đánh giá"); // ngữ cảnh màn hình SAR được đưa vào
     });
   });
 

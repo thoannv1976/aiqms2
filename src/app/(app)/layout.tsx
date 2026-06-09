@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Sidebar } from "@/components/Sidebar";
+import { HelpAssistant } from "@/components/HelpAssistant";
 import { api, ApiClientError } from "@/lib/api/client";
 
 interface Me {
@@ -59,6 +60,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </header>
         <main className="flex-1 overflow-y-auto p-8">{children}</main>
       </div>
+      <HelpAssistant />
     </div>
   );
 }

@@ -135,3 +135,24 @@ export async function gapCheck(sarId: string) {
 
   return { sarId, gapCount: gaps.length, gaps, aiComment };
 }
+
+/** AI trợ lý hướng dẫn theo màn hình: trả lời câu hỏi của người dùng dựa trên
+ *  ngữ cảnh màn hình đang xem (không bịa tính năng ngoài phần mềm). */
+export async function assistantAnswer(screen: string, question: string): Promise<string> {
+  const { resolveGuide } = await import("@/lib/help/screens");
+  const g = resolveGuide(screen);
+  const ctx = g
+    ? `Màn hình: ${g.title}\nMục đích: ${g.purpose}\nCác thao tác chính:\n- ${g.steps.join("\n- ")}${g.role ? `\nVai trò thường dùng: ${g.role}` : ""}`
+    : `Màn hình: ${screen}`;
+  return aiComplete("assistant", [
+    {
+      role: "system",
+      content:
+        "Bạn là trợ lý hướng dẫn sử dụng phần mềm kiểm định CTĐT AIQMS. Trả lời NGẮN GỌN, " +
+        "bằng tiếng Việt, theo các bước thao tác cụ thể trên phần mềm. Chỉ dựa vào ngữ cảnh màn hình " +
+        "được cung cấp; nếu câu hỏi ngoài phạm vi màn hình, chỉ dẫn người dùng tới menu phù hợp. " +
+        "Không bịa tính năng không có.",
+    },
+    { role: "user", content: `${ctx}\n\nCâu hỏi của người dùng: ${question}` },
+  ]);
+}
