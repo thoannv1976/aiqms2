@@ -6,6 +6,7 @@ import { writeAudit } from "@/lib/audit/log";
 import { getStorage, tenantKey } from "@/lib/storage";
 import { env } from "@/config/env";
 import { badRequest, notFound } from "@/lib/http/responses";
+import { paginated, type PageParams } from "@/lib/http/pagination";
 import { buildSarDocx } from "./sar-docx";
 import { buildSarPdf } from "./sar-pdf";
 import { buildEvidenceXlsx } from "./evidence-xlsx";
@@ -82,6 +83,14 @@ async function processJob(jobId: string, params: Params) {
     });
   }
   void env; // cờ JOB_MODE dành cho nhánh queue tương lai
+}
+
+export async function listExports(p: PageParams) {
+  const [items, total] = await Promise.all([
+    prisma.exportJob.findMany({ orderBy: { createdAt: "desc" }, skip: p.skip, take: p.take }),
+    prisma.exportJob.count(),
+  ]);
+  return paginated(items, total, p);
 }
 
 export async function getJob(id: string) {

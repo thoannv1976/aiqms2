@@ -40,6 +40,7 @@ const NAV: { section: string; items: NavItem[] }[] = [
       { href: "/tasks", label: "Nhiệm vụ", ready: true },
       { href: "/improvement", label: "Kế hoạch cải tiến", ready: true },
       { href: "/surveys", label: "Khảo sát bên liên quan", ready: true },
+      { href: "/exports", label: "Xuất báo cáo", ready: true },
     ],
   },
   {
