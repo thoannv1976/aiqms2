@@ -21,6 +21,18 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
 - **Lưu trữ GCS**: cài sẵn `@aws-sdk/client-s3` → driver S3 chạy với GCS (S3-compatible) chỉ
   bằng cấu hình env; hướng dẫn HMAC + bucket ở `DEPLOY.md` mục 7b.
 
+## [Import dữ liệu cho test 28 bước SBI] — ✅ Done
+
+- **Nạp ma trận từ Excel** (`POST /api/import/matrix`, sheet `MaTranPLO` + `CLO_PLO`):
+  PLO–học phần (mức I/R/M, chấp nhận nhãn tiếng Việt "Giới thiệu/Củng cố/Thành thạo")
+  và CLO–PLO. Nút "Nạp ma trận (Excel)" + file mẫu trên trang Ma trận; tự reload bảng.
+- **Nạp dữ liệu C5–C8 từ Excel** (`POST /api/import/institutional`, sheet
+  `C5_GiangVien`/`C6_NguoiHoc`/`C7_CoSoVatChat`/`C8_KetQua`): map nhãn tiếng Việt → enum
+  (hình thức GV, nhóm dịch vụ, loại CSVC, nhóm outcome). Nút "Nạp Excel C5–C8" + file mẫu
+  trên cả 4 trang (Đội ngũ GV / Người học / CSVC / Kết quả đầu ra).
+- `ResourcePage` nhận `importEndpoint`/`importLabel`; `pickLike` dò tiêu đề cột theo chuỗi
+  con để khoan dung với file người dùng tự soạn. 89 test (thêm import ma trận + C5–C8).
+
 ## [Hoàn thiện vận hành kiểm định SBI] — ✅ Done
 
 - **Picker người phụ trách (Nhiệm vụ)**: chọn người được giao bằng dropdown (endpoint

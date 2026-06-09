@@ -27,6 +27,8 @@ export default function FacilitiesPage() {
       title="Cơ sở vật chất & hạ tầng"
       subtitle="Phục vụ tiêu chí C7 — Facilities and Infrastructure"
       endpoint="/api/facilities"
+      importEndpoint="/api/import/institutional"
+      importLabel="Nạp Excel C5–C8"
       emptyMessage="Chưa có cơ sở vật chất"
       columns={columns}
       fields={[

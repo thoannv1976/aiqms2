@@ -22,6 +22,8 @@ export default function AcademicStaffPage() {
       title="Đội ngũ giảng viên"
       subtitle="Phục vụ tiêu chí C5 — Academic Staff"
       endpoint="/api/academic-staff"
+      importEndpoint="/api/import/institutional"
+      importLabel="Nạp Excel C5–C8"
       emptyMessage="Chưa có giảng viên"
       columns={columns}
       fields={[

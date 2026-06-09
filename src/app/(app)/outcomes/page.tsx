@@ -24,6 +24,8 @@ export default function OutcomesPage() {
       title="Kết quả đầu ra"
       subtitle="Phục vụ tiêu chí C8 — Output and Outcomes"
       endpoint="/api/outcomes"
+      importEndpoint="/api/import/institutional"
+      importLabel="Nạp Excel C5–C8"
       emptyMessage="Chưa có chỉ số kết quả đầu ra"
       columns={columns}
       fields={[

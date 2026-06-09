@@ -22,6 +22,8 @@ export default function StudentsPage() {
       title="Người học & dịch vụ hỗ trợ"
       subtitle="Phục vụ tiêu chí C6 — Student Support Services"
       endpoint="/api/student-services"
+      importEndpoint="/api/import/institutional"
+      importLabel="Nạp Excel C5–C8"
       emptyMessage="Chưa có dữ liệu hỗ trợ người học"
       columns={columns}
       fields={[

@@ -5,6 +5,7 @@ import { api, ApiClientError } from "@/lib/api/client";
 import { PageHeader, ErrorBox } from "@/components/ui";
 import { DataTable, Pagination, type Column } from "@/components/DataTable";
 import { Modal } from "@/components/Modal";
+import { ImportButton } from "@/components/ImportButton";
 
 export interface Field {
   name: string;
@@ -25,6 +26,8 @@ export function ResourcePage<T extends { id: string }>({
   columns,
   fields,
   emptyMessage,
+  importEndpoint,
+  importLabel,
 }: {
   title: string;
   subtitle?: string;
@@ -32,6 +35,8 @@ export function ResourcePage<T extends { id: string }>({
   columns: Column<T>[];
   fields: Field[];
   emptyMessage?: string;
+  importEndpoint?: string;
+  importLabel?: string;
 }) {
   const [data, setData] = useState<PageData<T> | null>(null);
   const [page, setPage] = useState(1);
@@ -54,7 +59,16 @@ export function ResourcePage<T extends { id: string }>({
 
   return (
     <div>
-      <PageHeader title={title} subtitle={subtitle} action={<button className="btn-primary" onClick={() => setOpen(true)}>+ Thêm</button>} />
+      <PageHeader
+        title={title}
+        subtitle={subtitle}
+        action={
+          <div className="flex items-center gap-2">
+            {importEndpoint && <ImportButton label={importLabel ?? "Nạp Excel"} endpoint={importEndpoint} onDone={() => { load(1); setPage(1); }} />}
+            <button className="btn-primary" onClick={() => setOpen(true)}>+ Thêm</button>
+          </div>
+        }
+      />
       {error && <div className="mb-4"><ErrorBox message={error} /></div>}
       <DataTable columns={columns} rows={data?.items ?? []} loading={loading} emptyMessage={emptyMessage} />
       {data && <Pagination page={data.page} totalPages={data.totalPages} total={data.total} onChange={setPage} />}

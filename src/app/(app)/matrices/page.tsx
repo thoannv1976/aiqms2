@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, ApiClientError } from "@/lib/api/client";
 import { PageHeader, ErrorBox, Spinner } from "@/components/ui";
+import { ImportButton } from "@/components/ImportButton";
 
 interface Programme { id: string; code: string; name: string; versions: { id: string; version: string }[] }
 interface Plo { id: string; code: string; description: string }
@@ -17,6 +18,7 @@ export default function MatricesPage() {
   const [programmes, setProgrammes] = useState<Programme[]>([]);
   const [programmeId, setProgrammeId] = useState("");
   const [versionId, setVersionId] = useState("");
+  const [refreshKey, setRefreshKey] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -29,7 +31,11 @@ export default function MatricesPage() {
 
   return (
     <div>
-      <PageHeader title="Ma trận PLO‑CLO & độ phủ" subtitle="Liên kết PLO ↔ học phần, CLO ↔ PLO; cảnh báo khoảng trống" />
+      <PageHeader
+        title="Ma trận PLO‑CLO & độ phủ"
+        subtitle="Liên kết PLO ↔ học phần, CLO ↔ PLO; cảnh báo khoảng trống"
+        action={<ImportButton label="Nạp ma trận (Excel)" endpoint="/api/import/matrix" onDone={() => setRefreshKey((k) => k + 1)} />}
+      />
       {error && <div className="mb-4"><ErrorBox message={error} /></div>}
 
       <div className="card mb-4 flex flex-wrap items-end gap-3 p-4">
@@ -51,7 +57,7 @@ export default function MatricesPage() {
         )}
       </div>
 
-      {versionId ? <MatrixWorkspace versionId={versionId} /> : (
+      {versionId ? <MatrixWorkspace key={`${versionId}:${refreshKey}`} versionId={versionId} /> : (
         <div className="card p-10 text-center text-sm text-slate-400">Chọn chương trình và phiên bản để xem ma trận</div>
       )}
     </div>
