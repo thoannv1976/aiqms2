@@ -26,6 +26,15 @@ const NAV: { section: string; items: NavItem[] }[] = [
     ],
   },
   {
+    section: "Dữ liệu kiểm định",
+    items: [
+      { href: "/academic-staff", label: "Đội ngũ giảng viên", ready: true },
+      { href: "/students", label: "Người học & hỗ trợ", ready: true },
+      { href: "/facilities", label: "Cơ sở vật chất", ready: true },
+      { href: "/outcomes", label: "Kết quả đầu ra", ready: true },
+    ],
+  },
+  {
     section: "Theo dõi & cải tiến",
     items: [
       { href: "/tasks", label: "Nhiệm vụ", ready: true },

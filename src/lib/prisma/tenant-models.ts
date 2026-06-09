@@ -54,6 +54,11 @@ export const TENANT_SCOPED_MODELS = new Set<string>([
   "Survey",
   "SurveyQuestion",
   "SurveyResponse",
+  // Module dữ liệu kiểm định (C5–C8).
+  "AcademicStaff",
+  "StudentService",
+  "Facility",
+  "OutcomeMetric",
 ]);
 
 export function isTenantScoped(model: string | undefined): boolean {

@@ -21,6 +21,18 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
 - **Lưu trữ GCS**: cài sẵn `@aws-sdk/client-s3` → driver S3 chạy với GCS (S3-compatible) chỉ
   bằng cấu hình env; hướng dẫn HMAC + bucket ở `DEPLOY.md` mục 7b.
 
+## [Frontend nâng cao] — ✅ Done (4 nhiệm vụ)
+
+1. **Trình soạn SAR có panel AI** (`/sars/[id]`): nhập liệu từng tiêu chí + đổi trạng
+   thái (state machine) + panel AI "viết nháp" → **duyệt mới ghi vào báo cáo** (human-in-the-loop).
+   Modal Tạo SAR (CTĐT→phiên bản, đợt có sẵn/mới).
+2. **Upload minh chứng kéo‑thả** (`/evidence/[id]`) + cảnh báo trùng + xác minh; **nút Xuất
+   báo cáo** (Word/PDF cho SAR, Excel danh mục minh chứng) qua job + tải về.
+3. **Ma trận PLO‑CLO** (`/matrices`): ma trận PLO×học phần (mức I/R/M), CLO↔PLO, **cảnh báo độ phủ**.
+4. **4 module dữ liệu kiểm định** (C5–C8): Đội ngũ giảng viên, Người học & hỗ trợ, Cơ sở
+   vật chất, Kết quả đầu ra — schema + API (list/create) + UI (`ResourcePage` dùng chung).
+   Migration `p9b_institutional`. 77 test (thêm test cách ly tenant cho module mới).
+
 ## [P0] Nền móng — ✅ Done
 
 Hạ tầng đa-tenant + cấu hình, làm đúng từ ngày 0 (tránh bolt-on về sau).

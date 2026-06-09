@@ -65,6 +65,10 @@ model Tenant {
   surveys              Survey[]
   surveyQuestions      SurveyQuestion[]
   surveyResponses      SurveyResponse[]
+  academicStaff        AcademicStaff[]
+  studentServices      StudentService[]
+  facilities2          Facility[]
+  outcomeMetrics       OutcomeMetric[]
   departments Department[]
 
   @@map("tenants")
@@ -1033,4 +1037,101 @@ model SurveyResponse {
 
   @@index([tenantId, surveyId])
   @@map("survey_responses")
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// Module dữ liệu kiểm định (tenant-scoped) phục vụ tiêu chí C5–C8 (đặc tả 4.9–4.12)
+// ════════════════════════════════════════════════════════════════════════════
+model AcademicStaff {
+  id             String    @id @default(cuid())
+  tenantId       String
+  facultyId      String?
+  fullName       String
+  academicRank   String? // học hàm: GS/PGS
+  degree         String? // học vị: TS/ThS/CN
+  specialization String? // chuyên môn
+  position       String?
+  publications   Int       @default(0)
+  note           String?
+  status         String    @default("active")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  createdBy      String?
+  updatedBy      String?
+  deletedAt      DateTime?
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, deletedAt])
+  @@index([tenantId, facultyId])
+  @@map("academic_staff")
+}
+
+model StudentService {
+  id           String    @id @default(cuid())
+  tenantId     String
+  category     String // admission | advising | scholarship | internship | career | extracurricular | support
+  title        String
+  description  String?
+  academicYear String?
+  metricValue  Float?
+  note         String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  createdBy    String?
+  updatedBy    String?
+  deletedAt    DateTime?
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, category])
+  @@index([tenantId, deletedAt])
+  @@map("student_services")
+}
+
+model Facility {
+  id        String    @id @default(cuid())
+  tenantId  String
+  code      String?
+  name      String
+  type      String // classroom | lab | library | it | software | equipment | space
+  quantity  Int?
+  capacity  Int?
+  location  String?
+  note      String?
+  status    String    @default("active")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  createdBy String?
+  updatedBy String?
+  deletedAt DateTime?
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, type])
+  @@index([tenantId, deletedAt])
+  @@map("facilities")
+}
+
+model OutcomeMetric {
+  id           String    @id @default(cuid())
+  tenantId     String
+  name         String
+  category     String // graduation | employment | satisfaction | plo_attainment | research | other
+  academicYear String?
+  value        Float?
+  unit         String?
+  note         String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  createdBy    String?
+  updatedBy    String?
+  deletedAt    DateTime?
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, category])
+  @@index([tenantId, academicYear])
+  @@index([tenantId, deletedAt])
+  @@map("outcome_metrics")
 }
