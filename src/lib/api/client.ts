@@ -17,17 +17,30 @@ export class ApiClientError extends Error {
   }
 }
 
+export const TENANT_STORAGE_KEY = "aiqms_tenant";
+
 function tenantHeader(): Record<string, string> {
   if (typeof window === "undefined") return {};
   const params = new URLSearchParams(window.location.search);
   const fromQuery = params.get("tenant");
   if (fromQuery) return { "X-Tenant": fromQuery };
+  const stored = window.localStorage.getItem(TENANT_STORAGE_KEY);
+  if (stored) return { "X-Tenant": stored };
   const host = window.location.hostname;
   const parts = host.split(".");
   if (parts.length > 1 && parts[0] !== "www" && parts[0] !== "admin") {
     return { "X-Tenant": parts[0] };
   }
   return {};
+}
+
+/** Lưu/đọc tenant slug hiện tại (đăng nhập tenant nào dùng tenant đó). */
+export function setTenant(slug: string) {
+  if (typeof window !== "undefined") window.localStorage.setItem(TENANT_STORAGE_KEY, slug);
+}
+export function getTenant(): string {
+  if (typeof window === "undefined") return "";
+  return window.localStorage.getItem(TENANT_STORAGE_KEY) ?? "";
 }
 
 export async function apiFetch<T = unknown>(

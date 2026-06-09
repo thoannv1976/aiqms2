@@ -15,6 +15,11 @@ const eslintConfig = defineConfig([
     // Prisma client sinh tự động.
     "src/generated/**",
   ]),
+  {
+    // Frontend: pattern fetch-trong-effect là cố ý và an toàn (có cờ huỷ/loading).
+    files: ["src/app/**/*.tsx", "src/components/**/*.tsx"],
+    rules: { "react-hooks/set-state-in-effect": "off" },
+  },
 ]);
 
 export default eslintConfig;

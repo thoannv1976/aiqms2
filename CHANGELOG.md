@@ -3,6 +3,24 @@
 Tiến độ build theo phase (xem `docs/HUONG_DAN_XAY_DUNG_APP_KIEM_DINH.md` mục 9).
 Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
 
+## [Frontend + Deploy] — ✅ Done
+
+### Giao diện người dùng (Next.js App Router + Tailwind)
+- **Trang đăng nhập** (chọn tenant + email/mật khẩu), **app shell** (Sidebar theo đặc tả
+  mục 7 + Topbar) có **guard đăng nhập** (gọi `/api/auth/me`, 401 → /login).
+- **Dashboard** (thẻ số liệu: CTĐT, SAR, minh chứng, nhiệm vụ quá hạn, SAR/minh chứng theo
+  trạng thái). Trang danh sách + phân trang: **Chương trình đào tạo** (có tạo), **Bộ tiêu
+  chuẩn** (xem tiêu chí + thang điểm), **SAR**, **Minh chứng** (có tạo), **Nhiệm vụ**, **Kế
+  hoạch cải tiến**, **Người dùng**.
+- Component dùng chung: `btn/card/badge/input` (Tailwind layer), `DataTable`, `Pagination`,
+  `Modal`, `StatusBadge`. `apiClient` gắn `X-Tenant` theo tenant đã đăng nhập, xử lý 204.
+
+### Deploy
+- `Dockerfile` + `docker-entrypoint.sh` (tự `migrate deploy`) + `docs/DEPLOY.md` (Cloud Run +
+  Cloud SQL + Secret Manager).
+- **Lưu trữ GCS**: cài sẵn `@aws-sdk/client-s3` → driver S3 chạy với GCS (S3-compatible) chỉ
+  bằng cấu hình env; hướng dẫn HMAC + bucket ở `DEPLOY.md` mục 7b.
+
 ## [P0] Nền móng — ✅ Done
 
 Hạ tầng đa-tenant + cấu hình, làm đúng từ ngày 0 (tránh bolt-on về sau).

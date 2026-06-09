@@ -144,16 +144,56 @@ Tài khoản seed mặc định (ĐỔI NGAY ở prod):
 
 - **Đổi mật khẩu seed**: đăng nhập super-admin → đổi mật khẩu, hoặc set env
   `SUPERADMIN_PASSWORD` / `DEMO_ADMIN_PASSWORD` trước khi seed.
-- **File lưu trữ bền vững**: `STORAGE_DRIVER=local` trên Cloud Run là *ephemeral*
-  (mất khi restart). Production nên chuyển sang GCS/S3:
-  `--update-env-vars STORAGE_DRIVER=s3,S3_BUCKET=...,S3_REGION=...,S3_ENDPOINT=...` và
-  thêm secret `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` (driver S3 tương thích GCS qua HMAC).
+- **File lưu trữ bền vững (QUAN TRỌNG)**: `STORAGE_DRIVER=local` là *ephemeral* (mất khi
+  restart) → chuyển sang **GCS** theo **Mục 7b** bên dưới.
 - **Bật AI** (tùy chọn): `--update-env-vars AI_ENABLED=true` + cấu hình khóa theo tenant
   qua `PUT /api/ai/settings` (khóa được mã hóa bằng `ENCRYPTION_KEY`).
 - **Tên miền riêng + subdomain theo trường**: map custom domain vào Cloud Run, đặt
   `BASE_DOMAIN=<domain>` để phân giải tenant theo `<truong>.<domain>`.
 - **pgvector** (cho RAG sau này): `gcloud sql ... ` chưa bật sẵn; khi cần chạy
   `CREATE EXTENSION vector;` trên DB.
+
+## 7b. Lưu file bền vững bằng Google Cloud Storage (GCS) — KHUYẾN NGHỊ prod
+
+`STORAGE_DRIVER=local` trên Cloud Run là **ephemeral**: minh chứng/báo cáo upload lên sẽ
+**mất khi container restart hoặc scale**. Chuyển sang **GCS** (lớp Storage của app hỗ trợ
+sẵn qua giao thức S3-compatible — đã cài `@aws-sdk/client-s3`). Chỉ cần đổi cấu hình env,
+KHÔNG sửa code.
+
+```bash
+# 1) Tạo bucket (tên toàn cục duy nhất)
+export BUCKET="${PROJECT_ID}-evidence"
+gcloud storage buckets create "gs://$BUCKET" --location=$REGION --uniform-bucket-level-access
+
+# 2) Service account cho storage + quyền trên bucket
+gcloud iam service-accounts create aiqms-storage --display-name="AIQMS storage" 2>/dev/null || true
+export STORAGE_SA="aiqms-storage@${PROJECT_ID}.iam.gserviceaccount.com"
+gcloud storage buckets add-iam-policy-binding "gs://$BUCKET" \
+  --member="serviceAccount:${STORAGE_SA}" --role="roles/storage.objectAdmin"
+
+# 3) Tạo HMAC key (interoperability) — IN RA accessId & secret, GHI LẠI
+gcloud storage hmac create "$STORAGE_SA"
+#   -> Access ID:  GOOG1E...   |   Secret: ************
+export S3_ACCESS_KEY_ID="<DÁN Access ID>"
+export S3_SECRET="<DÁN Secret>"
+
+# 4) Cất HMAC secret vào Secret Manager + cấp quyền cho SA của Cloud Run
+printf "%s" "$S3_SECRET" | gcloud secrets create aiqms-s3-secret --data-file=- 2>/dev/null \
+  || printf "%s" "$S3_SECRET" | gcloud secrets versions add aiqms-s3-secret --data-file=-
+gcloud secrets add-iam-policy-binding aiqms-s3-secret \
+  --member="serviceAccount:${RUN_SA}" --role="roles/secretmanager.secretAccessor"
+
+# 5) Bật driver S3 (GCS) cho Cloud Run rồi redeploy
+gcloud run services update $SERVICE --region $REGION \
+  --update-env-vars "STORAGE_DRIVER=s3,S3_ENDPOINT=https://storage.googleapis.com,S3_REGION=${REGION},S3_BUCKET=${BUCKET},S3_ACCESS_KEY_ID=${S3_ACCESS_KEY_ID}" \
+  --update-secrets "S3_SECRET_ACCESS_KEY=aiqms-s3-secret:latest"
+```
+
+Từ giờ file upload (minh chứng, gói báo cáo) ghi thẳng vào `gs://$BUCKET/tenants/<tenantId>/…`
+và **không mất khi restart**. URL tải về là link **presigned** do app sinh tự động.
+
+> Ghi chú: app dùng giao thức S3 của GCS (path-style, endpoint `storage.googleapis.com`).
+> Nếu muốn dùng AWS S3 / MinIO thật, chỉ cần đổi `S3_ENDPOINT`/`S3_REGION`/khóa tương ứng.
 
 ## 8. Cập nhật phiên bản (deploy lại)
 
