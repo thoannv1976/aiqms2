@@ -43,4 +43,18 @@ describe("LocalStorage", () => {
       storage.put("../../escape.txt", Buffer.from("x")),
     ).rejects.toThrow(/traversal/i);
   });
+
+  it("baseDir không ghi được -> tự fallback sang thư mục tạm (Cloud Run /tmp)", async () => {
+    // Tạo một FILE rồi đặt baseDir BÊN TRONG file đó -> mkdir lỗi (ENOTDIR),
+    // mô phỏng baseDir không ghi được như hệ thống file chỉ-đọc.
+    const f = path.join(os.tmpdir(), `aiqms-ro-${Date.now()}.txt`);
+    await fs.writeFile(f, "x");
+    const ro = new LocalStorage(path.join(f, "khong-the-tao"));
+    const key = tenantKey("t1", "evidence", "fallback.txt");
+    const meta = await ro.put(key, Buffer.from("noi dung"));
+    expect(meta.size).toBeGreaterThan(0);
+    expect((await ro.get(key))?.toString()).toBe("noi dung");
+    await ro.delete(key);
+    await fs.rm(f, { force: true });
+  });
 });

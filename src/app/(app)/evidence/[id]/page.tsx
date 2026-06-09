@@ -21,6 +21,7 @@ export default function EvidenceDetailPage() {
   const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [dupNote, setDupNote] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
@@ -35,7 +36,7 @@ export default function EvidenceDetailPage() {
   const upload = useCallback(async (files: FileList | File[]) => {
     const arr = Array.from(files);
     if (arr.length === 0) return;
-    setUploading(true); setDupNote(null);
+    setUploading(true); setDupNote(null); setUploadError(null);
     try {
       const form = new FormData();
       for (const f of arr) form.append("files", f);
@@ -44,7 +45,8 @@ export default function EvidenceDetailPage() {
       if (dups > 0) setDupNote(`Cảnh báo: ${dups} file trùng nội dung với minh chứng đã có.`);
       await load();
     } catch (e) {
-      setError(e instanceof ApiClientError ? e.message : "Lỗi upload");
+      // Lỗi upload chỉ hiển thị tại chỗ — KHÔNG xoá trắng cả trang minh chứng.
+      setUploadError(e instanceof ApiClientError ? e.message : "Lỗi upload file");
     } finally {
       setUploading(false);
     }
@@ -82,6 +84,7 @@ export default function EvidenceDetailPage() {
             />
           </div>
           {dupNote && <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-700">{dupNote}</div>}
+          {uploadError && <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-2 text-sm text-rose-700">{uploadError}</div>}
 
           {/* Danh sách file */}
           <div className="card overflow-hidden">

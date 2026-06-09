@@ -21,6 +21,16 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
 - **Lưu trữ GCS**: cài sẵn `@aws-sdk/client-s3` → driver S3 chạy với GCS (S3-compatible) chỉ
   bằng cấu hình env; hướng dẫn HMAC + bucket ở `DEPLOY.md` mục 7b.
 
+## [Sửa lỗi upload minh chứng trên Cloud Run] — ✅ Done
+
+- **Lỗi**: trên Cloud Run (hệ thống file chỉ-đọc, chỉ `/tmp` ghi được), driver storage
+  `local` ghi vào `.storage` → `EROFS` → API trả 500 "Lỗi hệ thống" khi upload file minh chứng.
+- **Fix storage**: `LocalStorage` tự dò thư mục gốc ghi được — ưu tiên `STORAGE_LOCAL_DIR`,
+  nếu không ghi được thì fallback `os.tmpdir()/aiqms-storage`. Upload chạy được ngay cả khi
+  chưa cấu hình S3/GCS (lưu tạm; để lưu bền vững dùng `STORAGE_DRIVER=s3` + bucket GCS/S3).
+- **Fix UI**: lỗi upload chỉ hiển thị tại chỗ (ô đỏ dưới vùng kéo-thả), KHÔNG xoá trắng cả
+  trang chi tiết minh chứng như trước. Thêm test fallback storage (90 test).
+
 ## [Import dữ liệu cho test 28 bước SBI] — ✅ Done
 
 - **Nạp ma trận từ Excel** (`POST /api/import/matrix`, sheet `MaTranPLO` + `CLO_PLO`):
