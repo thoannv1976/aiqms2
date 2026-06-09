@@ -87,7 +87,6 @@ async function main() {
     update: {},
     create: { slug: demoSlug, name: "Trường Đại học Demo", status: "active" },
   });
-  const qaRole = await prisma.role.findUniqueOrThrow({ where: { code: "qa_office" } });
   const demoAdminEmail = process.env.DEMO_ADMIN_EMAIL ?? "admin@demo.local";
   const demoAdmin = await prisma.user.upsert({
     where: { tenantId_email: { tenantId: demo.id, email: demoAdminEmail } },
@@ -99,13 +98,15 @@ async function main() {
       passwordHash: await bcrypt.hash(process.env.DEMO_ADMIN_PASSWORD ?? "Demo1234!", 10),
     },
   });
-  const hasRole = await prisma.userRole.findFirst({
-    where: { userId: demoAdmin.id, roleId: qaRole.id },
-  });
-  if (!hasRole) {
-    await prisma.userRole.create({
-      data: { tenantId: demo.id, userId: demoAdmin.id, roleId: qaRole.id },
-    });
+  // Demo: gán nhiều vai trò để 1 tài khoản chạy trọn workflow (viết + rà soát + duyệt).
+  for (const code of ["qa_office", "programme_committee"]) {
+    const role = await prisma.role.findUniqueOrThrow({ where: { code } });
+    const has = await prisma.userRole.findFirst({ where: { userId: demoAdmin.id, roleId: role.id } });
+    if (!has) {
+      await prisma.userRole.create({
+        data: { tenantId: demo.id, userId: demoAdmin.id, roleId: role.id },
+      });
+    }
   }
   console.log(`✔ Tenant demo: ${demo.slug} | admin: ${demoAdminEmail}`);
 
@@ -116,6 +117,14 @@ async function main() {
   // 6) Bộ tiêu chuẩn Bộ GD&ĐT (P9) — thêm bằng NẠP DỮ LIỆU, không sửa code lõi.
   const moet = await seedStandard(prisma, MOET);
   console.log(`✔ MOET 2016: 11 tiêu chuẩn (version ${moet.versionId})`);
+
+  // 7) Bật AI cho tenant demo (provider mock khi chưa có khóa) để demo panel AI.
+  await prisma.aiSettings.upsert({
+    where: { tenantId: demo.id },
+    update: { enabled: true },
+    create: { tenantId: demo.id, enabled: true, dailyTokenLimit: 200000 },
+  });
+  console.log(`✔ AiSettings: bật AI (mock) cho tenant ${demo.slug}`);
 
   await prisma.$disconnect();
 }
