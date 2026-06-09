@@ -160,6 +160,17 @@ Tài khoản seed mặc định (ĐỔI NGAY ở prod):
 sẵn qua giao thức S3-compatible — đã cài `@aws-sdk/client-s3`). Chỉ cần đổi cấu hình env,
 KHÔNG sửa code.
 
+> **Cách nhanh nhất**: chạy script tự động `scripts/setup-gcs.sh` (idempotent — chạy lại
+> an toàn; tự dò project, SA của Cloud Run, tự parse HMAC key, tự set env):
+>
+> ```bash
+> # Trong Cloud Shell (https://shell.cloud.google.com):
+> git clone https://github.com/thoannv1976/aiqms2.git && cd aiqms2   # (nếu chưa có repo)
+> REGION=asia-southeast1 SERVICE=aiqms2 bash scripts/setup-gcs.sh
+> ```
+>
+> Script làm trọn 5 bước bên dưới. Phần sau là bản thủ công từng lệnh (tham khảo).
+
 ```bash
 # 1) Tạo bucket (tên toàn cục duy nhất)
 export BUCKET="${PROJECT_ID}-evidence"

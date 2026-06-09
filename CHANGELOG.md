@@ -21,6 +21,13 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
 - **Lưu trữ GCS**: cài sẵn `@aws-sdk/client-s3` → driver S3 chạy với GCS (S3-compatible) chỉ
   bằng cấu hình env; hướng dẫn HMAC + bucket ở `DEPLOY.md` mục 7b.
 
+## [Script cấu hình GCS cho Cloud Run] — ✅ Done
+
+- `scripts/setup-gcs.sh`: tự động hóa trọn bộ chuyển storage sang GCS (bucket uniform +
+  chặn public, SA `aiqms-storage` + objectAdmin, HMAC key, Secret Manager + cấp quyền cho
+  SA Cloud Run, set env `STORAGE_DRIVER=s3` + `S3_*`). Idempotent — chạy lại an toàn,
+  `FORCE_NEW_KEY=1` để xoay key. `DEPLOY.md` mục 7b trỏ sang script.
+
 ## [Sửa lỗi "Hỏi AI" báo Lỗi hệ thống] — ✅ Done
 
 - **Lỗi**: khi gọi LLM thất bại (sai API key/model/Base URL, mạng…) hoặc API key đã lưu
