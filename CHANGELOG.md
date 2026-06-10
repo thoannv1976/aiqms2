@@ -21,6 +21,17 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
 - **Lưu trữ GCS**: cài sẵn `@aws-sdk/client-s3` → driver S3 chạy với GCS (S3-compatible) chỉ
   bằng cấu hình env; hướng dẫn HMAC + bucket ở `DEPLOY.md` mục 7b.
 
+## [AI tổng hợp ma trận PLO-CLO từ tài liệu] — ✅ Done
+
+- **AI tổng hợp ma trận** (`synthesizeMatrixFromDocs`): đọc **đề án mở ngành/CTĐT** (Document
+  category `ctdt_source`) + các **đề cương học phần** (`syllabus`) đã upload, kết hợp danh
+  sách PLO/học phần/CLO trong CSDL, gọi LLM (`aiCompleteJson` + Zod) đề xuất **PLO×học phần
+  (I/R/M)** và **CLO→PLO**. Human-in-the-loop: chỉ trả **bản nháp** (lọc bỏ mã PLO lạ) để
+  duyệt; nút **"🤖 AI tổng hợp ma trận"** trên trang Ma trận → xem trước → **"Áp dụng vào
+  ma trận"** (`applyMatrixMappings` upsert theo mã, idempotent, ghi đè mức ô tương ứng).
+- API `POST /api/ai/synthesize-matrix?versionId=` (quyền `ai.use`) + `POST /api/matrices/apply`
+  (quyền `data.update`). 103 test (thêm apply idempotent + lọc mã + chặn khi thiếu PLO).
+
 ## [Sửa lỗi import CTĐT/upload file trên GCS] — ✅ Done
 
 - **Lỗi**: "Lỗi hệ thống" khi Import Word (CTĐT) / upload file trên prod dùng GCS. Nguyên

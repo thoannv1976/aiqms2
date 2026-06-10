@@ -4,7 +4,11 @@ import { requireTenantContext } from "@/lib/tenant/context";
 import { withTenantId } from "@/lib/prisma/tenant-create";
 import { writeAudit } from "@/lib/audit/log";
 import { notFound, badRequest } from "@/lib/http/responses";
+import { getStorage } from "@/lib/storage";
 import { getSar } from "@/lib/sar/service";
+import { docxToText } from "@/lib/import/docx";
+import { pdfToText } from "@/lib/import/syllabus";
+import { matrixDraftSchema, type MatrixDraft } from "@/lib/obe/matrix";
 import { aiComplete, aiCompleteJson } from "./service";
 
 const SYSTEM_VI =
@@ -183,6 +187,102 @@ export async function suggestImprovementActions(planId: string): Promise<Improve
   );
   await writeAudit({ action: "ai.suggest", entity: "ImprovementPlan", entityId: planId, meta: { module: "suggest_improvement" } });
   return result;
+}
+
+/** Trích text từ một Document đã lưu (docx/pdf/text), có cắt độ dài + lọc dòng. */
+async function documentText(
+  doc: { storageKey: string; fileName: string },
+  maxChars: number,
+  lineFilter?: (l: string) => boolean,
+): Promise<string> {
+  const bytes = await getStorage().get(doc.storageKey);
+  if (!bytes) return "";
+  let text = "";
+  try {
+    if (/\.pdf$/i.test(doc.fileName)) text = await pdfToText(bytes);
+    else if (/\.docx$/i.test(doc.fileName)) text = await docxToText(bytes);
+    else text = bytes.toString("utf8");
+  } catch {
+    return "";
+  }
+  if (lineFilter) text = text.split("\n").filter((l) => l.trim() && lineFilter(l)).join("\n");
+  return text.slice(0, maxChars);
+}
+
+/**
+ * AI TỔNG HỢP ma trận PLO-CLO từ tài liệu đã upload (đề án mở ngành/CTĐT + đề cương học phần).
+ * Human-in-the-loop: chỉ TRẢ VỀ bản nháp (chưa ghi) để người dùng duyệt rồi mới áp dụng.
+ */
+export async function synthesizeMatrixFromDocs(
+  programmeVersionId: string,
+): Promise<MatrixDraft & { ploCount: number; courseCount: number; docCount: number }> {
+  const plos = await prisma.programmeLearningOutcome.findMany({
+    where: { programmeVersionId },
+    orderBy: { order: "asc" },
+  });
+  if (plos.length === 0) {
+    throw badRequest("Phiên bản CTĐT chưa có PLO — hãy import/khai báo PLO trước khi tổng hợp.");
+  }
+  const courses = await prisma.course.findMany({
+    where: { deletedAt: null },
+    orderBy: { code: "asc" },
+    take: 100,
+    include: { clos: { orderBy: { order: "asc" } } },
+  });
+  if (courses.length === 0) throw badRequest("Chưa có học phần nào để tổng hợp ma trận.");
+
+  const ploCodes = new Set(plos.map((p) => p.code.toUpperCase()));
+
+  // Ngữ cảnh từ tài liệu: đề án/CTĐT (lấy vùng có nhắc PLO) + đề cương (lấy phần ma trận CLO–PLO).
+  const ctdtDocs = await prisma.document.findMany({ where: { category: "ctdt_source" }, orderBy: { createdAt: "desc" }, take: 1 });
+  const sylDocs = await prisma.document.findMany({ where: { category: "syllabus" }, orderBy: { createdAt: "desc" }, take: 12 });
+
+  let docContext = "";
+  for (const d of ctdtDocs) {
+    const t = await documentText(d, 6000, (l) => /PLO\s*\d/i.test(l) || /\b[A-Z]{2,4}\d{2,3}[A-Z]?\b/.test(l));
+    if (t) docContext += `\n[ĐỀ ÁN/CTĐT: ${d.title}]\n${t}\n`;
+  }
+  for (const d of sylDocs) {
+    const t = await documentText(d, 1200, (l) => /CLO|PLO|tín chỉ|đóng góp/i.test(l));
+    if (t) docContext += `\n[ĐỀ CƯƠNG: ${d.title}]\n${t}\n`;
+  }
+  docContext = docContext.slice(0, 16000);
+
+  const ploList = plos.map((p) => `${p.code}: ${(p.description ?? "").slice(0, 120)}`).join("\n");
+  const courseList = courses
+    .map((c) => `${c.code} — ${c.name}${c.clos.length ? ` [CLO: ${c.clos.map((x) => x.code).join(",")}]` : ""}`)
+    .join("\n");
+
+  const draft = await aiCompleteJson(
+    "synthesize_matrix",
+    [
+      {
+        role: "system",
+        content:
+          "Bạn là chuyên gia thiết kế chương trình đào tạo theo OBE/AUN-QA. Tổng hợp ma trận " +
+          "đóng góp của học phần vào chuẩn đầu ra (PLO). CHỈ dùng mã PLO và mã học phần trong danh sách " +
+          "được cung cấp; ưu tiên dữ liệu trong tài liệu; không bịa mã không có. Trả về JSON thuần.",
+      },
+      {
+        role: "user",
+        content:
+          "DANH SÁCH PLO:\n" + ploList +
+          "\n\nDANH SÁCH HỌC PHẦN:\n" + courseList +
+          "\n\nTRÍCH TÀI LIỆU (đề án/CTĐT + đề cương):\n" + (docContext || "(không có tài liệu — hãy suy luận hợp lý từ tên học phần)") +
+          '\n\nTrả JSON: {"ploCourse":[{"courseCode","ploCode","level":"I|R|M"}],' +
+          '"cloPlo":[{"courseCode","cloCode","ploCode"}]}. ' +
+          "Mức I=giới thiệu, R=củng cố, M=thành thạo (chấp nhận 1/2/3 hoặc I/T/U, sẽ tự quy đổi). " +
+          "Mỗi học phần đóng góp vào 1–4 PLO phù hợp nhất; không để học phần nào trống nếu suy luận được.",
+      },
+    ],
+    matrixDraftSchema,
+  );
+
+  // Lọc bỏ mã PLO không thuộc phiên bản (AI lỡ bịa).
+  const ploCourse = draft.ploCourse.filter((m) => ploCodes.has(m.ploCode.trim().toUpperCase()));
+  const cloPlo = draft.cloPlo.filter((m) => ploCodes.has(m.ploCode.trim().toUpperCase()));
+  await writeAudit({ action: "ai.synthesize_matrix", entity: "ProgrammeVersion", entityId: programmeVersionId, meta: { ploCourse: ploCourse.length, cloPlo: cloPlo.length } });
+  return { ploCourse, cloPlo, ploCount: plos.length, courseCount: courses.length, docCount: ctdtDocs.length + sylDocs.length };
 }
 
 /** AI trợ lý hướng dẫn theo màn hình: trả lời câu hỏi của người dùng dựa trên

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, ApiClientError } from "@/lib/api/client";
 import { PageHeader, ErrorBox, Spinner } from "@/components/ui";
 import { ImportButton } from "@/components/ImportButton";
+import { AiMatrixButton } from "@/components/AiMatrixButton";
 
 interface Programme { id: string; code: string; name: string; versions: { id: string; version: string }[] }
 interface Plo { id: string; code: string; description: string }
@@ -34,7 +35,12 @@ export default function MatricesPage() {
       <PageHeader
         title="Ma trận PLO‑CLO & độ phủ"
         subtitle="Liên kết PLO ↔ học phần, CLO ↔ PLO; cảnh báo khoảng trống"
-        action={<ImportButton label="Nạp ma trận (Excel)" endpoint="/api/import/matrix" onDone={() => setRefreshKey((k) => k + 1)} />}
+        action={
+          <div className="flex items-center gap-2">
+            <AiMatrixButton versionId={versionId} onApplied={() => setRefreshKey((k) => k + 1)} />
+            <ImportButton label="Nạp ma trận (Excel)" endpoint="/api/import/matrix" onDone={() => setRefreshKey((k) => k + 1)} />
+          </div>
+        }
       />
       {error && <div className="mb-4"><ErrorBox message={error} /></div>}
 

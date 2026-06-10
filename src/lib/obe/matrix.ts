@@ -60,3 +60,62 @@ export async function mapCloPlo(input: z.infer<typeof cloPloSchema>) {
   await writeAudit({ action: "matrix.clo_plo", entity: "CloPloMapping", entityId: mapping.id });
   return mapping;
 }
+
+// ─── Áp dụng ma trận do AI tổng hợp (theo MÃ) ────────────────────────────────
+function mapIRM(s?: string): "I" | "R" | "M" {
+  const v = (s ?? "").trim().toUpperCase();
+  if (v === "2" || v === "T" || v.startsWith("R")) return "R";
+  if (v === "3" || v === "U" || v.startsWith("M")) return "M";
+  return "I";
+}
+
+export const matrixDraftSchema = z.object({
+  ploCourse: z
+    .array(z.object({ courseCode: z.string(), ploCode: z.string(), level: z.string().optional() }))
+    .default([]),
+  cloPlo: z
+    .array(z.object({ courseCode: z.string(), cloCode: z.string(), ploCode: z.string() }))
+    .default([]),
+});
+export type MatrixDraft = z.infer<typeof matrixDraftSchema>;
+
+/** Ghi ma trận đã DUYỆT (PLO×học phần I/R/M + CLO–PLO) theo mã, trong phạm vi 1 phiên bản CTĐT. */
+export async function applyMatrixMappings(programmeVersionId: string, input: MatrixDraft) {
+  const data = matrixDraftSchema.parse(input);
+  const res = { ploCourse: 0, cloPlo: 0, errors: [] as string[] };
+
+  const ploByCode = new Map(
+    (await prisma.programmeLearningOutcome.findMany({ where: { programmeVersionId } })).map((p) => [p.code.toUpperCase(), p.id]),
+  );
+
+  for (const m of data.ploCourse) {
+    const ploId = ploByCode.get(m.ploCode.trim().toUpperCase());
+    if (!ploId) { res.errors.push(`Bỏ qua: không có ${m.ploCode} trong phiên bản này`); continue; }
+    const course = await prisma.course.findFirst({ where: { code: m.courseCode, deletedAt: null } });
+    if (!course) { res.errors.push(`Bỏ qua: không tìm thấy học phần ${m.courseCode}`); continue; }
+    await prisma.ploCourseMapping.upsert({
+      where: { ploId_courseId: { ploId, courseId: course.id } },
+      update: { level: mapIRM(m.level) },
+      create: withTenantId({ ploId, courseId: course.id, level: mapIRM(m.level) }),
+    });
+    res.ploCourse++;
+  }
+
+  for (const m of data.cloPlo) {
+    const ploId = ploByCode.get(m.ploCode.trim().toUpperCase());
+    if (!ploId) continue;
+    const course = await prisma.course.findFirst({ where: { code: m.courseCode, deletedAt: null } });
+    if (!course) continue;
+    const clo = await prisma.courseLearningOutcome.findFirst({ where: { courseId: course.id, code: m.cloCode } });
+    if (!clo) continue;
+    await prisma.cloPloMapping.upsert({
+      where: { cloId_ploId: { cloId: clo.id, ploId } },
+      update: {},
+      create: withTenantId({ cloId: clo.id, ploId }),
+    });
+    res.cloPlo++;
+  }
+
+  await writeAudit({ action: "matrix.apply_ai", entity: "PloCourseMapping", meta: { ...res, errors: res.errors.length } });
+  return res;
+}
