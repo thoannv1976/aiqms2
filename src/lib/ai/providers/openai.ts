@@ -21,7 +21,9 @@ export class OpenAiProvider implements LlmProvider {
       body: JSON.stringify({
         model: opts.model,
         messages,
-        temperature: opts.temperature ?? 0.3,
+        // Chỉ gửi temperature khi được chỉ định: model reasoning (o1/o3, gpt-5…) chỉ chấp
+        // nhận giá trị mặc định và báo lỗi nếu gửi khác.
+        ...(opts.temperature !== undefined ? { temperature: opts.temperature } : {}),
         max_tokens: opts.maxTokens,
         ...(opts.json ? { response_format: { type: "json_object" } } : {}),
       }),

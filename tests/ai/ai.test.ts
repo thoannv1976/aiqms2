@@ -197,10 +197,10 @@ describe("P8 — Lớp AI (service có kiểm soát, human-in-the-loop)", () => 
     const t = await createTenantFixture("demo");
     await asTenant(t.id, async () => {
       await updateSettings({ enabled: true, apiKey: "sk-ant-test-key" });
-      const calls: { url: string; headers: Record<string, string> }[] = [];
+      const calls: { url: string; headers: Record<string, string>; body: string }[] = [];
       const orig = global.fetch;
-      global.fetch = (async (url: unknown, init?: { headers?: Record<string, string> }) => {
-        calls.push({ url: String(url), headers: init?.headers ?? {} });
+      global.fetch = (async (url: unknown, init?: { headers?: Record<string, string>; body?: string }) => {
+        calls.push({ url: String(url), headers: init?.headers ?? {}, body: String(init?.body ?? "") });
         return new Response(
           JSON.stringify({ content: [{ type: "text", text: "[AI] tóm tắt" }], usage: { input_tokens: 8, output_tokens: 4 } }),
           { status: 200, headers: { "content-type": "application/json" } },
@@ -214,6 +214,8 @@ describe("P8 — Lớp AI (service có kiểm soát, human-in-the-loop)", () => 
         expect(calls[0].url).toContain("api.anthropic.com/v1/messages");
         expect(calls[0].headers["x-api-key"]).toBe("sk-ant-test-key");
         expect(calls[0].url).not.toContain("openai");
+        // KHÔNG gửi temperature (model Claude 4.x báo lỗi nếu có).
+        expect(calls[0].body).not.toContain("temperature");
       } finally {
         global.fetch = orig;
       }

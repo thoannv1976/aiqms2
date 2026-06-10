@@ -21,6 +21,15 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
 - **Lưu trữ GCS**: cài sẵn `@aws-sdk/client-s3` → driver S3 chạy với GCS (S3-compatible) chỉ
   bằng cấu hình env; hướng dẫn HMAC + bucket ở `DEPLOY.md` mục 7b.
 
+## [Sửa lỗi temperature với model Claude 4.x / reasoning] — ✅ Done
+
+- **Lỗi**: model `claude-opus-4-8` (và các model Claude 4.x / reasoning) trả 400
+  "temperature is deprecated for this model". Import CTĐT/đề cương vẫn "chạy" do có fallback
+  bộ luật (AI lỗi bị nuốt), nhưng AI điền nhanh/rà soát đề cương (không fallback) thì lộ lỗi.
+- **Fix tại provider (áp dụng cho TẤT CẢ tính năng AI)**: OpenAiProvider & AnthropicProvider
+  **không gửi `temperature`** trừ khi được chỉ định (trước đây luôn gửi 0.3). JSON vẫn ổn nhờ
+  `extractJson` + retry theo Zod. 110 test (assert request Anthropic không kèm temperature).
+
 ## [Lấy danh sách model khả dụng từ API key] — ✅ Done
 
 - **Lỗi**: model `claude-3-5-haiku-20241022` trả 404 not_found — key Anthropic hợp lệ nhưng
