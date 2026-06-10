@@ -7,6 +7,7 @@ import { PageHeader, StatusBadge, ErrorBox } from "@/components/ui";
 import { DataTable, Pagination, type Column } from "@/components/DataTable";
 import { Modal } from "@/components/Modal";
 import { ImportButton } from "@/components/ImportButton";
+import { DocxImportButton } from "@/components/DocxImportButton";
 
 interface Programme {
   id: string;
@@ -70,6 +71,7 @@ export default function ProgrammesPage() {
         subtitle="Quản lý CTĐT và các phiên bản"
         action={
           <div className="flex items-center gap-2">
+            <DocxImportButton onDone={() => load(1)} />
             <ImportButton endpoint="/api/import/programmes" onDone={() => load(1)} />
             <button className="btn-primary" onClick={() => setOpen(true)}>+ Tạo CTĐT</button>
           </div>

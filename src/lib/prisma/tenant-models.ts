@@ -59,6 +59,7 @@ export const TENANT_SCOPED_MODELS = new Set<string>([
   "StudentService",
   "Facility",
   "OutcomeMetric",
+  "Document",
 ]);
 
 export function isTenantScoped(model: string | undefined): boolean {

@@ -69,6 +69,7 @@ model Tenant {
   studentServices      StudentService[]
   facilities2          Facility[]
   outcomeMetrics       OutcomeMetric[]
+  documents            Document[]
   departments Department[]
 
   @@map("tenants")
@@ -1162,4 +1163,32 @@ model OutcomeMetric {
   @@index([tenantId, academicYear])
   @@index([tenantId, deletedAt])
   @@map("outcome_metrics")
+}
+
+/// Kho tài liệu/ file upload chung (CTĐT gốc, quy chế, biểu mẫu, báo cáo…).
+/// Lưu qua lớp Storage (local ở dev, GCS/S3 ở prod). Soft-delete + audit.
+model Document {
+  id          String    @id @default(cuid())
+  tenantId    String
+  title       String
+  category    String    @default("other") // ctdt_source | regulation | template | report | other
+  fileName    String
+  storageKey  String
+  size        Int       @default(0)
+  contentType String?
+  programmeId String? // tài liệu gắn với một CTĐT (tùy chọn)
+  note        String?
+  status      String    @default("active")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  createdBy   String?
+  updatedBy   String?
+  deletedAt   DateTime?
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, category])
+  @@index([tenantId, programmeId])
+  @@index([tenantId, deletedAt])
+  @@map("documents")
 }

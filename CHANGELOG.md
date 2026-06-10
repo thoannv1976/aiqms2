@@ -21,6 +21,21 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
 - **Lưu trữ GCS**: cài sẵn `@aws-sdk/client-s3` → driver S3 chạy với GCS (S3-compatible) chỉ
   bằng cấu hình env; hướng dẫn HMAC + bucket ở `DEPLOY.md` mục 7b.
 
+## [Import CTĐT từ Word + Kho tài liệu] — ✅ Done
+
+- **Import CTĐT từ file Word (.docx)**: `src/lib/import/docx.ts` trích xuất văn bản (không
+  cần thư viện nặng), rồi rút mã ngành / tên / PEO / PLO / danh mục học phần — **ưu tiên AI**
+  (`aiCompleteJson`, schema Zod) và **fallback bộ luật** khi AI tắt. Quy trình
+  human-in-the-loop: `POST /api/import/programmes/docx` trả **bản xem trước** (chưa ghi) +
+  lưu file gốc vào kho Tài liệu; người dùng kiểm tra/sửa rồi `POST …/docx/apply` để
+  upsert CTĐT + phiên bản + PEO/PLO + học phần. Nút **"Import Word (CTĐT)"** trên trang CTĐT
+  (`DocxImportButton`: trích xuất → xem trước số PEO/PLO/học phần + danh sách → xác nhận).
+  Kiểm thử trên file CTĐT thật: lấy đúng mã ngành, 8 PLO, 62 mã học phần kể cả khi AI tắt.
+- **Kho tài liệu** (model `Document`, migration `documents`): lưu & quản lý mọi file upload
+  (CTĐT gốc, quy chế, biểu mẫu, báo cáo). Lưu qua lớp Storage (GCS/S3 ở prod), soft-delete +
+  audit + cách ly tenant. Menu **"Tài liệu"**: tải lên (tiêu đề/nhóm/ghi chú), lọc theo nhóm,
+  tải về, xóa. API `/api/documents` (+ `/[id]`, `/[id]/download`). 97 test (thêm docx + tài liệu).
+
 ## [Script cấu hình GCS cho Cloud Run] — ✅ Done
 
 - `scripts/setup-gcs.sh`: tự động hóa trọn bộ chuyển storage sang GCS (bucket uniform +
