@@ -21,6 +21,16 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
 - **Lưu trữ GCS**: cài sẵn `@aws-sdk/client-s3` → driver S3 chạy với GCS (S3-compatible) chỉ
   bằng cấu hình env; hướng dẫn HMAC + bucket ở `DEPLOY.md` mục 7b.
 
+## [Sửa lỗi import CTĐT/upload file trên GCS] — ✅ Done
+
+- **Lỗi**: "Lỗi hệ thống" khi Import Word (CTĐT) / upload file trên prod dùng GCS. Nguyên
+  nhân: `@aws-sdk/client-s3` từ 3.729+ mặc định gắn checksum `x-amz-checksum-crc32` vào
+  PUT — GCS (S3-compatible) không hỗ trợ → ghi file fail → 500 mù.
+- **Fix**: S3Client đặt `requestChecksumCalculation`/`responseChecksumValidation =
+  WHEN_REQUIRED` (tương thích GCS/MinIO). Thêm `safePut` bọc lỗi storage thành **502
+  `storage_put_failed`** kèm nguyên nhân + hướng xử lý (áp dụng cho upload minh chứng +
+  kho tài liệu); log `[STORAGE]` chi tiết ra server log.
+
 ## [Import đề cương học phần từ Word/PDF + quản lý file đề cương] — ✅ Done
 
 - **Import đề cương từ .docx/.pdf** (`src/lib/import/syllabus.ts`, thêm `pdf-parse` cho PDF):

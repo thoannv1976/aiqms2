@@ -6,7 +6,7 @@ import { requireTenantContext } from "@/lib/tenant/context";
 import { withTenantId } from "@/lib/prisma/tenant-create";
 import { writeAudit } from "@/lib/audit/log";
 import { softDeleteData } from "@/lib/prisma/soft-delete";
-import { getStorage, tenantKey } from "@/lib/storage";
+import { safePut, tenantKey } from "@/lib/storage";
 import { badRequest, notFound } from "@/lib/http/responses";
 import { paginated, type PageParams } from "@/lib/http/pagination";
 
@@ -105,7 +105,7 @@ export async function addFile(
   const duplicate = await prisma.evidenceFile.findFirst({ where: { hash } });
 
   const key = tenantKey(ctx.tenantId, "evidence", evidenceId, `${hash}-${file.fileName}`);
-  await getStorage().put(key, file.body, { contentType: file.contentType });
+  await safePut(key, file.body, { contentType: file.contentType });
 
   const record = await prisma.evidenceFile.create({
     data: withTenantId({

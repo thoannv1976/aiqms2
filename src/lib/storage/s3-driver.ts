@@ -46,6 +46,10 @@ export class S3Storage implements Storage {
             accessKeyId: this.cfg.accessKeyId,
             secretAccessKey: this.cfg.secretAccessKey,
           },
+          // AWS SDK >= 3.729 mặc định gắn checksum x-amz-checksum-crc32 vào PUT —
+          // GCS/MinIO không hỗ trợ -> ghi file fail. Chỉ tính checksum khi bắt buộc.
+          requestChecksumCalculation: "WHEN_REQUIRED",
+          responseChecksumValidation: "WHEN_REQUIRED",
         });
       })();
     }

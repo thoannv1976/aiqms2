@@ -5,7 +5,7 @@ import { requireTenantContext } from "@/lib/tenant/context";
 import { withTenantId } from "@/lib/prisma/tenant-create";
 import { writeAudit } from "@/lib/audit/log";
 import { softDeleteData } from "@/lib/prisma/soft-delete";
-import { getStorage, tenantKey } from "@/lib/storage";
+import { getStorage, safePut, tenantKey } from "@/lib/storage";
 import { badRequest, notFound } from "@/lib/http/responses";
 import { paginated, type PageParams } from "@/lib/http/pagination";
 
@@ -43,7 +43,7 @@ export async function createDocument(
   const ctx = requireTenantContext();
   if (!file.body.byteLength) throw badRequest("File rỗng");
   const key = tenantKey(ctx.tenantId, "documents", `${Date.now()}-${file.fileName}`);
-  await getStorage().put(key, file.body, { contentType: file.contentType });
+  await safePut(key, file.body, { contentType: file.contentType });
 
   const doc = await prisma.document.create({
     data: withTenantId({
