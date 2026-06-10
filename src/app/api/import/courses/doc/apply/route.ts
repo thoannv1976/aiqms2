@@ -18,7 +18,7 @@ const schema = extractedSyllabusSchema.extend({
 export const POST = authedRoute(async (req) => {
   requirePermission(PERMISSIONS.DATA_CREATE);
   const { documentId, programmeId, ...data } = await parseBody(req, schema);
-  const result = await applyExtractedSyllabus(data);
+  const result = await applyExtractedSyllabus(data, programmeId);
   if (documentId) {
     await linkDocument(documentId, { courseId: result.courseId, programmeId });
   }

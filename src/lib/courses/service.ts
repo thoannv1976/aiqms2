@@ -12,11 +12,13 @@ export const createCourseSchema = z.object({
   code: z.string().min(1),
   name: z.string().min(1),
   credits: z.number().int().positive().default(3),
+  programmeId: z.string().optional(),
 });
 
 export const updateCourseSchema = z.object({
   name: z.string().min(1).optional(),
   credits: z.number().int().positive().optional(),
+  programmeId: z.string().nullable().optional(),
   description: z.string().optional(),
   prerequisites: z.string().optional(),
   content: z.string().optional(),
@@ -26,10 +28,12 @@ export const updateCourseSchema = z.object({
   rubric: z.string().optional(),
 });
 
+const programmeSelect = { select: { id: true, code: true, name: true } } as const;
+
 export async function getCourse(id: string) {
   const course = await prisma.course.findFirst({
     where: { id },
-    include: { clos: { orderBy: { order: "asc" } } },
+    include: { clos: { orderBy: { order: "asc" } }, programme: programmeSelect },
   });
   if (!course) throw notFound("Học phần không tồn tại");
   return course;
@@ -44,22 +48,24 @@ export async function updateCourse(id: string, input: z.infer<typeof updateCours
   return course;
 }
 
-export async function listCourses(p: PageParams) {
-  const where: Prisma.CourseWhereInput = p.search
-    ? {
-        OR: [
-          { code: { contains: p.search, mode: "insensitive" } },
-          { name: { contains: p.search, mode: "insensitive" } },
-        ],
-      }
-    : {};
+export async function listCourses(p: PageParams, filters: { programmeId?: string } = {}) {
+  const where: Prisma.CourseWhereInput = {};
+  if (p.search) {
+    where.OR = [
+      { code: { contains: p.search, mode: "insensitive" } },
+      { name: { contains: p.search, mode: "insensitive" } },
+    ];
+  }
+  // "none" -> học phần chưa gán CTĐT.
+  if (filters.programmeId === "none") where.programmeId = null;
+  else if (filters.programmeId) where.programmeId = filters.programmeId;
   const [items, total] = await Promise.all([
     prisma.course.findMany({
       where,
       orderBy: { code: "asc" },
       skip: p.skip,
       take: p.take,
-      include: { clos: { orderBy: { order: "asc" } } },
+      include: { clos: { orderBy: { order: "asc" } }, programme: programmeSelect },
     }),
     prisma.course.count({ where }),
   ]);

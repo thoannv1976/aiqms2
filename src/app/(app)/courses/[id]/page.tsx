@@ -7,11 +7,12 @@ import { PageHeader, Spinner, ErrorBox } from "@/components/ui";
 import { Modal } from "@/components/Modal";
 
 interface Clo { id: string; code: string; description: string }
+interface Programme { id: string; code: string; name: string }
 interface Course {
-  id: string; code: string; name: string; credits: number;
+  id: string; code: string; name: string; credits: number; programmeId: string | null;
   description: string | null; prerequisites: string | null; content: string | null;
   teachingMethods: string | null; assessmentMethods: string | null; materials: string | null; rubric: string | null;
-  clos: Clo[];
+  clos: Clo[]; programme: Programme | null;
 }
 
 type FieldKey = "description" | "prerequisites" | "content" | "teachingMethods" | "assessmentMethods" | "materials" | "rubric";
@@ -35,6 +36,7 @@ export default function CourseDetailPage() {
   const [aiField, setAiField] = useState<FieldKey | null>(null);
   const [aiNote, setAiNote] = useState<string | null>(null);
   const [filling, setFilling] = useState(false);
+  const [programmes, setProgrammes] = useState<Programme[]>([]);
 
   const load = useCallback(async () => {
     try {
@@ -43,11 +45,12 @@ export default function CourseDetailPage() {
     } catch (e) { setError(e instanceof Error ? e.message : "Lỗi tải học phần"); }
   }, [id]);
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { api.get<{ items: Programme[] }>("/api/programmes?pageSize=100").then((d) => setProgrammes(d?.items ?? [])).catch(() => {}); }, []);
 
   async function save() {
     setSaving(true); setMsg(null);
     try {
-      const payload: Record<string, unknown> = { credits: form.credits };
+      const payload: Record<string, unknown> = { credits: form.credits, programmeId: form.programmeId ?? null };
       for (const f of FIELDS) payload[f.key] = form[f.key] ?? null;
       await api.patch(`/api/courses/${id}`, payload);
       setMsg("Đã lưu đề cương."); await load();
@@ -99,6 +102,19 @@ export default function CourseDetailPage() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
           <div className="card p-5">
+            <div className="mb-4 grid grid-cols-1 gap-4 border-b border-slate-100 pb-4 sm:grid-cols-3">
+              <div>
+                <label className="label">Số tín chỉ</label>
+                <input type="number" className="input" value={form.credits ?? ""} onChange={(e) => setForm({ ...form, credits: e.target.value ? Number(e.target.value) : undefined })} />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="label">Chương trình đào tạo</label>
+                <select className="input" value={form.programmeId ?? ""} onChange={(e) => setForm({ ...form, programmeId: e.target.value || null })}>
+                  <option value="">— Chưa gán —</option>
+                  {programmes.map((p) => <option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}
+                </select>
+              </div>
+            </div>
             <div className="space-y-4">
               {FIELDS.map((f) => (
                 <div key={f.key}>

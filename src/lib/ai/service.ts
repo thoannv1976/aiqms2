@@ -66,7 +66,7 @@ async function resolveAi(): Promise<ResolvedAi> {
   } else if (isAnthropic) {
     const anthroBase = /anthropic\.com/i.test(baseUrl) ? baseUrl : "https://api.anthropic.com";
     // Nếu để model mặc định của OpenAI mà dùng key Claude -> đổi sang model Claude hợp lệ.
-    if (!/claude/i.test(model)) effectiveModel = "claude-3-5-haiku-latest";
+    if (!/claude/i.test(model)) effectiveModel = "claude-3-5-haiku-20241022";
     provider = new AnthropicProvider(anthroBase, apiKey);
   } else {
     provider = new OpenAiProvider(baseUrl, apiKey);

@@ -69,9 +69,24 @@ function SettingsCard() {
               {["openai", "azure", "gemini", "claude", "local"].map((p) => <option key={p} value={p}>{p}</option>)}
             </select>
           </div>
-          <div><label className="label">Model</label><input className="input" value={s.model ?? ""} onChange={(e) => setS({ ...s, model: e.target.value })} placeholder="gpt-4o-mini" autoComplete="off" /></div>
+          <div>
+            <label className="label">Model</label>
+            <input className="input" value={s.model ?? ""} onChange={(e) => setS({ ...s, model: e.target.value })} placeholder="gpt-4o-mini" autoComplete="off" />
+            <div className="mt-1 flex flex-wrap gap-1">
+              {["gpt-4o-mini", "gpt-4o", "claude-3-5-haiku-20241022", "claude-3-5-sonnet-20241022"].map((m) => (
+                <button key={m} type="button" className="rounded border border-slate-200 px-2 py-0.5 text-[11px] text-slate-600 hover:bg-slate-50"
+                  onClick={() => setS({ ...s, model: m, baseUrl: m.startsWith("claude") ? "https://api.anthropic.com" : "https://api.openai.com/v1" })}>
+                  {m}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
-        <div><label className="label">Base URL</label><input className="input" value={s.baseUrl ?? ""} onChange={(e) => setS({ ...s, baseUrl: e.target.value })} placeholder="https://api.openai.com/v1" autoComplete="off" /></div>
+        <div>
+          <label className="label">Base URL</label>
+          <input className="input" value={s.baseUrl ?? ""} onChange={(e) => setS({ ...s, baseUrl: e.target.value })} placeholder="https://api.openai.com/v1" autoComplete="off" />
+          <p className="mt-1 text-xs text-slate-400">OpenAI: <code>https://api.openai.com/v1</code> · Anthropic (Claude, key <code>sk-ant-</code>): <code>https://api.anthropic.com</code></p>
+        </div>
         <div><label className="label">API Key {s.hasApiKey && <span className="text-xs text-emerald-600">(đã có — để trống nếu giữ nguyên)</span>}</label>
           <input className="input" type="password" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder={s.hasApiKey ? "••••••" : "nhập khóa (sẽ được mã hóa)"} autoComplete="new-password" />
         </div>

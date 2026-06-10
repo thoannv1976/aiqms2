@@ -21,6 +21,17 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
 - **Lưu trữ GCS**: cài sẵn `@aws-sdk/client-s3` → driver S3 chạy với GCS (S3-compatible) chỉ
   bằng cấu hình env; hướng dẫn HMAC + bucket ở `DEPLOY.md` mục 7b.
 
+## [Học phần gắn CTĐT + sửa model Claude 404] — ✅ Done
+
+- **Gắn học phần với Chương trình đào tạo**: `Course.programmeId` (migration `course_programme`).
+  Danh sách Đề cương thêm **cột "Chương trình đào tạo"** + bộ lọc theo CTĐT (gồm "Chưa gán").
+  Form tạo học phần + trang chi tiết có chọn CTĐT; import đề cương (Word/PDF) tự gán CTĐT đã
+  chọn ở bước xem trước. `listCourses` lọc `programmeId` ("none" = chưa gán).
+- **Sửa lỗi AI 404 model Claude**: auto-default khi dùng key `sk-ant-` đổi từ
+  `claude-3-5-haiku-latest` (một số tài khoản trả 404) sang pinned `claude-3-5-haiku-20241022`.
+  Trang **AI hỗ trợ** thêm nút chọn nhanh model (gpt-4o-mini/gpt-4o/claude-3-5-haiku/sonnet)
+  tự set Base URL tương ứng + ghi chú Base URL cho OpenAI/Anthropic. 108 test.
+
 ## [AI điền nhanh toàn bộ đề cương] — ✅ Done
 
 - **AI điền nhanh đề cương** (`draftFullSyllabus`): một lần gọi sinh nháp cho **tất cả mục

@@ -10,7 +10,8 @@ export const runtime = "nodejs";
 
 export const GET = authedRoute(async (req) => {
   requirePermission(PERMISSIONS.DATA_VIEW);
-  return ok(await listCourses(parsePagination(req)));
+  const programmeId = new URL(req.url).searchParams.get("programmeId") ?? undefined;
+  return ok(await listCourses(parsePagination(req), { programmeId }));
 });
 
 export const POST = authedRoute(async (req) => {

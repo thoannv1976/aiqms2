@@ -176,7 +176,10 @@ export async function extractSyllabusDoc(
 }
 
 // ─── Ghi vào CSDL: upsert học phần + đề cương + CLO + ma trận CLO–PLO ────────
-export async function applyExtractedSyllabus(input: ExtractedSyllabus): Promise<ImportResult & { courseId: string }> {
+export async function applyExtractedSyllabus(
+  input: ExtractedSyllabus,
+  programmeId?: string,
+): Promise<ImportResult & { courseId: string }> {
   const ctx = requireTenantContext();
   const data = extractedSyllabusSchema.parse(input);
   const res: ImportResult = { created: 0, updated: 0, errors: [], details: { courses: 0, clos: 0, clo_plo: 0 } };
@@ -187,6 +190,7 @@ export async function applyExtractedSyllabus(input: ExtractedSyllabus): Promise<
   const fields = {
     name: data.name || data.code,
     credits: data.credits ?? 3,
+    ...(programmeId ? { programmeId } : {}),
     description: data.description || null,
     prerequisites: data.prerequisites || null,
     content: data.content || null,

@@ -356,6 +356,7 @@ model Programme {
 
   tenant   Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   versions ProgrammeVersion[]
+  courses  Course[]
 
   @@unique([tenantId, code])
   @@index([tenantId, deletedAt])
@@ -432,6 +433,7 @@ model Course {
   code      String
   name      String
   credits   Int       @default(3)
+  programmeId String? // CTĐT mà học phần thuộc về (phục vụ quản lý/lọc)
   status    String    @default("active")
   // Đề cương học phần (spec 4.7)
   description       String?
@@ -447,12 +449,14 @@ model Course {
   updatedBy String?
   deletedAt DateTime?
 
-  tenant   Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  clos     CourseLearningOutcome[]
-  ploMaps  PloCourseMapping[]
+  tenant    Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  programme Programme?              @relation(fields: [programmeId], references: [id], onDelete: SetNull)
+  clos      CourseLearningOutcome[]
+  ploMaps   PloCourseMapping[]
 
   @@unique([tenantId, code])
   @@index([tenantId, deletedAt])
+  @@index([tenantId, programmeId])
   @@map("courses")
 }
 

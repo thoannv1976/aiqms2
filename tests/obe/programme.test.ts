@@ -5,6 +5,8 @@ import { runWithTenant } from "@/lib/tenant/context";
 import {
   addClo,
   createCourse,
+  listCourses,
+  updateCourse,
 } from "@/lib/courses/service";
 import {
   addPlo,
@@ -77,6 +79,28 @@ describe("P3 — Chương trình đào tạo + OBE", () => {
       expect(types).toContain("plo_no_course");
       expect(types).toContain("plo_no_clo");
       expect(types).toContain("clo_no_plo");
+    });
+  });
+
+  it("gán học phần vào CTĐT: lọc theo programmeId + hiển thị programme", async () => {
+    const t = await createTenantFixture("demo");
+    await asTenant(t.id, async () => {
+      const prog = await createProgramme({ code: "SBI", name: "TMĐT", level: "bachelor", initialVersion: "2026" });
+      const c1 = await createCourse({ code: "TMAE306", name: "TMĐT", credits: 3, programmeId: prog.id });
+      await createCourse({ code: "FREE1", name: "Tự do", credits: 3 }); // chưa gán
+
+      expect(c1.programmeId).toBe(prog.id);
+
+      const inProg = await listCourses({ page: 1, pageSize: 20, skip: 0, take: 20 }, { programmeId: prog.id });
+      expect(inProg.items.map((c) => c.code)).toEqual(["TMAE306"]);
+      expect(inProg.items[0].programme?.code).toBe("SBI");
+
+      const none = await listCourses({ page: 1, pageSize: 20, skip: 0, take: 20 }, { programmeId: "none" });
+      expect(none.items.map((c) => c.code)).toEqual(["FREE1"]);
+
+      // Đổi gán qua updateCourse.
+      const moved = await updateCourse(c1.id, { programmeId: null });
+      expect(moved.programmeId).toBeNull();
     });
   });
 
