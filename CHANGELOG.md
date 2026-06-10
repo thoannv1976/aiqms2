@@ -21,6 +21,18 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
 - **Lưu trữ GCS**: cài sẵn `@aws-sdk/client-s3` → driver S3 chạy với GCS (S3-compatible) chỉ
   bằng cấu hình env; hướng dẫn HMAC + bucket ở `DEPLOY.md` mục 7b.
 
+## [Sửa lỗi không nạp được @aws-sdk khi import/upload trên prod] — ✅ Done
+
+- **Lỗi**: "Không ghi được file… Driver S3 cần @aws-sdk/client-s3" dù package đã ở
+  `dependencies`. Nguyên nhân: S3 driver import động bằng specifier dựng ở runtime
+  (`["@aws-sdk","client-s3"].join("/")`) → Turbopack không trace được → build thành **stub
+  "module not found"**, ném lỗi lúc chạy.
+- **Fix**: dùng **import literal** `import("@aws-sdk/client-s3")` + khai báo
+  `serverExternalPackages` (`@aws-sdk/client-s3`, `@aws-sdk/s3-request-presigner`,
+  `pdf-parse`) trong `next.config` → các package này được nạp từ `node_modules` lúc chạy
+  (cùng cơ chế external `e.x`/`e.y` mà `@prisma/client` đang dùng). Build sinh chunk
+  `[externals]_@aws-sdk_client-s3…` thay vì stub.
+
 ## [AI tổng hợp ma trận PLO-CLO từ tài liệu] — ✅ Done
 
 - **AI tổng hợp ma trận** (`synthesizeMatrixFromDocs`): đọc **đề án mở ngành/CTĐT** (Document

@@ -2,9 +2,9 @@ import type { PutOptions, Storage, StoredObject } from "./types";
 
 /**
  * Driver S3-compatible (AWS S3 / MinIO / GCS qua HMAC).
- * SDK được import động với specifier dựng ở runtime để bundler (Turbopack) KHÔNG
- * cố resolve lúc build — chỉ bắt buộc cài @aws-sdk khi thực sự dùng driver S3:
- *   npm i @aws-sdk/client-s3 @aws-sdk/s3-request-presigner
+ * `@aws-sdk/*` là dependency thật và được khai báo `serverExternalPackages` trong
+ * next.config -> import động bằng specifier LITERAL để Next trace & nạp được từ
+ * node_modules lúc chạy (tránh stub "module not found" khi dùng specifier động).
  */
 export interface S3Config {
   endpoint?: string;
@@ -14,16 +14,13 @@ export interface S3Config {
   secretAccessKey: string;
 }
 
-// Dựng specifier ở runtime để tránh phân tích tĩnh của bundler.
-const S3_PKG = ["@aws-sdk", "client-s3"].join("/");
-const PRESIGN_PKG = ["@aws-sdk", "s3-request-presigner"].join("/");
-
 async function loadS3() {
   try {
-    return (await import(/* @vite-ignore */ S3_PKG)) as typeof import("@aws-sdk/client-s3");
-  } catch {
+    return await import("@aws-sdk/client-s3");
+  } catch (e) {
     throw new Error(
-      "Driver S3 cần @aws-sdk/client-s3. Cài: npm i @aws-sdk/client-s3 @aws-sdk/s3-request-presigner",
+      `Không nạp được @aws-sdk/client-s3 lúc chạy: ${e instanceof Error ? e.message : String(e)}. ` +
+        "Đảm bảo package nằm trong dependencies và có trong node_modules của image.",
     );
   }
 }
@@ -97,7 +94,7 @@ export class S3Storage implements Storage {
 
   async url(key: string): Promise<string> {
     const { GetObjectCommand } = await loadS3();
-    const presign = (await import(/* @vite-ignore */ PRESIGN_PKG)) as typeof import("@aws-sdk/s3-request-presigner");
+    const presign = await import("@aws-sdk/s3-request-presigner");
     const client = await this.client();
     return presign.getSignedUrl(client, new GetObjectCommand({ Bucket: this.cfg.bucket, Key: key }), {
       expiresIn: 3600,
