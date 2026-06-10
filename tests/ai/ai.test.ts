@@ -5,6 +5,7 @@ import { seedAunqa } from "@/lib/standards/seed";
 import { runWithTenant } from "@/lib/tenant/context";
 import { encryptSecret, decryptSecret } from "@/lib/ai/crypto";
 import { getSettings, updateSettings } from "@/lib/ai/settings";
+import { listProviderModels } from "@/lib/ai/service";
 import {
   approveDraft,
   draftSarCriterion,
@@ -260,6 +261,35 @@ describe("P8 — Lớp AI (service có kiểm soát, human-in-the-loop)", () => 
       const course = await prisma.course.create({ data: { tenantId: t.id, code: "TMAE306", name: "TMĐT", credits: 3 } });
       const review = await reviewCourseSyllabus(course.id);
       expect(review.length).toBeGreaterThan(0);
+    });
+  });
+
+  it("lấy danh sách model khả dụng từ key Anthropic (GET /v1/models)", async () => {
+    const t = await createTenantFixture("demo");
+    await asTenant(t.id, async () => {
+      await updateSettings({ enabled: true, apiKey: "sk-ant-test" });
+      const orig = global.fetch;
+      const calls: string[] = [];
+      global.fetch = (async (url: unknown) => {
+        calls.push(String(url));
+        return new Response(JSON.stringify({ data: [{ id: "claude-3-5-haiku-20241022" }, { id: "claude-sonnet-4-5" }] }), {
+          status: 200, headers: { "content-type": "application/json" },
+        });
+      }) as typeof fetch;
+      try {
+        const r = await listProviderModels();
+        expect(r.provider).toBe("anthropic");
+        expect(r.models).toContain("claude-sonnet-4-5");
+        expect(calls[0]).toContain("api.anthropic.com/v1/models");
+      } finally { global.fetch = orig; }
+    });
+  });
+
+  it("lấy danh sách model khi chưa có key -> báo lỗi rõ ràng", async () => {
+    const t = await createTenantFixture("demo");
+    await asTenant(t.id, async () => {
+      await updateSettings({ enabled: true });
+      await expect(listProviderModels()).rejects.toMatchObject({ status: 400 });
     });
   });
 

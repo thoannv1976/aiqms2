@@ -199,3 +199,41 @@ export async function aiCompleteJson<T>(
   }
   throw badRequest("Output AI không hợp lệ", "ai_bad_output");
 }
+
+/** Lấy danh sách model khả dụng từ chính API key đã lưu (OpenAI/Anthropic) để người dùng chọn đúng. */
+export async function listProviderModels(): Promise<{ provider: string; models: string[] }> {
+  const ctx = requireTenantContext();
+  const settings = await prisma.aiSettings.findFirst({ where: { tenantId: ctx.tenantId } });
+  let apiKey: string | undefined;
+  if (settings?.apiKeyEnc) {
+    try {
+      apiKey = decryptSecret(settings.apiKeyEnc);
+    } catch {
+      throw badRequest("Không giải mã được API key đã lưu — hãy nhập lại key.", "ai_key_decrypt_failed");
+    }
+  } else if (env.AI_API_KEY) {
+    apiKey = env.AI_API_KEY;
+  }
+  if (!apiKey) throw badRequest("Chưa có API key — hãy lưu key trước khi lấy danh sách model.");
+
+  const baseUrl = settings?.baseUrl ?? env.AI_BASE_URL;
+  const isAnthropic = apiKey.startsWith("sk-ant-") || /claude/i.test(settings?.model ?? "") || /anthropic\.com/i.test(baseUrl);
+
+  if (isAnthropic) {
+    const base = (/anthropic\.com/i.test(baseUrl) ? baseUrl : "https://api.anthropic.com").replace(/\/$/, "").replace(/\/v1$/, "");
+    const res = await fetch(`${base}/v1/models?limit=100`, {
+      headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
+    });
+    if (!res.ok) throw new ApiError(502, `Không lấy được danh sách model (Anthropic ${res.status}): ${(await res.text()).slice(0, 200)}`, "ai_models_error");
+    const data = (await res.json()) as { data?: { id: string }[] };
+    return { provider: "anthropic", models: (data.data ?? []).map((m) => m.id) };
+  }
+
+  const res = await fetch(`${baseUrl.replace(/\/$/, "")}/models`, { headers: { Authorization: `Bearer ${apiKey}` } });
+  if (!res.ok) throw new ApiError(502, `Không lấy được danh sách model (${res.status}): ${(await res.text()).slice(0, 200)}`, "ai_models_error");
+  const data = (await res.json()) as { data?: { id: string }[] };
+  const ids = (data.data ?? []).map((m) => m.id);
+  // Ưu tiên model chat thường dùng cho gọn.
+  const chat = ids.filter((id) => /gpt|o1|o3|chat/i.test(id));
+  return { provider: "openai", models: (chat.length ? chat : ids).sort() };
+}

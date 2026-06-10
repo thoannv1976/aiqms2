@@ -21,6 +21,15 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
 - **Lưu trữ GCS**: cài sẵn `@aws-sdk/client-s3` → driver S3 chạy với GCS (S3-compatible) chỉ
   bằng cấu hình env; hướng dẫn HMAC + bucket ở `DEPLOY.md` mục 7b.
 
+## [Lấy danh sách model khả dụng từ API key] — ✅ Done
+
+- **Lỗi**: model `claude-3-5-haiku-20241022` trả 404 not_found — key Anthropic hợp lệ nhưng
+  tài khoản không có đúng model đó (mỗi tài khoản được cấp model khác nhau).
+- **Fix**: thêm `listProviderModels` + `GET /api/ai/models` gọi `/v1/models` của chính nhà
+  cung cấp (Anthropic `x-api-key`, OpenAI `Bearer`) bằng key đã lưu → trả danh sách model
+  tài khoản được phép dùng. Trang **AI hỗ trợ** thêm nút **"Lấy danh sách model khả dụng"**:
+  hiển thị model thật để bấm chọn (tránh đoán sai model → 404). 110 test.
+
 ## [Học phần gắn CTĐT + sửa model Claude 404] — ✅ Done
 
 - **Gắn học phần với Chương trình đào tạo**: `Course.programmeId` (migration `course_programme`).

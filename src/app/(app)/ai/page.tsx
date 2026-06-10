@@ -28,6 +28,20 @@ function SettingsCard() {
   const [apiKey, setApiKey] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [models, setModels] = useState<string[]>([]);
+  const [loadingModels, setLoadingModels] = useState(false);
+
+  async function fetchModels() {
+    setLoadingModels(true); setErr(null); setMsg(null);
+    try {
+      const r = await api.get<{ provider: string; models: string[] }>("/api/ai/models");
+      setModels(r?.models ?? []);
+      if (!r?.models?.length) setMsg("Key hợp lệ nhưng không có model nào khả dụng.");
+      else setMsg(`Đã lấy ${r.models.length} model khả dụng (${r.provider}) — bấm để chọn.`);
+    } catch (e) {
+      setErr(e instanceof ApiClientError ? e.message : "Lỗi lấy danh sách model");
+    } finally { setLoadingModels(false); }
+  }
 
   const load = useCallback(async () => {
     try { setS(await api.get<Settings>("/api/ai/settings")); }
@@ -70,16 +84,23 @@ function SettingsCard() {
             </select>
           </div>
           <div>
-            <label className="label">Model</label>
+            <div className="flex items-center justify-between">
+              <label className="label">Model</label>
+              <button type="button" className="text-xs text-indigo-600 hover:underline disabled:text-slate-300" disabled={loadingModels} onClick={fetchModels}>
+                {loadingModels ? "Đang lấy…" : "Lấy danh sách model khả dụng"}
+              </button>
+            </div>
             <input className="input" value={s.model ?? ""} onChange={(e) => setS({ ...s, model: e.target.value })} placeholder="gpt-4o-mini" autoComplete="off" />
             <div className="mt-1 flex flex-wrap gap-1">
-              {["gpt-4o-mini", "gpt-4o", "claude-3-5-haiku-20241022", "claude-3-5-sonnet-20241022"].map((m) => (
-                <button key={m} type="button" className="rounded border border-slate-200 px-2 py-0.5 text-[11px] text-slate-600 hover:bg-slate-50"
-                  onClick={() => setS({ ...s, model: m, baseUrl: m.startsWith("claude") ? "https://api.anthropic.com" : "https://api.openai.com/v1" })}>
+              {(models.length ? models : ["gpt-4o-mini", "gpt-4o", "claude-3-5-haiku-20241022", "claude-3-5-sonnet-20241022"]).map((m) => (
+                <button key={m} type="button"
+                  className={`rounded border px-2 py-0.5 text-[11px] hover:bg-slate-50 ${s.model === m ? "border-indigo-400 bg-indigo-50 text-indigo-700" : "border-slate-200 text-slate-600"}`}
+                  onClick={() => setS({ ...s, model: m, baseUrl: m.startsWith("claude") ? "https://api.anthropic.com" : (s.baseUrl || "https://api.openai.com/v1") })}>
                   {m}
                 </button>
               ))}
             </div>
+            <p className="mt-1 text-[11px] text-slate-400">Bấm “Lấy danh sách model” để thấy đúng model tài khoản của bạn được phép dùng (tránh lỗi 404 model not found).</p>
           </div>
         </div>
         <div>
