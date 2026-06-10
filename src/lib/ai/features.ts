@@ -329,6 +329,60 @@ export async function draftCourseField(courseId: string, field: CourseField, ins
   ]);
 }
 
+const fullSyllabusSchema = z.object({
+  description: z.string().optional().default(""),
+  prerequisites: z.string().optional().default(""),
+  content: z.string().optional().default(""),
+  teachingMethods: z.string().optional().default(""),
+  assessmentMethods: z.string().optional().default(""),
+  materials: z.string().optional().default(""),
+});
+
+/**
+ * AI điền nhanh TOÀN BỘ đề cương trong MỘT lần gọi — sinh nháp cho các mục còn trống
+ * (mặc định) hoặc tất cả. Trả về map field→text (chưa lưu); người dùng duyệt rồi mới ghi.
+ */
+export async function draftFullSyllabus(courseId: string, onlyEmpty = true): Promise<Record<string, string>> {
+  const course = await prisma.course.findFirst({ where: { id: courseId }, include: { clos: { orderBy: { order: "asc" } } } });
+  if (!course) throw notFound("Học phần không tồn tại");
+  const keys: CourseField[] = ["description", "prerequisites", "content", "teachingMethods", "assessmentMethods", "materials"];
+  const rec = course as unknown as Record<string, string | null>;
+  const target = onlyEmpty ? keys.filter((k) => !(rec[k] ?? "").toString().trim()) : keys;
+  if (target.length === 0) return {}; // không có mục trống -> không gọi AI
+
+  const clos = course.clos.map((c) => `${c.code}: ${c.description}`).join("\n") || "(chưa khai báo CLO)";
+  const wanted = target.map((k) => `"${k}" (${COURSE_FIELD_LABELS[k]})`).join(", ");
+  const result = await aiCompleteJson(
+    "draft_course_all",
+    [
+      {
+        role: "system",
+        content:
+          SYSTEM_VI +
+          " Soạn đề cương chi tiết theo Mẫu 5A/5B của ĐHNT và AUN-QA (TC2,3,5: constructive alignment " +
+          "CLO – nội dung – phương pháp dạy – đánh giá). Trả về JSON thuần.",
+      },
+      {
+        role: "user",
+        content:
+          `Học phần: ${course.code} — ${course.name} (${course.credits} tín chỉ).\n` +
+          `CLO:\n${clos}\n\nSoạn nội dung cho CÁC MỤC: ${wanted}.\n` +
+          `Trả JSON với đúng các khóa đó (giá trị là chuỗi tiếng Việt). ` +
+          `assessmentMethods nêu cấu phần + trọng số (%) và CLO; materials ưu tiên học liệu 5 năm gần nhất.`,
+      },
+    ],
+    fullSyllabusSchema,
+  );
+
+  const out: Record<string, string> = {};
+  for (const k of target) {
+    const v = (result as Record<string, string>)[k];
+    if (v && v.trim()) out[k] = v;
+  }
+  await writeAudit({ action: "ai.draft_course_all", entity: "Course", entityId: courseId, meta: { fields: Object.keys(out).length } });
+  return out;
+}
+
 /** AI rà soát toàn bộ đề cương theo Mẫu 5A/5B + AUN-QA, trả về nhận xét + điểm cần sửa. */
 export async function reviewCourseSyllabus(courseId: string): Promise<string> {
   const course = await prisma.course.findFirst({ where: { id: courseId }, include: { clos: { orderBy: { order: "asc" } } } });

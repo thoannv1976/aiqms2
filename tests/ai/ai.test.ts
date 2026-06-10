@@ -13,6 +13,7 @@ import {
   assistantAnswer,
   suggestImprovementActions,
   draftCourseField,
+  draftFullSyllabus,
   reviewCourseSyllabus,
 } from "@/lib/ai/features";
 import { createPlan } from "@/lib/improvement/service";
@@ -228,6 +229,27 @@ describe("P8 — Lớp AI (service có kiểm soát, human-in-the-loop)", () => 
       // Human-in-the-loop: chưa ghi vào học phần.
       const fresh = await prisma.course.findFirstOrThrow({ where: { id: course.id } });
       expect(fresh.assessmentMethods).toBeNull();
+    });
+  });
+
+  it("AI điền nhanh đề cương: chỉ xử lý mục trống, KHÔNG tự lưu; đủ mục -> bỏ qua AI", async () => {
+    const t = await createTenantFixture("demo");
+    await asTenant(t.id, async () => {
+      await updateSettings({ enabled: true });
+      const course = await prisma.course.create({ data: { tenantId: t.id, code: "TMAE306", name: "TMĐT", credits: 3 } });
+      const fields = await draftFullSyllabus(course.id);
+      expect(typeof fields).toBe("object"); // trả map field->text (chưa ghi)
+      const fresh = await prisma.course.findFirstOrThrow({ where: { id: course.id } });
+      expect(fresh.description).toBeNull(); // human-in-the-loop
+
+      // Học phần đã đủ nội dung -> không có mục trống -> trả {} (không gọi AI).
+      const full = await prisma.course.create({
+        data: {
+          tenantId: t.id, code: "FULL1", name: "x", credits: 3,
+          description: "a", prerequisites: "b", content: "c", teachingMethods: "d", assessmentMethods: "e", materials: "f",
+        },
+      });
+      expect(await draftFullSyllabus(full.id)).toEqual({});
     });
   });
 

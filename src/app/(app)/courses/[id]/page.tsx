@@ -34,6 +34,7 @@ export default function CourseDetailPage() {
   const [saving, setSaving] = useState(false);
   const [aiField, setAiField] = useState<FieldKey | null>(null);
   const [aiNote, setAiNote] = useState<string | null>(null);
+  const [filling, setFilling] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -66,6 +67,20 @@ export default function CourseDetailPage() {
     } finally { setAiField(null); }
   }
 
+  // AI điền nhanh TẤT CẢ mục còn trống trong một lần gọi.
+  async function aiFillAll() {
+    setFilling(true); setAiNote(null);
+    try {
+      const r = await api.post<{ fields: Record<string, string> }>("/api/ai/draft-course-all", { courseId: id });
+      const f = r?.fields ?? {};
+      const n = Object.keys(f).length;
+      if (n === 0) setAiNote("Các mục đều đã có nội dung — không có mục trống để điền.");
+      else { setForm((s) => ({ ...s, ...f })); setAiNote(`AI đã điền nháp ${n} mục còn trống — kiểm tra rồi bấm “Lưu đề cương”.`); }
+    } catch (e) {
+      setAiNote(e instanceof ApiClientError ? e.message : "Lỗi gọi AI (cần bật AI + có quyền)");
+    } finally { setFilling(false); }
+  }
+
   if (error) return <ErrorBox message={error} />;
   if (!course) return <Spinner />;
 
@@ -74,7 +89,12 @@ export default function CourseDetailPage() {
       <PageHeader
         title={`${course.code} · ${course.name}`}
         subtitle={`${course.credits} tín chỉ · đề cương học phần`}
-        action={<ReviewButton courseId={course.id} />}
+        action={
+          <div className="flex items-center gap-2">
+            <button className="btn-outline" onClick={aiFillAll} disabled={filling}>{filling ? "Đang điền…" : "✨ AI điền nhanh đề cương"}</button>
+            <ReviewButton courseId={course.id} />
+          </div>
+        }
       />
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">

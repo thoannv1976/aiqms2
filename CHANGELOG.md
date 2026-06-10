@@ -21,6 +21,14 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
 - **Lưu trữ GCS**: cài sẵn `@aws-sdk/client-s3` → driver S3 chạy với GCS (S3-compatible) chỉ
   bằng cấu hình env; hướng dẫn HMAC + bucket ở `DEPLOY.md` mục 7b.
 
+## [AI điền nhanh toàn bộ đề cương] — ✅ Done
+
+- **AI điền nhanh đề cương** (`draftFullSyllabus`): một lần gọi sinh nháp cho **tất cả mục
+  còn trống** (mô tả/tiên quyết/nội dung/PP giảng dạy/đánh giá/học liệu) qua `aiCompleteJson`.
+  Nút **"✨ AI điền nhanh đề cương"** ở trang chi tiết học phần → điền nháp vào các ô trống
+  để người dùng kiểm tra rồi bấm "Lưu" (human-in-the-loop, không tự ghi). Đề cương đã đủ nội
+  dung → bỏ qua, không tốn lượt AI. API `POST /api/ai/draft-course-all`. 107 test.
+
 ## [Chỉnh sửa đề cương bằng AI] — ✅ Done
 
 - **AI soạn/cải thiện từng mục đề cương** (`draftCourseField`): mô tả, nội dung/kế hoạch,
