@@ -19,13 +19,13 @@ export const updateCourseSchema = z.object({
   name: z.string().min(1).optional(),
   credits: z.number().int().positive().optional(),
   programmeId: z.string().nullable().optional(),
-  description: z.string().optional(),
-  prerequisites: z.string().optional(),
-  content: z.string().optional(),
-  teachingMethods: z.string().optional(),
-  assessmentMethods: z.string().optional(),
-  materials: z.string().optional(),
-  rubric: z.string().optional(),
+  description: z.string().nullable().optional(),
+  prerequisites: z.string().nullable().optional(),
+  content: z.string().nullable().optional(),
+  teachingMethods: z.string().nullable().optional(),
+  assessmentMethods: z.string().nullable().optional(),
+  materials: z.string().nullable().optional(),
+  rubric: z.string().nullable().optional(),
 });
 
 const programmeSelect = { select: { id: true, code: true, name: true } } as const;

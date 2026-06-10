@@ -21,6 +21,15 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
 - **Lưu trữ GCS**: cài sẵn `@aws-sdk/client-s3` → driver S3 chạy với GCS (S3-compatible) chỉ
   bằng cấu hình env; hướng dẫn HMAC + bucket ở `DEPLOY.md` mục 7b.
 
+## [Sửa lỗi lưu đề cương (mục trống = null)] — ✅ Done
+
+- **Lỗi**: lưu đề cương báo `rubric: Invalid input: expected string, received null` — trang
+  gửi `null` cho các ô trống nhưng `updateCourseSchema` chỉ nhận `string` (optional, không
+  cho `null`).
+- **Fix**: các trường đề cương (description/prerequisites/content/teachingMethods/
+  assessmentMethods/materials/rubric) đổi sang `z.string().nullable().optional()`. 111 test
+  (thêm test lưu đề cương với mục trống = null).
+
 ## [Sửa lỗi temperature với model Claude 4.x / reasoning] — ✅ Done
 
 - **Lỗi**: model `claude-opus-4-8` (và các model Claude 4.x / reasoning) trả 400

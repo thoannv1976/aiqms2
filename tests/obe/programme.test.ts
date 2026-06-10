@@ -82,6 +82,19 @@ describe("P3 — Chương trình đào tạo + OBE", () => {
     });
   });
 
+  it("lưu đề cương với mục trống (null) không lỗi schema (AI điền nháp rồi lưu)", async () => {
+    const t = await createTenantFixture("demo");
+    await asTenant(t.id, async () => {
+      const c = await createCourse({ code: "CS1", name: "x", credits: 3 });
+      const updated = await updateCourse(c.id, {
+        description: "Mô tả do AI soạn", content: "Chương 1…",
+        rubric: null, materials: null, prerequisites: null,
+      });
+      expect(updated.description).toBe("Mô tả do AI soạn");
+      expect(updated.rubric).toBeNull();
+    });
+  });
+
   it("gán học phần vào CTĐT: lọc theo programmeId + hiển thị programme", async () => {
     const t = await createTenantFixture("demo");
     await asTenant(t.id, async () => {
