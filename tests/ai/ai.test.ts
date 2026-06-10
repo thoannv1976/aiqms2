@@ -189,6 +189,33 @@ describe("P8 — Lớp AI (service có kiểm soát, human-in-the-loop)", () => 
     });
   });
 
+  it("key Anthropic (sk-ant-) -> gọi đúng endpoint Claude (không gửi tới OpenAI)", async () => {
+    const t = await createTenantFixture("demo");
+    await asTenant(t.id, async () => {
+      await updateSettings({ enabled: true, apiKey: "sk-ant-test-key" });
+      const calls: { url: string; headers: Record<string, string> }[] = [];
+      const orig = global.fetch;
+      global.fetch = (async (url: unknown, init?: { headers?: Record<string, string> }) => {
+        calls.push({ url: String(url), headers: init?.headers ?? {} });
+        return new Response(
+          JSON.stringify({ content: [{ type: "text", text: "[AI] tóm tắt" }], usage: { input_tokens: 8, output_tokens: 4 } }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }) as typeof fetch;
+      try {
+        const ev = await createEvidence({ title: "MC", criterionIds: [], requirementIds: [] });
+        const draft = await summarizeEvidence(ev.id);
+        expect(draft.content).toContain("[AI] tóm tắt");
+        expect(calls.length).toBe(1);
+        expect(calls[0].url).toContain("api.anthropic.com/v1/messages");
+        expect(calls[0].headers["x-api-key"]).toBe("sk-ant-test-key");
+        expect(calls[0].url).not.toContain("openai");
+      } finally {
+        global.fetch = orig;
+      }
+    });
+  });
+
   it("cách ly tenant: bản nháp AI của A không thấy ở B", async () => {
     const a = await createTenantFixture("a");
     const b = await createTenantFixture("b");

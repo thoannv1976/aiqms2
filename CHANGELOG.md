@@ -21,6 +21,16 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
 - **Lưu trữ GCS**: cài sẵn `@aws-sdk/client-s3` → driver S3 chạy với GCS (S3-compatible) chỉ
   bằng cấu hình env; hướng dẫn HMAC + bucket ở `DEPLOY.md` mục 7b.
 
+## [Hỗ trợ AI Anthropic (Claude) — sửa lỗi 401 key sk-ant] — ✅ Done
+
+- **Lỗi**: nạp key Anthropic (`sk-ant-…`) nhưng app gọi endpoint OpenAI với
+  `gpt-4o-mini` → 401 "Incorrect API key". Tính năng AI tổng hợp ma trận / viết nháp đều fail.
+- **Fix**: thêm `AnthropicProvider` (Messages API, tách `system` ra top-level). `resolveAi`
+  tự chọn nhà cung cấp theo khóa/model/baseUrl: key `sk-ant-` hoặc model `claude-*` hoặc
+  baseUrl `anthropic.com` → gọi Anthropic; nếu key Claude mà model còn để mặc định OpenAI thì
+  tự đổi sang `claude-3-5-haiku-latest`. `aiCompleteJson` thêm `extractJson` (bỏ ```json
+  fences/văn bản thừa) cho hợp với Claude. 104 test (thêm test định tuyến Anthropic qua mock fetch).
+
 ## [Sửa lỗi không nạp được @aws-sdk khi import/upload trên prod] — ✅ Done
 
 - **Lỗi**: "Không ghi được file… Driver S3 cần @aws-sdk/client-s3" dù package đã ở

@@ -8,6 +8,7 @@ import { decryptSecret } from "./crypto";
 import { Semaphore } from "./semaphore";
 import { MockProvider } from "./providers/mock";
 import { OpenAiProvider } from "./providers/openai";
+import { AnthropicProvider } from "./providers/anthropic";
 import type { LlmMessage, LlmProvider } from "./providers/types";
 
 // Concurrency toàn cục (một trường không "ăn" hết quota chung).
@@ -53,13 +54,27 @@ async function resolveAi(): Promise<ResolvedAi> {
     apiKey = env.AI_API_KEY;
   }
 
-  const provider: LlmProvider = apiKey
-    ? new OpenAiProvider(baseUrl, apiKey)
-    : new MockProvider(); // không có khóa -> mock (không gửi dữ liệu ra ngoài)
+  // Chọn nhà cung cấp theo khóa/model/baseUrl (tránh gửi key Anthropic tới OpenAI).
+  const isAnthropic =
+    apiKey?.startsWith("sk-ant-") ||
+    /claude/i.test(model) ||
+    /anthropic\.com/i.test(baseUrl);
+  let provider: LlmProvider;
+  let effectiveModel = model;
+  if (!apiKey) {
+    provider = new MockProvider(); // không có khóa -> mock (không gửi dữ liệu ra ngoài)
+  } else if (isAnthropic) {
+    const anthroBase = /anthropic\.com/i.test(baseUrl) ? baseUrl : "https://api.anthropic.com";
+    // Nếu để model mặc định của OpenAI mà dùng key Claude -> đổi sang model Claude hợp lệ.
+    if (!/claude/i.test(model)) effectiveModel = "claude-3-5-haiku-latest";
+    provider = new AnthropicProvider(anthroBase, apiKey);
+  } else {
+    provider = new OpenAiProvider(baseUrl, apiKey);
+  }
 
   return {
     provider,
-    model,
+    model: effectiveModel,
     dailyTokenLimit: settings?.dailyTokenLimit ?? env.AI_DAILY_TOKEN_LIMIT,
     enabledModules: (settings?.enabledModules as Record<string, boolean>) ?? {},
   };
@@ -154,6 +169,17 @@ export async function aiComplete(
   }
 }
 
+/** Lấy phần JSON từ output LLM: bỏ ```json fences, cắt từ '{' đầu tới '}' cuối. */
+function extractJson(text: string): string {
+  let t = text.trim();
+  const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fence) t = fence[1].trim();
+  const first = t.indexOf("{");
+  const last = t.lastIndexOf("}");
+  if (first >= 0 && last > first) return t.slice(first, last + 1);
+  return t;
+}
+
 /** Gọi LLM và validate output JSON bằng Zod (ép JSON; sai schema -> retry rồi báo lỗi). */
 export async function aiCompleteJson<T>(
   module: string,
@@ -163,7 +189,7 @@ export async function aiCompleteJson<T>(
   for (let attempt = 0; attempt < 2; attempt++) {
     const text = await aiComplete(module, messages, { json: true });
     try {
-      const parsed = schema.parse(JSON.parse(text));
+      const parsed = schema.parse(JSON.parse(extractJson(text)));
       return parsed;
     } catch {
       if (attempt === 1) {
