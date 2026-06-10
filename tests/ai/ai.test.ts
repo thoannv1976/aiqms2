@@ -12,6 +12,8 @@ import {
   summarizeEvidence,
   assistantAnswer,
   suggestImprovementActions,
+  draftCourseField,
+  reviewCourseSyllabus,
 } from "@/lib/ai/features";
 import { createPlan } from "@/lib/improvement/service";
 import { createEvidence } from "@/lib/evidence/service";
@@ -213,6 +215,29 @@ describe("P8 — Lớp AI (service có kiểm soát, human-in-the-loop)", () => 
       } finally {
         global.fetch = orig;
       }
+    });
+  });
+
+  it("AI soạn/cải thiện một mục đề cương -> trả bản nháp, KHÔNG tự lưu vào học phần", async () => {
+    const t = await createTenantFixture("demo");
+    await asTenant(t.id, async () => {
+      await updateSettings({ enabled: true });
+      const course = await prisma.course.create({ data: { tenantId: t.id, code: "TMAE306", name: "TMĐT", credits: 3 } });
+      const text = await draftCourseField(course.id, "assessmentMethods");
+      expect(text).toContain("[AI-nháp]");
+      // Human-in-the-loop: chưa ghi vào học phần.
+      const fresh = await prisma.course.findFirstOrThrow({ where: { id: course.id } });
+      expect(fresh.assessmentMethods).toBeNull();
+    });
+  });
+
+  it("AI rà soát đề cương trả về nhận xét (text)", async () => {
+    const t = await createTenantFixture("demo");
+    await asTenant(t.id, async () => {
+      await updateSettings({ enabled: true });
+      const course = await prisma.course.create({ data: { tenantId: t.id, code: "TMAE306", name: "TMĐT", credits: 3 } });
+      const review = await reviewCourseSyllabus(course.id);
+      expect(review.length).toBeGreaterThan(0);
     });
   });
 

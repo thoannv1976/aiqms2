@@ -21,6 +21,19 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
 - **Lưu trữ GCS**: cài sẵn `@aws-sdk/client-s3` → driver S3 chạy với GCS (S3-compatible) chỉ
   bằng cấu hình env; hướng dẫn HMAC + bucket ở `DEPLOY.md` mục 7b.
 
+## [Chỉnh sửa đề cương bằng AI] — ✅ Done
+
+- **AI soạn/cải thiện từng mục đề cương** (`draftCourseField`): mô tả, nội dung/kế hoạch,
+  phương pháp giảng dạy, phương pháp+trọng số đánh giá, học liệu, tiên quyết — theo Mẫu 5A/5B
+  ĐHNT + AUN-QA (constructive alignment với CLO). Human-in-the-loop: nút **"✨ AI soạn/cải
+  thiện"** cạnh từng ô ở trang chi tiết học phần → AI đưa bản nháp vào ô → người dùng kiểm
+  tra rồi bấm "Lưu đề cương" (không tự ghi).
+- **AI rà soát đề cương** (`reviewCourseSyllabus`): nút **"✨ AI rà soát đề cương"** đối chiếu
+  Mẫu 5A/5B + AUN-QA (TC2,3,5), nêu điểm đạt/chưa đạt + đề xuất sửa (tín chỉ, CLO theo Bloom,
+  ma trận CLO–PLO, học liệu 5 năm, trọng số phủ CLO…).
+- API `POST /api/ai/draft-course-field`, `POST /api/ai/review-syllabus` (quyền `ai.use`).
+  106 test (thêm draft mục đề cương không tự lưu + rà soát).
+
 ## [Hỗ trợ AI Anthropic (Claude) — sửa lỗi 401 key sk-ant] — ✅ Done
 
 - **Lỗi**: nạp key Anthropic (`sk-ant-…`) nhưng app gọi endpoint OpenAI với

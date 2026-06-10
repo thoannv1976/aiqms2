@@ -285,6 +285,79 @@ export async function synthesizeMatrixFromDocs(
   return { ploCourse, cloPlo, ploCount: plos.length, courseCount: courses.length, docCount: ctdtDocs.length + sylDocs.length };
 }
 
+// ─── Chỉnh sửa ĐỀ CƯƠNG học phần bằng AI (human-in-the-loop) ─────────────────
+const COURSE_FIELD_LABELS: Record<string, string> = {
+  description: "Mô tả học phần",
+  content: "Nội dung & kế hoạch giảng dạy",
+  teachingMethods: "Phương pháp giảng dạy",
+  assessmentMethods: "Phương pháp & trọng số kiểm tra đánh giá",
+  materials: "Học liệu (giáo trình, TLTK)",
+  prerequisites: "Điều kiện tiên quyết",
+};
+export type CourseField = keyof typeof COURSE_FIELD_LABELS;
+
+/** AI soạn/cải thiện MỘT mục của đề cương — trả về BẢN NHÁP (chưa lưu); người dùng duyệt rồi mới ghi. */
+export async function draftCourseField(courseId: string, field: CourseField, instruction?: string): Promise<string> {
+  const label = COURSE_FIELD_LABELS[field];
+  if (!label) throw badRequest("Mục đề cương không hợp lệ");
+  const course = await prisma.course.findFirst({ where: { id: courseId }, include: { clos: { orderBy: { order: "asc" } } } });
+  if (!course) throw notFound("Học phần không tồn tại");
+
+  const clos = course.clos.map((c) => `${c.code}: ${c.description}`).join("\n") || "(chưa khai báo CLO)";
+  const current = ((course as unknown as Record<string, string | null>)[field] ?? "").toString();
+
+  return aiComplete("draft_course", [
+    {
+      role: "system",
+      content:
+        SYSTEM_VI +
+        " Bạn soạn đề cương chi tiết theo Mẫu 5A/5B của ĐHNT và chuẩn AUN-QA (tiêu chí 2,3,5: " +
+        "constructive alignment giữa CLO – nội dung – phương pháp dạy – đánh giá). Viết tiếng Việt học thuật, súc tích.",
+    },
+    {
+      role: "user",
+      content:
+        `Học phần: ${course.code} — ${course.name} (${course.credits} tín chỉ).\n` +
+        `Chuẩn đầu ra học phần (CLO):\n${clos}\n\n` +
+        `Mục cần ${current ? "CẢI THIỆN" : "SOẠN MỚI"}: "${label}".\n` +
+        `Nội dung hiện tại:\n${current || "(trống)"}\n\n` +
+        `Hãy viết lại mục "${label}" cho chuẩn, gắn với CLO, phù hợp số tín chỉ.` +
+        (field === "assessmentMethods" ? " Nêu rõ cấu phần + trọng số (%) và CLO được đánh giá." : "") +
+        (field === "materials" ? " Ưu tiên học liệu xuất bản trong 5 năm; ghi đúng định dạng trích dẫn." : "") +
+        (instruction ? `\nYêu cầu thêm của người dùng: ${instruction}` : ""),
+    },
+  ]);
+}
+
+/** AI rà soát toàn bộ đề cương theo Mẫu 5A/5B + AUN-QA, trả về nhận xét + điểm cần sửa. */
+export async function reviewCourseSyllabus(courseId: string): Promise<string> {
+  const course = await prisma.course.findFirst({ where: { id: courseId }, include: { clos: { orderBy: { order: "asc" } } } });
+  if (!course) throw notFound("Học phần không tồn tại");
+  const clos = course.clos.map((c) => `${c.code}: ${c.description}`).join("\n") || "(chưa có CLO)";
+  const f = (k: string) => ((course as unknown as Record<string, string | null>)[k] ?? "(trống)");
+
+  const review = await aiComplete("review_syllabus", [
+    {
+      role: "system",
+      content:
+        "Bạn là chuyên gia rà soát đề cương học phần theo Mẫu 5A/5B của ĐHNT và AUN-QA 4.0 " +
+        "(tiêu chí 2,3,5). Nhận xét NGẮN GỌN theo gạch đầu dòng: nêu điểm đạt, điểm chưa đạt và " +
+        "đề xuất sửa cụ thể. Chú ý: số tín chỉ hợp lý, CLO đo được theo Bloom, ma trận CLO–PLO, " +
+        "học liệu trong 5 năm, constructive alignment, trọng số đánh giá phủ hết CLO.",
+    },
+    {
+      role: "user",
+      content:
+        `Học phần: ${course.code} — ${course.name} (${course.credits} tín chỉ)\n` +
+        `Tiên quyết: ${f("prerequisites")}\nMô tả: ${f("description")}\n` +
+        `CLO:\n${clos}\nNội dung: ${f("content")}\nPhương pháp giảng dạy: ${f("teachingMethods")}\n` +
+        `Đánh giá: ${f("assessmentMethods")}\nHọc liệu: ${f("materials")}`,
+    },
+  ]);
+  await writeAudit({ action: "ai.review_syllabus", entity: "Course", entityId: courseId });
+  return review;
+}
+
 /** AI trợ lý hướng dẫn theo màn hình: trả lời câu hỏi của người dùng dựa trên
  *  ngữ cảnh màn hình đang xem (không bịa tính năng ngoài phần mềm). */
 export async function assistantAnswer(screen: string, question: string): Promise<string> {

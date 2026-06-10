@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { api, authedUrl, ApiClientError } from "@/lib/api/client";
 import { PageHeader, Spinner, ErrorBox } from "@/components/ui";
+import { Modal } from "@/components/Modal";
 
 interface Clo { id: string; code: string; description: string }
 interface Course {
@@ -31,6 +32,8 @@ export default function CourseDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [aiField, setAiField] = useState<FieldKey | null>(null);
+  const [aiNote, setAiNote] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -51,22 +54,51 @@ export default function CourseDetailPage() {
     finally { setSaving(false); }
   }
 
+  // AI soạn/cải thiện một mục -> đưa vào ô (chưa lưu, người dùng kiểm tra rồi bấm Lưu).
+  async function aiDraft(key: FieldKey) {
+    setAiField(key); setAiNote(null);
+    try {
+      const r = await api.post<{ text: string }>("/api/ai/draft-course-field", { courseId: id, field: key });
+      if (r?.text) setForm((s) => ({ ...s, [key]: r.text }));
+      setAiNote("AI đã soạn nháp — kiểm tra rồi bấm “Lưu đề cương”.");
+    } catch (e) {
+      setAiNote(e instanceof ApiClientError ? e.message : "Lỗi gọi AI (cần bật AI + có quyền)");
+    } finally { setAiField(null); }
+  }
+
   if (error) return <ErrorBox message={error} />;
   if (!course) return <Spinner />;
 
   return (
     <div>
-      <PageHeader title={`${course.code} · ${course.name}`} subtitle={`${course.credits} tín chỉ · đề cương học phần`} />
+      <PageHeader
+        title={`${course.code} · ${course.name}`}
+        subtitle={`${course.credits} tín chỉ · đề cương học phần`}
+        action={<ReviewButton courseId={course.id} />}
+      />
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
           <div className="card p-5">
             <div className="space-y-4">
               {FIELDS.map((f) => (
                 <div key={f.key}>
-                  <label className="label">{f.label}</label>
+                  <div className="flex items-center justify-between">
+                    <label className="label">{f.label}</label>
+                    {f.key !== "rubric" && (
+                      <button
+                        type="button"
+                        className="text-xs text-indigo-600 hover:underline disabled:text-slate-300"
+                        disabled={aiField !== null}
+                        onClick={() => aiDraft(f.key)}
+                      >
+                        {aiField === f.key ? "Đang soạn…" : "✨ AI soạn/cải thiện"}
+                      </button>
+                    )}
+                  </div>
                   <textarea className="input min-h-20" value={(form[f.key] as string) ?? ""} onChange={(e) => setForm({ ...form, [f.key]: e.target.value })} />
                 </div>
               ))}
+              {aiNote && <p className="text-sm text-amber-600">{aiNote}</p>}
             </div>
             <div className="mt-4 flex items-center gap-3">
               <button className="btn-primary" onClick={save} disabled={saving}>{saving ? "Đang lưu…" : "Lưu đề cương"}</button>
@@ -104,6 +136,36 @@ function FilesPanel({ courseId }: { courseId: string }) {
         ))}
       </ul>
     </div>
+  );
+}
+
+/** AI rà soát đề cương theo Mẫu 5A/5B + AUN-QA — hiển thị nhận xét/đề xuất sửa. */
+function ReviewButton({ courseId }: { courseId: string }) {
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [review, setReview] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function run() {
+    setOpen(true); setBusy(true); setErr(null); setReview(null);
+    try {
+      const r = await api.post<{ review: string }>(`/api/ai/review-syllabus?courseId=${courseId}`, {});
+      setReview(r?.review ?? "");
+    } catch (e) {
+      setErr(e instanceof ApiClientError ? e.message : "Lỗi gọi AI (cần bật AI + có quyền)");
+    } finally { setBusy(false); }
+  }
+
+  return (
+    <>
+      <button className="btn-outline" onClick={run}>✨ AI rà soát đề cương</button>
+      <Modal open={open} title="AI rà soát đề cương (Mẫu 5A/5B · AUN-QA)" onClose={() => setOpen(false)}>
+        {busy && <p className="text-sm text-slate-500">Đang rà soát…</p>}
+        {err && <ErrorBox message={err} />}
+        {review && <pre className="max-h-96 overflow-y-auto whitespace-pre-wrap rounded-lg border border-slate-100 p-3 text-sm text-slate-700">{review}</pre>}
+        <div className="mt-3 flex justify-end"><button className="btn-primary" onClick={() => setOpen(false)}>Đóng</button></div>
+      </Modal>
+    </>
   );
 }
 
