@@ -1171,12 +1171,13 @@ model Document {
   id          String    @id @default(cuid())
   tenantId    String
   title       String
-  category    String    @default("other") // ctdt_source | regulation | template | report | other
+  category    String    @default("other") // ctdt_source | syllabus | regulation | template | report | other
   fileName    String
   storageKey  String
   size        Int       @default(0)
   contentType String?
   programmeId String? // tài liệu gắn với một CTĐT (tùy chọn)
+  courseId    String? // tài liệu gắn với một học phần (vd file đề cương)
   note        String?
   status      String    @default("active")
   createdAt   DateTime  @default(now())
@@ -1189,6 +1190,7 @@ model Document {
 
   @@index([tenantId, category])
   @@index([tenantId, programmeId])
+  @@index([tenantId, courseId])
   @@index([tenantId, deletedAt])
   @@map("documents")
 }

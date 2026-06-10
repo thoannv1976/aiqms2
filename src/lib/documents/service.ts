@@ -11,6 +11,7 @@ import { paginated, type PageParams } from "@/lib/http/pagination";
 
 export const DOCUMENT_CATEGORIES = [
   "ctdt_source", // file CTĐT gốc (Word)
+  "syllabus", // file đề cương học phần (gắn courseId)
   "regulation", // quy chế / quy định
   "template", // biểu mẫu
   "report", // báo cáo
@@ -19,6 +20,7 @@ export const DOCUMENT_CATEGORIES = [
 
 export const DOC_CATEGORY_LABELS: Record<string, string> = {
   ctdt_source: "CTĐT gốc",
+  syllabus: "Đề cương học phần",
   regulation: "Quy chế / quy định",
   template: "Biểu mẫu",
   report: "Báo cáo",
@@ -29,6 +31,7 @@ export const createDocumentSchema = z.object({
   title: z.string().min(1),
   category: z.enum(DOCUMENT_CATEGORIES).default("other"),
   programmeId: z.string().optional(),
+  courseId: z.string().optional(),
   note: z.string().optional(),
 });
 
@@ -47,6 +50,7 @@ export async function createDocument(
       title: meta.title || file.fileName,
       category: meta.category,
       programmeId: meta.programmeId ?? null,
+      courseId: meta.courseId ?? null,
       note: meta.note ?? null,
       fileName: file.fileName,
       storageKey: key,
@@ -59,11 +63,15 @@ export async function createDocument(
   return doc;
 }
 
-export async function listDocuments(p: PageParams, filters: { category?: string; programmeId?: string } = {}) {
+export async function listDocuments(
+  p: PageParams,
+  filters: { category?: string; programmeId?: string; courseId?: string } = {},
+) {
   const where: Prisma.DocumentWhereInput = {};
   if (p.search) where.title = { contains: p.search, mode: "insensitive" };
   if (filters.category) where.category = filters.category;
   if (filters.programmeId) where.programmeId = filters.programmeId;
+  if (filters.courseId) where.courseId = filters.courseId;
   const [items, total] = await Promise.all([
     prisma.document.findMany({ where, orderBy: { createdAt: "desc" }, skip: p.skip, take: p.take }),
     prisma.document.count({ where }),
@@ -82,6 +90,21 @@ export async function downloadDocument(id: string) {
   const body = await getStorage().get(doc.storageKey);
   if (!body) throw notFound("File không tồn tại trong kho lưu trữ");
   return { body, fileName: doc.fileName, contentType: doc.contentType ?? "application/octet-stream" };
+}
+
+/** Gắn tài liệu với học phần/CTĐT (vd sau khi apply import đề cương). */
+export async function linkDocument(id: string, link: { courseId?: string; programmeId?: string }) {
+  const ctx = requireTenantContext();
+  const doc = await prisma.document.findFirst({ where: { id } });
+  if (!doc) throw notFound("Tài liệu không tồn tại");
+  return prisma.document.update({
+    where: { id },
+    data: {
+      courseId: link.courseId ?? doc.courseId,
+      programmeId: link.programmeId ?? doc.programmeId,
+      updatedBy: ctx.actorId,
+    },
+  });
 }
 
 export async function deleteDocument(id: string) {

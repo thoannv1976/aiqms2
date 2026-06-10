@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { api, ApiClientError } from "@/lib/api/client";
+import { api, authedUrl, ApiClientError } from "@/lib/api/client";
 import { PageHeader, Spinner, ErrorBox } from "@/components/ui";
 
 interface Clo { id: string; code: string; description: string }
@@ -74,8 +74,35 @@ export default function CourseDetailPage() {
             </div>
           </div>
         </div>
-        <CloPanel courseId={course.id} clos={course.clos} onChanged={load} />
+        <div className="space-y-4 lg:col-span-1">
+          <CloPanel courseId={course.id} clos={course.clos} onChanged={load} />
+          <FilesPanel courseId={course.id} />
+        </div>
       </div>
+    </div>
+  );
+}
+
+/** Các file đề cương/tài liệu đã upload gắn với học phần này (kho Tài liệu). */
+function FilesPanel({ courseId }: { courseId: string }) {
+  const [files, setFiles] = useState<{ id: string; title: string; fileName: string; createdAt: string }[]>([]);
+  useEffect(() => {
+    api.get<{ items: { id: string; title: string; fileName: string; createdAt: string }[] }>(
+      `/api/documents?courseId=${courseId}&pageSize=20`,
+    ).then((d) => setFiles(d?.items ?? [])).catch(() => {});
+  }, [courseId]);
+  if (files.length === 0) return null;
+  return (
+    <div className="card p-5">
+      <h3 className="mb-3 text-sm font-semibold text-slate-700">Tệp đề cương đã upload</h3>
+      <ul className="space-y-2">
+        {files.map((f) => (
+          <li key={f.id} className="flex items-center justify-between gap-2 text-sm">
+            <span className="line-clamp-1 text-slate-700" title={f.fileName}>{f.title}</span>
+            <a className="shrink-0 text-indigo-600 hover:underline" href={authedUrl(`/api/documents/${f.id}/download`)}>Tải</a>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -91,7 +118,7 @@ function CloPanel({ courseId, clos, onChanged }: { courseId: string; clos: Clo[]
     } catch (e2) { setErr(e2 instanceof ApiClientError ? e2.message : "Lỗi thêm CLO"); }
   }
   return (
-    <div className="lg:col-span-1">
+    <div>
       <div className="card p-5">
         <h3 className="mb-3 text-sm font-semibold text-slate-700">Chuẩn đầu ra học phần (CLO)</h3>
         <ul className="mb-4 space-y-2">

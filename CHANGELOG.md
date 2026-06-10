@@ -21,6 +21,21 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
 - **Lưu trữ GCS**: cài sẵn `@aws-sdk/client-s3` → driver S3 chạy với GCS (S3-compatible) chỉ
   bằng cấu hình env; hướng dẫn HMAC + bucket ở `DEPLOY.md` mục 7b.
 
+## [Import đề cương học phần từ Word/PDF + quản lý file đề cương] — ✅ Done
+
+- **Import đề cương từ .docx/.pdf** (`src/lib/import/syllabus.ts`, thêm `pdf-parse` cho PDF):
+  trích mã/tên/tín chỉ/tiên quyết/mô tả/nội dung chương/PP giảng dạy/PP đánh giá/học liệu/
+  **CLO** + **ma trận CLO–PLO** — ưu tiên AI (`aiCompleteJson` + Zod), fallback bộ luật bám
+  Mẫu 5A/5B ĐHNT. Human-in-the-loop: `POST /api/import/courses/doc` (xem trước + lưu file
+  gốc) → `…/doc/apply` (upsert học phần + đề cương + CLO + liên kết CLO–PLO; gắn file với
+  học phần và CTĐT chọn ở preview). Nút **"Import Word/PDF (đề cương)"** trên trang Đề cương.
+  Kiểm thử trên 2 file đề cương TMAE306 thật: đúng mã, tên, 3 TC, tiên quyết, 5 CLO,
+  15 liên kết CLO–PLO, 9 học liệu (kể cả khi AI tắt).
+- **Quản lý file đề cương**: `Document` thêm `courseId` (migration `document_course_link`) +
+  category **`syllabus`**; lọc tài liệu theo học phần (`GET /api/documents?courseId=`);
+  panel **"Tệp đề cương đã upload"** trên trang chi tiết học phần (tải về); kho Tài liệu có
+  nhóm "Đề cương học phần". 100 test (thêm 3 test syllabus: luật, apply idempotent, PDF).
+
 ## [Import CTĐT từ Word + Kho tài liệu] — ✅ Done
 
 - **Import CTĐT từ file Word (.docx)**: `src/lib/import/docx.ts` trích xuất văn bản (không

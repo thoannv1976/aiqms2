@@ -7,6 +7,7 @@ import { PageHeader, ErrorBox } from "@/components/ui";
 import { DataTable, Pagination, type Column } from "@/components/DataTable";
 import { Modal } from "@/components/Modal";
 import { ImportButton } from "@/components/ImportButton";
+import { SyllabusImportButton } from "@/components/SyllabusImportButton";
 
 interface Course { id: string; code: string; name: string; credits: number; clos: { id: string }[] }
 interface PageData { items: Course[]; total: number; page: number; totalPages: number }
@@ -38,6 +39,7 @@ export default function CoursesPage() {
       <PageHeader title="Đề cương học phần" subtitle="Quản lý học phần, CLO và đề cương chi tiết"
         action={
           <div className="flex items-center gap-2">
+            <SyllabusImportButton onDone={() => load(1)} />
             <ImportButton endpoint="/api/import/courses" onDone={() => load(1)} />
             <button className="btn-primary" onClick={() => setOpen(true)}>+ Thêm học phần</button>
           </div>

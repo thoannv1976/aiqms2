@@ -13,7 +13,7 @@ interface Doc {
 interface PageData { items: Doc[]; total: number; page: number; totalPages: number }
 
 const CATS: Record<string, string> = {
-  ctdt_source: "CTĐT gốc", regulation: "Quy chế / quy định", template: "Biểu mẫu", report: "Báo cáo", other: "Khác",
+  ctdt_source: "CTĐT gốc", syllabus: "Đề cương học phần", regulation: "Quy chế / quy định", template: "Biểu mẫu", report: "Báo cáo", other: "Khác",
 };
 const fmtSize = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
 
