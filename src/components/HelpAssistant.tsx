@@ -10,10 +10,25 @@ export function HelpAssistant() {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const [answer, setAnswer] = useState<string | null>(null);
+  const [actions, setActions] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const guide = resolveGuide(pathname);
+
+  async function suggest() {
+    setBusy(true); setNote(null); setActions(null);
+    try {
+      const r = await api.post<{ actions: string }>(`/api/ai/screen-actions?screen=${encodeURIComponent(pathname)}`, {});
+      setActions(r?.actions ?? "");
+    } catch (e) {
+      setNote(
+        e instanceof ApiClientError && e.status === 403
+          ? "Trợ lý AI đang tắt hoặc bạn chưa có quyền dùng AI."
+          : e instanceof Error ? e.message : "Lỗi gọi AI",
+      );
+    } finally { setBusy(false); }
+  }
 
   async function ask() {
     if (!q.trim()) return;
@@ -73,6 +88,18 @@ export function HelpAssistant() {
               ) : (
                 <p className="text-sm text-slate-500">Chưa có hướng dẫn cho màn hình này.</p>
               )}
+
+              {/* AI gợi ý hành động tiếp theo */}
+              <div className="border-t border-slate-200 pt-4">
+                <button className="btn-outline w-full" onClick={suggest} disabled={busy}>
+                  {busy ? "Đang gợi ý…" : "✨ AI gợi ý việc nên làm tiếp"}
+                </button>
+                {actions && (
+                  <div className="mt-3 whitespace-pre-wrap rounded-lg border border-emerald-100 bg-emerald-50/50 p-3 text-sm text-slate-700">
+                    {actions}
+                  </div>
+                )}
+              </div>
 
               {/* Hỏi AI */}
               <div className="border-t border-slate-200 pt-4">

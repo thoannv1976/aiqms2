@@ -21,6 +21,15 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
 - **Lưu trữ GCS**: cài sẵn `@aws-sdk/client-s3` → driver S3 chạy với GCS (S3-compatible) chỉ
   bằng cấu hình env; hướng dẫn HMAC + bucket ở `DEPLOY.md` mục 7b.
 
+## [Task → hồ sơ minh chứng + AI gợi ý hành động mọi màn hình] — ✅ Done
+
+- **"→ Hồ sơ"** tại mỗi file nộp ở task: `promoteDocumentToEvidence` tạo **Evidence
+  (MC-XXXX)**, tự **gắn tiêu chí** của công việc, đính kèm chính file đó → nối task → hồ sơ
+  AUN-QA. API `POST /api/documents/[id]/to-evidence` (quyền upload MC / tạo dữ liệu).
+- **AI gợi ý việc nên làm tiếp** trên MỌI màn hình: nút **"✨ AI gợi ý việc nên làm tiếp"**
+  trong Trợ lý hướng dẫn (nút "?") → `suggestScreenActions` đề xuất 3–6 hành động ưu tiên bám
+  ngữ cảnh màn hình. API `POST /api/ai/screen-actions`. 129 test.
+
 ## [Nộp minh chứng trực tiếp theo công việc] — ✅ Done
 
 - **Gắn file minh chứng vào đúng công việc** (`Document.taskId`, migration `document_task_link`,

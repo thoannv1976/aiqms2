@@ -684,3 +684,23 @@ export async function assistantAnswer(screen: string, question: string): Promise
     { role: "user", content: `${ctx}\n\nCâu hỏi của người dùng: ${question}` },
   ]);
 }
+
+/** AI gợi ý các HÀNH ĐỘNG TIẾP THEO phù hợp cho màn hình hiện tại (chủ động, không cần câu hỏi). */
+export async function suggestScreenActions(screen: string): Promise<string> {
+  const { resolveGuide } = await import("@/lib/help/screens");
+  const g = resolveGuide(screen);
+  const ctx = g
+    ? `Màn hình: ${g.title}\nMục đích: ${g.purpose}\nCác thao tác chính:\n- ${g.steps.join("\n- ")}${g.role ? `\nVai trò thường dùng: ${g.role}` : ""}`
+    : `Màn hình: ${screen}`;
+  return aiComplete("screen_actions", [
+    {
+      role: "system",
+      content:
+        "Bạn là trợ lý AIQMS (kiểm định CTĐT theo AUN-QA). Dựa trên màn hình người dùng đang xem, " +
+        "ĐỀ XUẤT 3–6 HÀNH ĐỘNG TIẾP THEO cụ thể, đúng thứ tự ưu tiên, mỗi hành động 1 dòng gạch đầu dòng, " +
+        "tiếng Việt, ngắn gọn, bám đúng thao tác có trên phần mềm (không bịa tính năng). " +
+        "Nếu hợp lý, gợi ý dùng các nút AI sẵn có trên màn hình đó.",
+    },
+    { role: "user", content: `${ctx}\n\nHãy đề xuất các việc nên làm tiếp theo tại màn hình này.` },
+  ]);
+}

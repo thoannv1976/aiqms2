@@ -12,6 +12,7 @@ import {
   gapCheck,
   summarizeEvidence,
   assistantAnswer,
+  suggestScreenActions,
   suggestImprovementActions,
   draftCourseField,
   draftFullSyllabus,
@@ -137,6 +138,15 @@ describe("P8 — Lớp AI (service có kiểm soát, human-in-the-loop)", () => 
       await updateSettings({ enabled: true });
       const ans = await assistantAnswer("/sars/abc", "Làm sao nhập điểm tự đánh giá?");
       expect(ans).toContain("Báo cáo tự đánh giá"); // ngữ cảnh màn hình SAR được đưa vào
+    });
+  });
+
+  it("AI gợi ý hành động theo màn hình trả về nội dung bám ngữ cảnh", async () => {
+    const t = await createTenantFixture("demo");
+    await asTenant(t.id, async () => {
+      await updateSettings({ enabled: true });
+      const actions = await suggestScreenActions("/matrices");
+      expect(actions.length).toBeGreaterThan(0);
     });
   });
 

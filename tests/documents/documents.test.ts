@@ -2,7 +2,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { prisma, resetDb } from "../helpers/db";
 import { createTenantFixture } from "../helpers/fixtures";
 import { runWithTenant } from "@/lib/tenant/context";
-import { createDocument, downloadDocument, listDocuments } from "@/lib/documents/service";
+import { createDocument, downloadDocument, listDocuments, promoteDocumentToEvidence } from "@/lib/documents/service";
 import { fileCountByTask } from "@/lib/tasks/service";
 
 const asTenant = <T>(tenantId: string, fn: () => Promise<T>) =>
@@ -45,6 +45,25 @@ describe("Kho tài liệu (upload/lưu trữ/quản lý)", () => {
       expect(counts.get("task-1")).toBe(2);
       expect(counts.get("task-2")).toBe(1);
       expect(counts.get("task-3")).toBeUndefined();
+    });
+  });
+
+  it("đưa file nộp ở task vào hồ sơ minh chứng: tạo Evidence MC-XXXX + đính kèm file", async () => {
+    const t = await createTenantFixture("demo");
+    await asTenant(t.id, async () => {
+      const task = await prisma.task.create({ data: { tenantId: t.id, title: "Thu thập C1", type: "cycle" } });
+      const doc = await createDocument(
+        { title: "Biên bản họp", category: "task_evidence", taskId: task.id },
+        { fileName: "bb.pdf", body: Buffer.from("noi dung bb") },
+      );
+      const r = await promoteDocumentToEvidence(doc.id);
+      expect(r.code).toMatch(/^MC-\d{4}$/);
+      const ev = await prisma.evidence.findFirstOrThrow({ where: { id: r.evidenceId }, include: { files: true } });
+      expect(ev.title).toBe("Biên bản họp");
+      expect(ev.files).toHaveLength(1);
+      // Tài liệu được đánh dấu đã đưa vào hồ sơ.
+      const fresh = await prisma.document.findFirstOrThrow({ where: { id: doc.id } });
+      expect(fresh.note).toContain(r.code);
     });
   });
 

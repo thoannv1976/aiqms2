@@ -8,6 +8,7 @@ import { softDeleteData } from "@/lib/prisma/soft-delete";
 import { getStorage, safePut, tenantKey } from "@/lib/storage";
 import { badRequest, notFound } from "@/lib/http/responses";
 import { paginated, type PageParams } from "@/lib/http/pagination";
+import { addFile, createEvidence } from "@/lib/evidence/service";
 
 export const DOCUMENT_CATEGORIES = [
   "ctdt_source", // file CTĐT gốc (Word)
@@ -118,4 +119,36 @@ export async function deleteDocument(id: string) {
   if (!doc) throw notFound("Tài liệu không tồn tại");
   await prisma.document.update({ where: { id }, data: softDeleteData(ctx.actorId) });
   await writeAudit({ action: "document.delete", entity: "Document", entityId: id });
+}
+
+/**
+ * Đưa một tài liệu (vd file nộp ở task) vào HỒ SƠ MINH CHỨNG chính thức: tạo Evidence
+ * (tự sinh mã MC-XXXX), gắn tiêu chí của công việc (nếu có), đính kèm chính file đó.
+ */
+export async function promoteDocumentToEvidence(documentId: string) {
+  const ctx = requireTenantContext();
+  const doc = await prisma.document.findFirst({ where: { id: documentId } });
+  if (!doc) throw notFound("Tài liệu không tồn tại");
+  const bytes = await getStorage().get(doc.storageKey);
+  if (!bytes) throw badRequest("File không còn trong kho lưu trữ");
+
+  // Tiêu chí lấy từ công việc gắn với tài liệu (nếu có).
+  let criterionIds: string[] = [];
+  if (doc.taskId) {
+    const task = await prisma.task.findFirst({ where: { id: doc.taskId }, select: { criterionId: true } });
+    if (task?.criterionId) criterionIds = [task.criterionId];
+  }
+
+  const evidence = await createEvidence({
+    title: doc.title || doc.fileName,
+    academicYear: undefined,
+    criterionIds,
+    requirementIds: [],
+  });
+  await addFile(evidence.id, { fileName: doc.fileName, body: bytes, contentType: doc.contentType ?? undefined });
+
+  // Đánh dấu tài liệu đã đưa vào hồ sơ (ghi chú).
+  await prisma.document.update({ where: { id: documentId }, data: { note: `Đã đưa vào hồ sơ minh chứng: ${evidence.code}`, updatedBy: ctx.actorId } });
+  await writeAudit({ action: "document.to_evidence", entity: "Evidence", entityId: evidence.id, meta: { documentId } });
+  return { evidenceId: evidence.id, code: evidence.code };
 }

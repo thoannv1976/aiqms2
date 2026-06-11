@@ -50,6 +50,16 @@ export function TaskEvidenceUpload({ taskId, initialCount = 0, onChanged }: { ta
     try { await api.delete(`/api/documents/${id}`); await load(); onChanged?.(); } catch { /* bỏ qua */ }
   }
 
+  async function toEvidence(id: string) {
+    setBusy(true); setNote(null);
+    try {
+      const r = await api.post<{ code: string }>(`/api/documents/${id}/to-evidence`, {});
+      setNote(`Đã đưa vào hồ sơ minh chứng: ${r?.code ?? ""}`);
+    } catch (e) {
+      setNote(e instanceof ApiClientError ? e.message : "Lỗi đưa vào hồ sơ");
+    } finally { setBusy(false); }
+  }
+
   return (
     <div className="text-xs">
       <button className="btn-outline h-9 py-0 text-xs leading-9" onClick={() => setOpen((o) => !o)}>
@@ -66,7 +76,8 @@ export function TaskEvidenceUpload({ taskId, initialCount = 0, onChanged }: { ta
             <ul className="mt-2 max-h-32 space-y-1 overflow-y-auto">
               {files.map((f) => (
                 <li key={f.id} className="flex items-center justify-between gap-2">
-                  <a className="line-clamp-1 text-indigo-600 hover:underline" href={authedUrl(`/api/documents/${f.id}/download`)} title={f.fileName}>{f.fileName}</a>
+                  <a className="line-clamp-1 flex-1 text-indigo-600 hover:underline" href={authedUrl(`/api/documents/${f.id}/download`)} title={f.fileName}>{f.fileName}</a>
+                  <button className="shrink-0 text-emerald-600 hover:underline disabled:text-slate-300" disabled={busy} onClick={() => toEvidence(f.id)} title="Tạo minh chứng MC-XXXX gắn tiêu chí">→ Hồ sơ</button>
                   <button className="shrink-0 text-rose-500 hover:underline" onClick={() => remove(f.id)}>Gỡ</button>
                 </li>
               ))}
