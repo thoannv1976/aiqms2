@@ -18,11 +18,13 @@ import {
   draftFullSyllabus,
   generateCompliantSyllabus,
   reviewCourseSyllabus,
+  generateCyclePlan,
 } from "@/lib/ai/features";
 import { createPlan } from "@/lib/improvement/service";
 import { createEvidence } from "@/lib/evidence/service";
 import { createProgramme } from "@/lib/programmes/service";
 import { createCycle, createSar, getSar } from "@/lib/sar/service";
+import { applyCyclePlan, listCycleTasks } from "@/lib/cycle-plan/service";
 
 let aunVersionId: string;
 const asTenant = <T>(tenantId: string, fn: () => Promise<T>) =>
@@ -36,6 +38,26 @@ describe("P8 — Lớp AI (service có kiểm soát, human-in-the-loop)", () => 
   });
   beforeEach(resetDb);
   afterAll(() => prisma.$disconnect());
+
+  it("AI tạo kế hoạch đợt (MockProvider) trả công việc theo từng tiêu chí + áp dụng được", async () => {
+    const t = await createTenantFixture("demo");
+    await asTenant(t.id, async () => {
+      const prog = await createProgramme({ code: "SBI", name: "SBI 2026", level: "bachelor", initialVersion: "2026" });
+      const cycle = await createCycle({ name: "Kiểm định SBI đợt 4", standardVersionId: aunVersionId, programmeId: prog.id });
+
+      const plan = await generateCyclePlan(cycle.id);
+      // 8 tiêu chí × (thu thập MC + viết SAR) + các công việc chung > 0.
+      expect(plan.tasks.length).toBeGreaterThan(8);
+      expect(plan.tasks.some((x) => x.criterionCode === "C1")).toBe(true);
+      expect(plan.tasks.every((x) => x.title.trim().length > 0)).toBe(true);
+
+      // Áp dụng kế hoạch -> tạo task thật trong đợt, gắn đúng tiêu chí.
+      const res = await applyCyclePlan(cycle.id, plan);
+      expect(res.created).toBe(plan.tasks.length);
+      const tasks = await listCycleTasks(cycle.id);
+      expect(tasks.some((x) => x.criterionCode === "C1")).toBe(true);
+    });
+  });
 
   it("mã hóa khóa API: roundtrip + có prefix phiên bản", () => {
     const enc = encryptSecret("sk-secret-123");

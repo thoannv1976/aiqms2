@@ -21,6 +21,15 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
 - **Lưu trữ GCS**: cài sẵn `@aws-sdk/client-s3` → driver S3 chạy với GCS (S3-compatible) chỉ
   bằng cấu hình env; hướng dẫn HMAC + bucket ở `DEPLOY.md` mục 7b.
 
+## [Sửa AI tạo kế hoạch đợt trả 0 công việc] — ✅ Done
+- **Lỗi**: tenant chưa cấu hình API key AI → `resolveAi()` rơi về `MockProvider`, mà mock không
+  trả khóa `tasks` nên "AI tạo kế hoạch" luôn báo "AI đề xuất 0 công việc".
+- **Sửa**: `MockProvider` nay sinh sẵn kế hoạch mẫu (deterministic) khi prompt là yêu cầu lập
+  kế hoạch (nhận diện qua `dueOffsetDays`): mỗi tiêu chí C1..Cn có công việc thu thập minh chứng +
+  viết SAR, kèm các công việc chung (lập kế hoạch, rà soát, đánh giá nội bộ, xuất hồ sơ) với
+  vai trò/sản phẩm/độ ưu tiên/hạn. Demo dùng được ngay; có key thật vẫn ưu tiên AI thật.
+  Test trên Postgres (`tests/ai/ai.test.ts`: tạo kế hoạch + áp dụng → task gắn đúng tiêu chí).
+
 ## [Quản lý phiên bản tài liệu (D10)] — ✅ Done
 - **Version chain cho `Document`** (migration `document_versioning`): thêm `version`, `rootId`,
   `isCurrent`. `uploadNewVersion` tạo bản mới cùng chuỗi (tăng version, hạ cờ bản cũ),
