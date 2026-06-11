@@ -7,6 +7,7 @@ import { createProgramme } from "@/lib/programmes/service";
 import { createCycle, createSar, getSar, updateCriterionResponse } from "@/lib/sar/service";
 import { addFile, createEvidence } from "@/lib/evidence/service";
 import { createExportJob, downloadJob, getJob } from "@/lib/export/jobs";
+import { buildMyTasksXlsx, buildMyTasksDocx } from "@/lib/export/my-tasks-export";
 import { addAction, addKpi, createPlan } from "@/lib/improvement/service";
 
 let aunVersionId: string;
@@ -61,6 +62,23 @@ describe("P7 — Xuất báo cáo (background job)", () => {
       const dl = await downloadJob(job.id);
       expect(isZip(dl.body)).toBe(true);
       expect(dl.body.byteLength).toBeGreaterThan(2000);
+    });
+  });
+
+  it("xuất CÔNG VIỆC CỦA TÔI ra Excel và Word (đầy đủ đợt/minh chứng)", async () => {
+    const t = await createTenantFixture("demo");
+    await asTenant(t.id, async () => {
+      const cycle = await createCycle({ name: "Đợt của tôi", standardVersionId: aunVersionId });
+      await prisma.task.create({ data: { tenantId: t.id, title: "Thu thập MC C5", type: "cycle", cycleId: cycle.id, assigneeId: "u1", deliverables: "Hồ sơ giảng viên", priority: "high" } });
+      await prisma.task.create({ data: { tenantId: t.id, title: "Việc ngoài đợt", assigneeId: "u1" } });
+
+      const xlsx = await buildMyTasksXlsx();
+      expect(isZip(xlsx)).toBe(true);
+      expect(xlsx.byteLength).toBeGreaterThan(1000);
+
+      const docx = await buildMyTasksDocx();
+      expect(isZip(docx)).toBe(true);
+      expect(docx.byteLength).toBeGreaterThan(1000);
     });
   });
 

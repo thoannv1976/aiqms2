@@ -21,6 +21,13 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
 - **Lưu trữ GCS**: cài sẵn `@aws-sdk/client-s3` → driver S3 chạy với GCS (S3-compatible) chỉ
   bằng cấu hình env; hướng dẫn HMAC + bucket ở `DEPLOY.md` mục 7b.
 
+## [Xuất "Công việc của tôi" ra Excel/Word] — ✅ Done
+- Mỗi thành viên **xuất danh sách công việc của mình** đầy đủ chi tiết (tên người phụ trách, đợt
+  kiểm định, tiêu chí, công việc, **minh chứng phải nộp**, hạn, ưu tiên, trạng thái): Excel (bảng
+  phẳng) và Word (**nhóm theo từng đợt**). Route tải trực tiếp `GET /api/tasks/mine/export?format=xlsx|docx`
+  **chỉ cần DATA_VIEW** nên mọi vai trò (kể cả giảng viên không có quyền xuất báo cáo chung) đều dùng được.
+- Nút **⬇ Excel / ⬇ Word** ở góc trang "Công việc của tôi". Test trên Postgres (`tests/export/export.test.ts`).
+
 ## [Xuất bảng phân công đợt ra Excel/Word] — ✅ Done
 - **Xuất BẢNG PHÂN CÔNG** của một đợt tự đánh giá: `cycle_assignment_xlsx` (Excel — sheet "Phân công"
   đầy đủ STT/Công việc/Tiêu chí/Người phụ trách/Minh chứng phải nộp/Hạn/Trạng thái/MC đã nộp + sheet

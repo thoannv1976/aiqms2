@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { api, ApiClientError } from "@/lib/api/client";
+import { api, authedUrl, ApiClientError } from "@/lib/api/client";
 import { PageHeader, ErrorBox, Spinner } from "@/components/ui";
 import { TaskEvidenceUpload } from "@/components/TaskEvidenceUpload";
 
@@ -84,6 +84,12 @@ export default function MyTasksPage() {
       <PageHeader
         title="Công việc của tôi"
         subtitle="Công việc được giao — sắp xếp theo từng ĐỢT kiểm định; cập nhật trạng thái & nộp minh chứng"
+        action={tasks.length > 0 ? (
+          <div className="flex gap-2">
+            <a className="btn-outline" href={authedUrl("/api/tasks/mine/export?format=xlsx")}>⬇ Excel</a>
+            <a className="btn-outline" href={authedUrl("/api/tasks/mine/export?format=docx")}>⬇ Word</a>
+          </div>
+        ) : undefined}
       />
       {note && <p className="mb-3 text-sm text-emerald-600">{note}</p>}
 
