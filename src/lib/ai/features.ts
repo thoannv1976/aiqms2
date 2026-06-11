@@ -431,6 +431,60 @@ export async function suggestPloMatrix(
   return { cells, dimension, label: DIMENSION_LABELS[dimension] };
 }
 
+// ─── AI lập KẾ HOẠCH đợt tự đánh giá (AUN-QA) ───────────────────────────────
+const cyclePlanAiSchema = z.object({
+  tasks: z
+    .array(z.object({
+      title: z.string(),
+      type: z.string().optional(),
+      criterionCode: z.string().optional(),
+      deliverables: z.string().optional(),
+      role: z.string().optional(),
+      priority: z.enum(["low", "normal", "high"]).optional(),
+      dueOffsetDays: z.number().int().optional(),
+    }))
+    .default([]),
+});
+export type CyclePlanAi = z.infer<typeof cyclePlanAiSchema>;
+
+/** AI đề xuất kế hoạch công việc cho một đợt tự đánh giá AUN-QA (human-in-the-loop). */
+export async function generateCyclePlan(cycleId: string): Promise<CyclePlanAi> {
+  const cycle = await prisma.assessmentCycle.findFirst({ where: { id: cycleId } });
+  if (!cycle) throw notFound("Đợt tự đánh giá không tồn tại");
+  const criteria = await prisma.criterion.findMany({
+    where: { standardVersionId: cycle.standardVersionId },
+    orderBy: { order: "asc" },
+    select: { code: true, titleVi: true },
+  });
+  const critList = criteria.map((c) => `${c.code}: ${c.titleVi}`).join("\n") || "(C1..C8 theo AUN-QA)";
+
+  const result = await aiCompleteJson(
+    "cycle_plan",
+    [
+      {
+        role: "system",
+        content:
+          "Bạn là điều phối viên kiểm định AUN-QA. Lập KẾ HOẠCH CÔNG VIỆC cho một đợt tự đánh giá: " +
+          "thành lập nhóm, thu thập minh chứng theo từng tiêu chí, viết SAR theo tiêu chí, rà soát cấp khoa/trường, " +
+          "đánh giá nội bộ, hoàn thiện & xuất hồ sơ. Mỗi công việc nêu rõ MINH CHỨNG/sản phẩm phải nộp và vai trò phụ trách " +
+          "(qa_office, programme_committee, faculty, lecturer, internal_reviewer). Trả về JSON thuần.",
+      },
+      {
+        role: "user",
+        content:
+          `Đợt: ${cycle.name}${cycle.year ? ` (${cycle.year})` : ""}.\nCác tiêu chí áp dụng:\n${critList}\n\n` +
+          'Trả JSON: {"tasks":[{"title","type","criterionCode","deliverables","role","priority":"low|normal|high","dueOffsetDays"}]}. ' +
+          "Mỗi tiêu chí có ít nhất 1 công việc thu thập minh chứng + 1 công việc viết SAR; thêm các công việc chung " +
+          "(kế hoạch, rà soát, đánh giá nội bộ, xuất hồ sơ). dueOffsetDays = số ngày kể từ hôm nay. " +
+          "JSON THUẦN, không xuống dòng/giải thích thừa.",
+      },
+    ],
+    cyclePlanAiSchema,
+  );
+  await writeAudit({ action: "ai.cycle_plan", entity: "AssessmentCycle", entityId: cycleId, meta: { tasks: result.tasks.length } });
+  return result;
+}
+
 // ─── Chỉnh sửa ĐỀ CƯƠNG học phần bằng AI (human-in-the-loop) ─────────────────
 const COURSE_FIELD_LABELS: Record<string, string> = {
   description: "Mô tả học phần",

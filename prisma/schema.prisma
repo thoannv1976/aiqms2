@@ -71,6 +71,7 @@ model Tenant {
   outcomeMetrics       OutcomeMetric[]
   documents            Document[]
   ploMatrixCells       PloMatrixCell[]
+  notifications        Notification[]
   departments Department[]
 
   @@map("tenants")
@@ -567,10 +568,30 @@ model AssessmentCycle {
 
   tenant  Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   reports SelfAssessmentReport[]
+  tasks   Task[]
 
   @@index([tenantId, status])
   @@index([tenantId, deletedAt])
   @@map("assessment_cycles")
+}
+
+/// Thông báo trong ứng dụng cho người dùng (phân công, nhắc hạn, cập nhật đợt…).
+model Notification {
+  id        String   @id @default(cuid())
+  tenantId  String
+  userId    String
+  title     String
+  body      String?
+  link      String? // đường dẫn nội bộ (vd /cycles/<id>)
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  createdBy String?
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, userId, read])
+  @@index([tenantId, createdAt])
+  @@map("notifications")
 }
 
 model SelfAssessmentReport {
@@ -809,6 +830,8 @@ model Task {
   status      String    @default("todo") // todo | in_progress | review | done
   priority    String    @default("normal") // low | normal | high
   assigneeId  String?
+  cycleId     String? // công việc thuộc một đợt tự đánh giá
+  deliverables String? // minh chứng/sản phẩm thành viên phải nộp
   sarId       String?
   criterionId String?
   dueDate     DateTime?
@@ -818,11 +841,13 @@ model Task {
   updatedBy   String?
   deletedAt   DateTime?
 
-  tenant   Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant   Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  cycle    AssessmentCycle? @relation(fields: [cycleId], references: [id], onDelete: SetNull)
   comments TaskComment[]
 
   @@index([tenantId, status])
   @@index([tenantId, assigneeId])
+  @@index([tenantId, cycleId])
   @@index([tenantId, dueDate])
   @@index([tenantId, deletedAt])
   @@map("tasks")

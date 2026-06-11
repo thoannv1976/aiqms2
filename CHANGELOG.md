@@ -21,6 +21,19 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
 - **Lưu trữ GCS**: cài sẵn `@aws-sdk/client-s3` → driver S3 chạy với GCS (S3-compatible) chỉ
   bằng cấu hình env; hướng dẫn HMAC + bucket ở `DEPLOY.md` mục 7b.
 
+## [Đợt tự đánh giá: kế hoạch AI + phân công + minh chứng + thông báo] — ✅ Done
+
+- **Kế hoạch & phân công** trong đợt tự đánh giá (Task gắn `cycleId` + `deliverables`;
+  migration `cycle_plan_notifications`): trang chi tiết đợt có bảng công việc — tiêu chí
+  (C1–C8), **người phụ trách** (dropdown), **minh chứng phải nộp**, hạn, trạng thái; thêm
+  công việc thủ công. API `/api/cycles/[id]/tasks`.
+- **AI tạo kế hoạch đợt** (`generateCyclePlan` → nút "🤖 AI tạo kế hoạch"): đề xuất danh mục
+  công việc AUN-QA (thu thập minh chứng + viết SAR theo từng tiêu chí, rà soát, đánh giá nội
+  bộ, xuất hồ sơ) kèm vai trò & minh chứng phải nộp → duyệt → tạo hàng loạt (`…/plan`).
+- **Thông báo** (model `Notification`): tự gửi khi phân công; nút "🔔 Thông báo thành viên"
+  gửi cho mọi người được giao trong đợt; **chuông thông báo** trên thanh tiêu đề (đếm chưa
+  đọc, đánh dấu đã đọc). API `/api/notifications`. 122 test (thêm 4 test kế hoạch/thông báo).
+
 ## [Ma trận PLO mở rộng (bên liên quan / việc làm / PI-KPI / PDCA)] — ✅ Done
 
 - Thêm 4 chiều ma trận mở rộng vào `PloMatrixCell` (cùng mô hình, không migration mới):

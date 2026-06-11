@@ -7,6 +7,7 @@ import { writeAudit } from "@/lib/audit/log";
 import { softDeleteData } from "@/lib/prisma/soft-delete";
 import { notFound } from "@/lib/http/responses";
 import { paginated, type PageParams } from "@/lib/http/pagination";
+import { notify } from "@/lib/notifications/service";
 
 export const TASK_STATUSES = ["todo", "in_progress", "review", "done"] as const;
 
@@ -27,6 +28,7 @@ export const updateTaskSchema = z.object({
   status: z.enum(TASK_STATUSES).optional(),
   priority: z.enum(["low", "normal", "high"]).optional(),
   assigneeId: z.string().nullable().optional(),
+  deliverables: z.string().nullable().optional(),
   dueDate: z.coerce.date().nullable().optional(),
 });
 
@@ -72,6 +74,14 @@ export async function updateTask(id: string, input: z.infer<typeof updateTaskSch
   const existing = await prisma.task.findFirst({ where: { id } });
   if (!existing) throw notFound("Nhiệm vụ không tồn tại");
   const task = await prisma.task.update({ where: { id }, data: { ...input, updatedBy: ctx.actorId } });
+  // Phân công mới (đổi người phụ trách) -> thông báo cho người được giao.
+  if (input.assigneeId && input.assigneeId !== existing.assigneeId) {
+    await notify([input.assigneeId], {
+      title: `Bạn được phân công: ${task.title}`,
+      body: task.deliverables ? `Minh chứng cần nộp: ${task.deliverables}` : "Có công việc mới được giao cho bạn.",
+      link: task.cycleId ? `/cycles/${task.cycleId}` : "/tasks",
+    });
+  }
   await writeAudit({ action: "task.update", entity: "Task", entityId: id });
   return task;
 }

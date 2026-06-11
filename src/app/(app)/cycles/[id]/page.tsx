@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { api, ApiClientError } from "@/lib/api/client";
 import { PageHeader, StatusBadge, Spinner, ErrorBox } from "@/components/ui";
 import { Modal } from "@/components/Modal";
+import { CyclePlanPanel } from "@/components/CyclePlanPanel";
 
 interface Sar { id: string; title: string; status: string }
 interface Cycle { id: string; name: string; year: number | null; status: string; reports: Sar[] }
@@ -65,6 +66,8 @@ export default function CycleDetailPage() {
           </table>
         )}
       </div>
+
+      <CyclePlanPanel cycleId={cycle.id} />
 
       <CreateSar cycleId={cycle.id} open={open} onClose={() => setOpen(false)} onCreated={() => { setOpen(false); load(); }} />
     </div>

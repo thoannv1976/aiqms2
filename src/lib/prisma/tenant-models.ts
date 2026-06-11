@@ -61,6 +61,7 @@ export const TENANT_SCOPED_MODELS = new Set<string>([
   "OutcomeMetric",
   "Document",
   "PloMatrixCell",
+  "Notification",
 ]);
 
 export function isTenantScoped(model: string | undefined): boolean {

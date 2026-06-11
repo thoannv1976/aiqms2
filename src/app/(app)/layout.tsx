@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Sidebar } from "@/components/Sidebar";
 import { HelpAssistant } from "@/components/HelpAssistant";
+import { NotificationBell } from "@/components/NotificationBell";
 import { api, ApiClientError } from "@/lib/api/client";
 
 interface Me {
@@ -48,6 +49,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <header className="flex h-16 items-center justify-end gap-4 border-b border-slate-200 bg-white px-6">
+          <NotificationBell />
           <div className="text-right">
             <p className="text-sm font-medium text-slate-900">{me.user.fullName}</p>
             <p className="text-xs text-slate-400">
