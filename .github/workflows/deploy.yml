@@ -1,0 +1,53 @@
+name: Deploy to Cloud Run
+
+# Tự build + deploy lên Cloud Run mỗi khi push code lên các nhánh dưới đây.
+# Bỏ qua khi chỉ sửa tài liệu (*.md, docs/) để khỏi tốn build.
+on:
+  push:
+    branches:
+      - main
+      - claude/magical-dirac-pUhEy
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+  workflow_dispatch: {} # cho phép bấm chạy tay trong tab Actions
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    # Chỉ chạy khi đã cấu hình biến repo (xem scripts/setup-cicd.sh).
+    if: vars.GCP_SERVICE != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # cần cho Workload Identity Federation (không dùng key JSON)
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        name: Đăng nhập Google Cloud (WIF)
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Build từ source & deploy Cloud Run (giữ nguyên env/secrets/SQL hiện có)
+        run: |
+          gcloud run deploy "${{ vars.GCP_SERVICE }}" \
+            --source . \
+            --project "${{ vars.GCP_PROJECT_ID }}" \
+            --region "${{ vars.GCP_REGION }}" \
+            --quiet
+
+      - name: In URL service
+        run: |
+          gcloud run services describe "${{ vars.GCP_SERVICE }}" \
+            --project "${{ vars.GCP_PROJECT_ID }}" \
+            --region "${{ vars.GCP_REGION }}" \
+            --format 'value(status.url)'
