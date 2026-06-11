@@ -75,6 +75,27 @@ describe("P7 — Xuất báo cáo (background job)", () => {
     });
   });
 
+  it("xuất BẢNG PHÂN CÔNG đợt ra Excel và Word (cần cycleId)", async () => {
+    const t = await createTenantFixture("demo");
+    await asTenant(t.id, async () => {
+      const cycle = await createCycle({ name: "Đợt KĐ 2026", standardVersionId: aunVersionId });
+      await prisma.task.create({ data: { tenantId: t.id, title: "Thu thập MC C1", type: "cycle", cycleId: cycle.id, deliverables: "Hồ sơ PLO", priority: "high" } });
+
+      // thiếu cycleId -> job failed
+      await expect(createExportJob({ type: "cycle_assignment_xlsx" })).resolves.toMatchObject({ status: "failed" });
+
+      const xlsx = await createExportJob({ type: "cycle_assignment_xlsx", cycleId: cycle.id });
+      expect(xlsx.status).toBe("done");
+      expect(isZip((await downloadJob(xlsx.id)).body)).toBe(true);
+
+      const docx = await createExportJob({ type: "cycle_assignment_docx", cycleId: cycle.id });
+      expect(docx.status).toBe("done");
+      const dl = await downloadJob(docx.id);
+      expect(isZip(dl.body)).toBe(true);
+      expect(dl.fileName).toMatch(/\.docx$/);
+    });
+  });
+
   it("xuất danh mục minh chứng ra Excel (.xlsx)", async () => {
     const t = await createTenantFixture("demo");
     await asTenant(t.id, async () => {

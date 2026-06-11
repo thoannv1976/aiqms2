@@ -14,6 +14,8 @@ import { buildEvidenceZip } from "./evidence-zip";
 import { buildImprovementDocx } from "./improvement-docx";
 import { buildImprovementXlsx } from "./improvement-xlsx";
 import { buildSarDossierDocx } from "./sar-dossier-docx";
+import { buildCycleAssignmentXlsx } from "./cycle-assignment-xlsx";
+import { buildCycleAssignmentDocx } from "./cycle-assignment-docx";
 
 export const EXPORT_TYPES = [
   "sar_docx",
@@ -23,6 +25,8 @@ export const EXPORT_TYPES = [
   "evidence_zip",
   "improvement_docx",
   "improvement_xlsx",
+  "cycle_assignment_xlsx",
+  "cycle_assignment_docx",
 ] as const;
 export type ExportType = (typeof EXPORT_TYPES)[number];
 
@@ -31,6 +35,7 @@ export const createExportSchema = z.object({
   sarId: z.string().optional(),
   criterionId: z.string().optional(),
   planId: z.string().optional(),
+  cycleId: z.string().optional(),
 });
 
 type Params = z.infer<typeof createExportSchema>;
@@ -43,6 +48,8 @@ const MIME: Record<ExportType, { ext: string; contentType: string }> = {
   evidence_zip: { ext: "zip", contentType: "application/zip" },
   improvement_docx: { ext: "docx", contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" },
   improvement_xlsx: { ext: "xlsx", contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" },
+  cycle_assignment_xlsx: { ext: "xlsx", contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" },
+  cycle_assignment_docx: { ext: "docx", contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" },
 };
 
 async function runExporter(type: ExportType, params: Params): Promise<Buffer> {
@@ -65,6 +72,12 @@ async function runExporter(type: ExportType, params: Params): Promise<Buffer> {
       return buildImprovementDocx(params.planId);
     case "improvement_xlsx":
       return buildImprovementXlsx();
+    case "cycle_assignment_xlsx":
+      if (!params.cycleId) throw badRequest("cycle_assignment_xlsx cần cycleId");
+      return buildCycleAssignmentXlsx(params.cycleId);
+    case "cycle_assignment_docx":
+      if (!params.cycleId) throw badRequest("cycle_assignment_docx cần cycleId");
+      return buildCycleAssignmentDocx(params.cycleId);
   }
 }
 

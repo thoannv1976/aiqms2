@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { api, authedUrl, ApiClientError } from "@/lib/api/client";
 
-type ExportType = "sar_docx" | "sar_dossier_docx" | "sar_pdf" | "evidence_xlsx" | "evidence_zip";
+type ExportType = "sar_docx" | "sar_dossier_docx" | "sar_pdf" | "evidence_xlsx" | "evidence_zip" | "cycle_assignment_xlsx" | "cycle_assignment_docx";
 
 interface Job { id: string; status: string }
 
@@ -12,11 +12,13 @@ export function ExportButton({
   type,
   sarId,
   criterionId,
+  cycleId,
   label,
 }: {
   type: ExportType;
   sarId?: string;
   criterionId?: string;
+  cycleId?: string;
   label: string;
 }) {
   const [busy, setBusy] = useState(false);
@@ -26,7 +28,7 @@ export function ExportButton({
     setBusy(true);
     setNote("Đang tạo báo cáo…");
     try {
-      const job = await api.post<Job>("/api/exports", { type, sarId, criterionId });
+      const job = await api.post<Job>("/api/exports", { type, sarId, criterionId, cycleId });
       if (!job) throw new Error("Không tạo được job");
       // Poll tới khi done/failed (job chạy inline nên thường done ngay).
       let status = job.status;

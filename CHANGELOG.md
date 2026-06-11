@@ -21,6 +21,14 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
 - **Lưu trữ GCS**: cài sẵn `@aws-sdk/client-s3` → driver S3 chạy với GCS (S3-compatible) chỉ
   bằng cấu hình env; hướng dẫn HMAC + bucket ở `DEPLOY.md` mục 7b.
 
+## [Xuất bảng phân công đợt ra Excel/Word] — ✅ Done
+- **Xuất BẢNG PHÂN CÔNG** của một đợt tự đánh giá: `cycle_assignment_xlsx` (Excel — sheet "Phân công"
+  đầy đủ STT/Công việc/Tiêu chí/Người phụ trách/Minh chứng phải nộp/Hạn/Trạng thái/MC đã nộp + sheet
+  "Theo người" tổng hợp số việc·đã xong·ưu tiên cao) và `cycle_assignment_docx` (Word — tiêu đề đợt +
+  chương trình + bảng chi tiết). Thêm tham số `cycleId` cho job xuất.
+- Nút **"⬇ Excel/Word phân công"** ngay trong panel Kế hoạch & phân công của đợt; cũng chọn được ở
+  trang **Xuất báo cáo** (chọn đợt). Test trên Postgres (`tests/export/export.test.ts`).
+
 ## [Công việc của tôi: nhóm theo đợt kiểm định] — ✅ Done
 - Trang **"Công việc của tôi"** nay **nhóm công việc theo từng ĐỢT kiểm định** (việc ngoài đợt gom
   vào "Nhiệm vụ khác"): mỗi nhóm có **thanh tiến độ + đếm việc/đã xong/quá hạn**, thu gọn/mở rộng,

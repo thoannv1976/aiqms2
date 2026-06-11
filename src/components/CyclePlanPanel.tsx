@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, ApiClientError } from "@/lib/api/client";
 import { ErrorBox } from "@/components/ui";
 import { Modal } from "@/components/Modal";
+import { ExportButton } from "@/components/ExportButton";
 
 interface Member { id: string; fullName: string; roles: string[] }
 
@@ -150,6 +151,10 @@ export function CyclePlanPanel({ cycleId }: { cycleId: string }) {
           <button className="btn-outline" onClick={aiCreateTeam} disabled={busy}>👥 AI tạo nhóm &amp; tài khoản</button>
           <button className="btn-outline" onClick={autoAssign} disabled={busy}>🎯 Tự động phân công</button>
           <button className="btn-outline" onClick={notifyMembers} disabled={busy}>🔔 Thông báo thành viên</button>
+          {tasks.length > 0 && <>
+            <ExportButton type="cycle_assignment_xlsx" cycleId={cycleId} label="⬇ Excel phân công" />
+            <ExportButton type="cycle_assignment_docx" cycleId={cycleId} label="⬇ Word phân công" />
+          </>}
           <button className="btn-primary" onClick={() => setAddOpen(true)}>+ Thêm công việc</button>
         </div>
       </div>
