@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { authedRoute } from "@/lib/http/route";
 import { requirePermission } from "@/lib/rbac/check";
 import { PERMISSIONS } from "@/lib/rbac/permissions";
@@ -8,8 +9,11 @@ import { applyCyclePlan, cyclePlanSchema } from "@/lib/cycle-plan/service";
 export const runtime = "nodejs";
 type Params = { params: Promise<{ id: string }> };
 
-// Tạo hàng loạt công việc từ kế hoạch đã duyệt (AI).
+const schema = cyclePlanSchema.extend({ assignByRole: z.record(z.string(), z.string()).optional() });
+
+// Tạo hàng loạt công việc từ kế hoạch đã duyệt (AI) + giao việc theo vai trò.
 export const POST = authedRoute(async (req, _ctx, { params }: Params) => {
   requirePermission(PERMISSIONS.DATA_CREATE);
-  return ok(await applyCyclePlan((await params).id, await parseBody(req, cyclePlanSchema)));
+  const { tasks, assignByRole } = await parseBody(req, schema);
+  return ok(await applyCyclePlan((await params).id, { tasks }, assignByRole ?? {}));
 });

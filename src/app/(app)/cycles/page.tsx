@@ -47,16 +47,22 @@ export default function CyclesPage() {
 
 function CreateCycle({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated: () => void }) {
   const [standards, setStandards] = useState<Standard[]>([]);
+  const [programmes, setProgrammes] = useState<{ id: string; code: string; name: string }[]>([]);
   const [name, setName] = useState(""); const [year, setYear] = useState(""); const [stdVer, setStdVer] = useState("");
+  const [programmeId, setProgrammeId] = useState("");
   const [err, setErr] = useState<string | null>(null); const [saving, setSaving] = useState(false);
 
-  useEffect(() => { if (open) api.get<Standard[]>("/api/standards").then((d) => setStandards(d ?? [])).catch(() => {}); }, [open]);
+  useEffect(() => {
+    if (!open) return;
+    api.get<Standard[]>("/api/standards").then((d) => setStandards(d ?? [])).catch(() => {});
+    api.get<{ items: { id: string; code: string; name: string }[] }>("/api/programmes?pageSize=100").then((d) => setProgrammes(d?.items ?? [])).catch(() => {});
+  }, [open]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault(); setErr(null); setSaving(true);
     try {
-      await api.post("/api/cycles", { name, year: year ? Number(year) : undefined, standardVersionId: stdVer });
-      setName(""); setYear(""); setStdVer(""); onCreated();
+      await api.post("/api/cycles", { name, year: year ? Number(year) : undefined, standardVersionId: stdVer, programmeId: programmeId || undefined });
+      setName(""); setYear(""); setStdVer(""); setProgrammeId(""); onCreated();
     } catch (e2) { setErr(e2 instanceof ApiClientError ? e2.message : "Lỗi tạo đợt"); }
     finally { setSaving(false); }
   }
@@ -66,6 +72,13 @@ function CreateCycle({ open, onClose, onCreated }: { open: boolean; onClose: () 
       <form onSubmit={submit} className="space-y-3">
         <div><label className="label">Tên đợt *</label><input className="input" value={name} onChange={(e) => setName(e.target.value)} required placeholder="Kiểm định 2024" /></div>
         <div><label className="label">Năm</label><input type="number" className="input" value={year} onChange={(e) => setYear(e.target.value)} placeholder="2024" /></div>
+        <div>
+          <label className="label">Chương trình được kiểm định</label>
+          <select className="input" value={programmeId} onChange={(e) => setProgrammeId(e.target.value)}>
+            <option value="">— Chưa chọn —</option>
+            {programmes.map((p) => <option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}
+          </select>
+        </div>
         <div>
           <label className="label">Bộ tiêu chuẩn áp dụng *</label>
           <select className="input" value={stdVer} onChange={(e) => setStdVer(e.target.value)} required>

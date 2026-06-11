@@ -13,6 +13,7 @@ export const createCycleSchema = z.object({
   name: z.string().min(1),
   year: z.number().int().optional(),
   standardVersionId: z.string().min(1),
+  programmeId: z.string().optional(),
 });
 
 export async function createCycle(input: z.infer<typeof createCycleSchema>) {
@@ -45,7 +46,10 @@ export async function getCycle(id: string) {
     include: { reports: { orderBy: { createdAt: "desc" } } },
   });
   if (!cycle) throw notFound("Đợt tự đánh giá không tồn tại");
-  return cycle;
+  const programme = cycle.programmeId
+    ? await prisma.programme.findFirst({ where: { id: cycle.programmeId }, select: { id: true, code: true, name: true } })
+    : null;
+  return { ...cycle, programme };
 }
 
 export async function toggleCycleStatus(id: string) {

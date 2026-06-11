@@ -5,7 +5,12 @@ import { api, ApiClientError } from "@/lib/api/client";
 import { ErrorBox } from "@/components/ui";
 import { Modal } from "@/components/Modal";
 
-interface Member { id: string; fullName: string }
+interface Member { id: string; fullName: string; roles: string[] }
+
+const ROLE_VI: Record<string, string> = {
+  qa_office: "Phòng ĐBCL", programme_committee: "Ban CN chương trình", faculty: "Khoa/Bộ môn",
+  lecturer: "Giảng viên", internal_reviewer: "Hội đồng rà soát", leadership: "Lãnh đạo",
+};
 interface Task {
   id: string; title: string; status: string; priority: string;
   assigneeId: string | null; assigneeName: string | null;
@@ -23,14 +28,34 @@ export function CyclePlanPanel({ cycleId }: { cycleId: string }) {
   const [note, setNote] = useState<string | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [plan, setPlan] = useState<PlanItem[] | null>(null);
+  const [assignByRole, setAssignByRole] = useState<Record<string, string>>({});
+  const [newMember, setNewMember] = useState<{ fullName: string; email: string; role: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
     try { setTasks((await api.get<Task[]>(`/api/cycles/${cycleId}/tasks`)) ?? []); }
     catch (e) { setErr(e instanceof Error ? e.message : "Lỗi tải công việc"); }
   }, [cycleId]);
+  const loadMembers = useCallback(async () => {
+    try { setMembers((await api.get<Member[]>("/api/members")) ?? []); } catch { /* bỏ qua */ }
+  }, []);
   useEffect(() => { load(); }, [load]);
-  useEffect(() => { api.get<Member[]>("/api/members").then((m) => setMembers(m ?? [])).catch(() => {}); }, []);
+  useEffect(() => { loadMembers(); }, [loadMembers]);
+
+  const planRoles = plan ? [...new Set(plan.map((t) => t.role).filter((r): r is string => !!r))] : [];
+  const membersForRole = (role: string) => members.filter((m) => m.roles.includes(role));
+
+  async function createMember() {
+    if (!newMember?.fullName || !newMember.email) return;
+    setBusy(true); setNote(null);
+    try {
+      await api.post("/api/users", { fullName: newMember.fullName, email: newMember.email, password: "Aiqms@12345", roleCodes: newMember.role ? [newMember.role] : [] });
+      setNote(`Đã tạo tài khoản ${newMember.email} (mật khẩu mặc định: Aiqms@12345).`);
+      setNewMember(null); await loadMembers();
+    } catch (e) {
+      setNote(e instanceof ApiClientError ? e.message : "Lỗi tạo tài khoản (cần quyền quản trị người dùng)");
+    } finally { setBusy(false); }
+  }
 
   async function patch(id: string, data: Record<string, unknown>) {
     setTasks((ts) => ts.map((t) => (t.id === id ? { ...t, ...data } : t)));
@@ -48,8 +73,9 @@ export function CyclePlanPanel({ cycleId }: { cycleId: string }) {
     if (!plan) return;
     setBusy(true);
     try {
-      const r = await api.post<{ created: number }>(`/api/cycles/${cycleId}/plan`, { tasks: plan });
-      setNote(`Đã tạo ${r?.created ?? 0} công việc.`); setPlan(null); await load();
+      const r = await api.post<{ created: number; assigned: number }>(`/api/cycles/${cycleId}/plan`, { tasks: plan, assignByRole });
+      setNote(`Đã tạo ${r?.created ?? 0} công việc, giao ${r?.assigned ?? 0} việc cho thành viên.`);
+      setPlan(null); setAssignByRole({}); await load();
     } catch (e) { setNote(e instanceof ApiClientError ? e.message : "Lỗi tạo kế hoạch"); }
     finally { setBusy(false); }
   }
@@ -77,15 +103,43 @@ export function CyclePlanPanel({ cycleId }: { cycleId: string }) {
 
       {plan && (
         <div className="mb-3 rounded-lg border border-indigo-100 bg-indigo-50/50 p-3 text-sm">
-          <p className="font-medium text-indigo-700">AI đề xuất {plan.length} công việc — duyệt rồi tạo.</p>
-          <ul className="my-2 max-h-44 space-y-1 overflow-y-auto text-xs text-slate-600">
+          <p className="font-medium text-indigo-700">AI đề xuất {plan.length} công việc — giao việc theo vai trò rồi tạo.</p>
+          <ul className="my-2 max-h-36 space-y-1 overflow-y-auto text-xs text-slate-600">
             {plan.map((t, i) => (
-              <li key={i}>• {t.criterionCode ? `[${t.criterionCode}] ` : ""}{t.title}{t.role ? ` — ${t.role}` : ""}{t.deliverables ? ` · MC: ${t.deliverables}` : ""}</li>
+              <li key={i}>• {t.criterionCode ? `[${t.criterionCode}] ` : ""}{t.title}{t.role ? ` — ${ROLE_VI[t.role] ?? t.role}` : ""}{t.deliverables ? ` · MC: ${t.deliverables}` : ""}</li>
             ))}
           </ul>
+
+          {planRoles.length > 0 && (
+            <div className="my-2 rounded-lg border border-slate-200 bg-white p-2">
+              <p className="mb-1 text-xs font-semibold text-slate-600">Giao việc theo vai trò → thành viên</p>
+              <div className="space-y-1">
+                {planRoles.map((role) => (
+                  <div key={role} className="flex items-center gap-2 text-xs">
+                    <span className="w-40 shrink-0 text-slate-600">{ROLE_VI[role] ?? role}</span>
+                    <select className="input h-8 flex-1 py-0 text-xs" value={assignByRole[role] ?? ""} onChange={(e) => setAssignByRole((s) => ({ ...s, [role]: e.target.value }))}>
+                      <option value="">— Chưa giao —</option>
+                      {membersForRole(role).map((m) => <option key={m.id} value={m.id}>{m.fullName}</option>)}
+                    </select>
+                    <button type="button" className="shrink-0 text-indigo-600 hover:underline" onClick={() => setNewMember({ fullName: "", email: "", role })}>+ Tạo TK</button>
+                  </div>
+                ))}
+              </div>
+              {newMember && (
+                <div className="mt-2 flex flex-wrap items-end gap-2 rounded bg-slate-50 p-2">
+                  <input className="input h-8 w-36 py-0 text-xs" placeholder="Họ tên" value={newMember.fullName} onChange={(e) => setNewMember({ ...newMember, fullName: e.target.value })} />
+                  <input className="input h-8 w-48 py-0 text-xs" placeholder="email" value={newMember.email} onChange={(e) => setNewMember({ ...newMember, email: e.target.value })} />
+                  <span className="text-xs text-slate-500">{ROLE_VI[newMember.role] ?? newMember.role}</span>
+                  <button type="button" className="btn-primary h-8 py-0 text-xs" onClick={createMember} disabled={busy}>Tạo & gán</button>
+                  <button type="button" className="btn-outline h-8 py-0 text-xs" onClick={() => setNewMember(null)}>Hủy</button>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="flex gap-2">
-            <button className="btn-primary" onClick={applyPlan} disabled={busy}>Tạo {plan.length} công việc</button>
-            <button className="btn-outline" onClick={() => setPlan(null)}>Bỏ</button>
+            <button className="btn-primary" onClick={applyPlan} disabled={busy}>Tạo {plan.length} công việc & giao</button>
+            <button className="btn-outline" onClick={() => { setPlan(null); setAssignByRole({}); setNewMember(null); }}>Bỏ</button>
           </div>
         </div>
       )}

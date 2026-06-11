@@ -9,7 +9,7 @@ import { Modal } from "@/components/Modal";
 import { CyclePlanPanel } from "@/components/CyclePlanPanel";
 
 interface Sar { id: string; title: string; status: string }
-interface Cycle { id: string; name: string; year: number | null; status: string; reports: Sar[] }
+interface Cycle { id: string; name: string; year: number | null; status: string; reports: Sar[]; programme: { code: string; name: string } | null }
 interface Programme { id: string; code: string; name: string; versions: { id: string; version: string }[] }
 
 export default function CycleDetailPage() {
@@ -36,7 +36,7 @@ export default function CycleDetailPage() {
     <div>
       <PageHeader
         title={cycle.name}
-        subtitle={`Đợt tự đánh giá${cycle.year ? ` · ${cycle.year}` : ""}`}
+        subtitle={`Đợt tự đánh giá${cycle.year ? ` · ${cycle.year}` : ""}${cycle.programme ? ` · CTĐT: ${cycle.programme.code} — ${cycle.programme.name}` : ""}`}
         action={
           <div className="flex items-center gap-2">
             <StatusBadge status={cycle.status} />

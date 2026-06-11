@@ -34,6 +34,16 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
   upload, khắc phục điểm chưa đạt (CLO theo Bloom, constructive alignment, học liệu 5 năm,
   trọng số phủ CLO) → bản nháp để duyệt rồi Lưu. 124 test.
 
+## [Đợt kiểm định: chọn CTĐT + AI giao việc theo vai trò + tạo nhanh tài khoản] — ✅ Done
+
+- **Chọn CTĐT được kiểm định** khi tạo đợt (`AssessmentCycle.programmeId`, migration
+  `cycle_programme`); hiển thị ở chi tiết đợt; AI lập kế hoạch dùng tên CTĐT làm ngữ cảnh.
+- **AI tạo kế hoạch + GIAO VIỆC theo vai trò**: bản nháp kế hoạch hiển thị bảng *vai trò →
+  thành viên* (lọc thành viên theo đúng vai trò); `applyCyclePlan(cycleId, plan, assignByRole)`
+  tự gán người phụ trách + gửi **thông báo tổng hợp** cho từng người.
+- **Admin tạo nhanh tài khoản thành viên** ngay trong bước giao việc ("+ Tạo TK": họ tên/email
+  + vai trò, mật khẩu mặc định) rồi gán luôn. `listMembers` trả kèm vai trò. 124 test.
+
 ## [Đợt tự đánh giá: kế hoạch AI + phân công + minh chứng + thông báo] — ✅ Done
 
 - **Kế hoạch & phân công** trong đợt tự đánh giá (Task gắn `cycleId` + `deliverables`;

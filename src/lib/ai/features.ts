@@ -457,6 +457,10 @@ export async function generateCyclePlan(cycleId: string): Promise<CyclePlanAi> {
     select: { code: true, titleVi: true },
   });
   const critList = criteria.map((c) => `${c.code}: ${c.titleVi}`).join("\n") || "(C1..C8 theo AUN-QA)";
+  const programme = cycle.programmeId
+    ? await prisma.programme.findFirst({ where: { id: cycle.programmeId }, select: { code: true, name: true } })
+    : null;
+  const progLine = programme ? `Chương trình được kiểm định: ${programme.code} — ${programme.name}.\n` : "";
 
   const result = await aiCompleteJson(
     "cycle_plan",
@@ -472,7 +476,7 @@ export async function generateCyclePlan(cycleId: string): Promise<CyclePlanAi> {
       {
         role: "user",
         content:
-          `Đợt: ${cycle.name}${cycle.year ? ` (${cycle.year})` : ""}.\nCác tiêu chí áp dụng:\n${critList}\n\n` +
+          `Đợt: ${cycle.name}${cycle.year ? ` (${cycle.year})` : ""}.\n${progLine}Các tiêu chí áp dụng:\n${critList}\n\n` +
           'Trả JSON: {"tasks":[{"title","type","criterionCode","deliverables","role","priority":"low|normal|high","dueOffsetDays"}]}. ' +
           "Mỗi tiêu chí có ít nhất 1 công việc thu thập minh chứng + 1 công việc viết SAR; thêm các công việc chung " +
           "(kế hoạch, rà soát, đánh giá nội bộ, xuất hồ sơ). dueOffsetDays = số ngày kể từ hôm nay. " +

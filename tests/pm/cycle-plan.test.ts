@@ -49,20 +49,31 @@ describe("Kế hoạch đợt tự đánh giá + phân công + thông báo", () 
     });
   });
 
-  it("applyCyclePlan: tạo hàng loạt công việc, gán tiêu chí theo mã + hạn theo offset", async () => {
+  it("applyCyclePlan: tạo công việc + GIAO VIỆC theo vai trò + thông báo người được giao", async () => {
     const t = await createTenantFixture("demo");
     await asUser(t.id, "admin", async () => {
+      const qa = await createUser({ email: "qa@demo.local", fullName: "Cán bộ QA", password: "password123", roleCodes: ["qa_office"] });
       const cycle = await createCycle({ name: "Đợt", standardVersionId: aunVersionId });
-      const res = await applyCyclePlan(cycle.id, {
-        tasks: [
-          { title: "Viết SAR C2", criterionCode: "C2", deliverables: "Bản thảo SAR", dueOffsetDays: 14 },
-          { title: "Họp kế hoạch", role: "qa_office" },
-        ],
-      });
-      expect(res.created).toBe(2);
+      const res = await applyCyclePlan(
+        cycle.id,
+        {
+          tasks: [
+            { title: "Viết SAR C2", criterionCode: "C2", deliverables: "Bản thảo SAR", dueOffsetDays: 14, role: "qa_office" },
+            { title: "Họp kế hoạch", role: "qa_office" },
+            { title: "Việc không vai trò" },
+          ],
+        },
+        { qa_office: qa.id },
+      );
+      expect(res.created).toBe(3);
+      expect(res.assigned).toBe(2); // 2 việc role qa_office -> giao cho qa
       const list = await listCycleTasks(cycle.id);
-      expect(list.find((x) => x.title === "Viết SAR C2")?.criterionCode).toBe("C2");
+      expect(list.find((x) => x.title === "Viết SAR C2")?.assigneeName).toBe("Cán bộ QA");
       expect(list.find((x) => x.title === "Viết SAR C2")?.dueDate).toBeTruthy();
+      // Thông báo tổng hợp (1 thông báo cho 2 việc).
+      const noti = await asUser(t.id, qa.id, () => listMyNotifications());
+      expect(noti.unread).toBe(1);
+      expect(noti.items[0].title).toContain("2 công việc");
     });
   });
 

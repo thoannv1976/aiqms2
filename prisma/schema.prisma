@@ -557,6 +557,7 @@ model AssessmentCycle {
   name              String
   year              Int?
   standardVersionId String // bộ tiêu chuẩn áp dụng (global)
+  programmeId       String? // CTĐT được kiểm định trong đợt (tùy chọn)
   status            String    @default("open") // open | closed
   startDate         DateTime?
   endDate           DateTime?
