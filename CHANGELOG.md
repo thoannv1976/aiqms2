@@ -21,6 +21,16 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
 - **Lưu trữ GCS**: cài sẵn `@aws-sdk/client-s3` → driver S3 chạy với GCS (S3-compatible) chỉ
   bằng cấu hình env; hướng dẫn HMAC + bucket ở `DEPLOY.md` mục 7b.
 
+## [Module Đánh giá ngoài (D8)] — ✅ Done
+- **Model `ExternalAssessment` + `ExternalAssessmentScore`** (migration `external_assessment`):
+  đợt đánh giá ngoài gắn SAR — thành viên đoàn, lịch khảo sát, trạng thái (planned/onsite/completed),
+  điểm tổng thể, kết luận/khuyến nghị. Chấm theo từng tiêu chí (thang 7 mức) kèm điểm mạnh / điều
+  cần cải thiện. Thêm vào `TENANT_SCOPED_MODELS`.
+- **Service** create/list/get/update/delete + `setExternalScore` (upsert, tự tính điểm TB tổng thể).
+  API `/api/sars/[id]/external-assessments` + `/api/external-assessments/[id]` (GET/PATCH/DELETE) +
+  `/scores`. **UI**: tab "Đánh giá ngoài" ở chi tiết SAR (danh sách đợt + bảng chấm điểm + kết luận).
+  Test trên Postgres (`tests/sar/external-assessment.test.ts`, có test cách ly tenant).
+
 ## [Đo lường mức đạt PLO → C8 (D7)] — ✅ Done
 - **Model `PloAttainment`** (migration `plo_attainment`): mức đạt PLO theo khóa/kỳ (% đạt, cỡ mẫu,
   chỉ tiêu, phương pháp). Thêm vào `TENANT_SCOPED_MODELS`.

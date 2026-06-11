@@ -6,6 +6,7 @@ import { api, ApiClientError } from "@/lib/api/client";
 import { PageHeader, StatusBadge, Spinner, ErrorBox } from "@/components/ui";
 import { ExportButton } from "@/components/ExportButton";
 import { CriterionWorkspace } from "@/components/CriterionWorkspace";
+import { ExternalAssessmentPanel } from "@/components/ExternalAssessmentPanel";
 import { SAR_TRANSITIONS, sarStateLabel } from "@/lib/sar/state";
 
 interface Criterion { code: string; titleVi: string }
@@ -48,7 +49,7 @@ export default function SarEditorPage() {
   const [form, setForm] = useState<Partial<Response>>({});
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-  const [tab, setTab] = useState<"edit" | "review" | "comments">("edit");
+  const [tab, setTab] = useState<"edit" | "review" | "comments" | "external">("edit");
 
   const load = useCallback(async () => {
     try {
@@ -131,7 +132,7 @@ export default function SarEditorPage() {
 
       {/* Tab: Soạn báo cáo | Đánh giá nội bộ | Nhận xét */}
       <div className="mb-4 flex gap-1 border-b border-slate-200">
-        {([["edit", "Soạn báo cáo"], ["review", "Đánh giá nội bộ"], ["comments", "Nhận xét / Góp ý"]] as const).map(([t, label]) => (
+        {([["edit", "Soạn báo cáo"], ["review", "Đánh giá nội bộ"], ["external", "Đánh giá ngoài"], ["comments", "Nhận xét / Góp ý"]] as const).map(([t, label]) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -150,6 +151,8 @@ export default function SarEditorPage() {
           criteria={sar.responses.map((r) => ({ criterionId: r.criterionId, code: r.criterion?.code ?? "?", titleVi: r.criterion?.titleVi ?? "" }))}
         />
       )}
+
+      {tab === "external" && <ExternalAssessmentPanel sarId={sar.id} />}
 
       {tab === "comments" && (
         <CommentsTab

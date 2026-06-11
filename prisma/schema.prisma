@@ -45,6 +45,8 @@ model Tenant {
   sarComments       SarComment[]
   sarRequirementResponses SarRequirementResponse[]
   ploAttainments    PloAttainment[]
+  externalAssessments      ExternalAssessment[]
+  externalAssessmentScores ExternalAssessmentScore[]
   internalReviews   InternalReview[]
   internalReviewScores InternalReviewScore[]
   evidences            Evidence[]
@@ -647,11 +649,60 @@ model SelfAssessmentReport {
   comments  SarComment[]
   reviews   InternalReview[]
   requirementResponses SarRequirementResponse[]
+  externalAssessments  ExternalAssessment[]
 
   @@index([tenantId, status])
   @@index([tenantId, assessmentCycleId])
   @@index([tenantId, deletedAt])
   @@map("self_assessment_reports")
+}
+
+/// Đợt đánh giá ngoài (đoàn ĐGN AUN-QA): lịch khảo sát + chấm theo tiêu chí + kết luận (D8).
+model ExternalAssessment {
+  id             String    @id @default(cuid())
+  tenantId       String
+  sarId          String
+  title          String
+  assessorNames  String? // danh sách thành viên đoàn
+  siteVisitStart DateTime?
+  siteVisitEnd   DateTime?
+  status         String    @default("planned") // planned | onsite | completed
+  overallScore   Float? // điểm tổng thể (TB tiêu chí)
+  decision       String? // kết luận/khuyến nghị công nhận
+  note           String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  createdBy      String?
+  updatedBy      String?
+  deletedAt      DateTime?
+
+  tenant Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sar    SelfAssessmentReport      @relation(fields: [sarId], references: [id], onDelete: Cascade)
+  scores ExternalAssessmentScore[]
+
+  @@index([tenantId, sarId])
+  @@index([tenantId, deletedAt])
+  @@map("external_assessments")
+}
+
+model ExternalAssessmentScore {
+  id                   String   @id @default(cuid())
+  tenantId             String
+  externalAssessmentId String
+  criterionId          String // tham chiếu Criterion (global)
+  score                Int? // thang 7 mức AUN-QA
+  strengths            String?
+  areasForImprovement  String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  updatedBy            String?
+
+  tenant     Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  assessment ExternalAssessment @relation(fields: [externalAssessmentId], references: [id], onDelete: Cascade)
+
+  @@unique([externalAssessmentId, criterionId])
+  @@index([tenantId, externalAssessmentId])
+  @@map("external_assessment_scores")
 }
 
 model SarCriterionResponse {

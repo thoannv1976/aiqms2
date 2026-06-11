@@ -21,7 +21,7 @@
 - [x] D7. Đo lường mức đạt PLO (PLO attainment) theo khóa/kỳ → C8 — tab "Mức đạt PLO → C8" ở Ma trận
 
 ### Ưu tiên thấp
-- [ ] D8. Module Đánh giá ngoài (đoàn ĐGN chấm, lịch khảo sát, khuyến nghị, kết luận)
+- [x] D8. Module Đánh giá ngoài (đoàn ĐGN chấm, lịch khảo sát, khuyến nghị, kết luận) — tab "Đánh giá ngoài" ở SAR
 - [ ] D9. Đối sánh (benchmarking) với CT tham chiếu
 - [ ] D10. Quản lý phiên bản tài liệu (version chain)
 
