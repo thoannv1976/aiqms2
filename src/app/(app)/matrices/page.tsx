@@ -5,6 +5,16 @@ import { api, ApiClientError } from "@/lib/api/client";
 import { PageHeader, ErrorBox, Spinner } from "@/components/ui";
 import { ImportButton } from "@/components/ImportButton";
 import { AiMatrixButton } from "@/components/AiMatrixButton";
+import { PloMatrixGrid } from "@/components/PloMatrixGrid";
+import { EvaluateMatrixButton } from "@/components/EvaluateMatrixButton";
+
+const TABS: { key: string; label: string }[] = [
+  { key: "core", label: "PLO–Học phần & CLO–PLO" },
+  { key: "peo", label: "PEO–PLO" },
+  { key: "teaching", label: "PLO–PP dạy học" },
+  { key: "assessment", label: "PLO–PP đánh giá" },
+  { key: "measurement", label: "PLO–Minh chứng" },
+];
 
 interface Programme { id: string; code: string; name: string; versions: { id: string; version: string }[] }
 interface Plo { id: string; code: string; description: string }
@@ -20,6 +30,7 @@ export default function MatricesPage() {
   const [programmeId, setProgrammeId] = useState("");
   const [versionId, setVersionId] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
+  const [tab, setTab] = useState("core");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -33,10 +44,11 @@ export default function MatricesPage() {
   return (
     <div>
       <PageHeader
-        title="Ma trận PLO‑CLO & độ phủ"
-        subtitle="Liên kết PLO ↔ học phần, CLO ↔ PLO; cảnh báo khoảng trống"
+        title="Hệ ma trận PLO & độ phủ"
+        subtitle="PLO–Học phần, CLO–PLO, PEO–PLO, PP dạy học/đánh giá, minh chứng đo lường"
         action={
           <div className="flex items-center gap-2">
+            <EvaluateMatrixButton versionId={versionId} />
             <AiMatrixButton versionId={versionId} onApplied={() => setRefreshKey((k) => k + 1)} />
             <ImportButton label="Nạp ma trận (Excel)" endpoint="/api/import/matrix" onDone={() => setRefreshKey((k) => k + 1)} />
           </div>
@@ -63,7 +75,24 @@ export default function MatricesPage() {
         )}
       </div>
 
-      {versionId ? <MatrixWorkspace key={`${versionId}:${refreshKey}`} versionId={versionId} /> : (
+      {versionId ? (
+        <>
+          <div className="mb-4 flex flex-wrap gap-1 border-b border-slate-200">
+            {TABS.map((tb) => (
+              <button
+                key={tb.key}
+                onClick={() => setTab(tb.key)}
+                className={`-mb-px border-b-2 px-3 py-2 text-sm ${tab === tb.key ? "border-indigo-500 font-medium text-indigo-600" : "border-transparent text-slate-500 hover:text-slate-700"}`}
+              >
+                {tb.label}
+              </button>
+            ))}
+          </div>
+          {tab === "core"
+            ? <MatrixWorkspace key={`${versionId}:${refreshKey}`} versionId={versionId} />
+            : <PloMatrixGrid key={`${versionId}:${tab}:${refreshKey}`} versionId={versionId} dimension={tab} />}
+        </>
+      ) : (
         <div className="card p-10 text-center text-sm text-slate-400">Chọn chương trình và phiên bản để xem ma trận</div>
       )}
     </div>

@@ -70,6 +70,7 @@ model Tenant {
   facilities2          Facility[]
   outcomeMetrics       OutcomeMetric[]
   documents            Document[]
+  ploMatrixCells       PloMatrixCell[]
   departments Department[]
 
   @@map("tenants")
@@ -383,6 +384,7 @@ model ProgrammeVersion {
   programme  Programme              @relation(fields: [programmeId], references: [id], onDelete: Cascade)
   peos       ProgrammeObjective[]
   plos       ProgrammeLearningOutcome[]
+  matrixCells PloMatrixCell[]
 
   @@unique([tenantId, programmeId, version])
   @@index([tenantId, programmeId])
@@ -421,6 +423,7 @@ model ProgrammeLearningOutcome {
   version        ProgrammeVersion   @relation(fields: [programmeVersionId], references: [id], onDelete: Cascade)
   courseMappings PloCourseMapping[]
   cloMappings    CloPloMapping[]
+  matrixCells    PloMatrixCell[]
 
   @@unique([programmeVersionId, code])
   @@index([tenantId, programmeVersionId])
@@ -514,6 +517,34 @@ model CloPloMapping {
   @@index([tenantId, cloId])
   @@index([tenantId, ploId])
   @@map("clo_plo_mappings")
+}
+
+/// Ô ma trận PLO tổng quát (data-driven) cho các ma trận PLO × <chiều>:
+///   dimension = peo | teaching | assessment | measurement
+///   colKey    = mã PEO / khóa phương pháp / thuộc tính minh chứng
+///   value     = "x" (có) hoặc văn bản (vd với measurement: nguồn/chu kỳ/đơn vị)
+/// (PLO–Học phần dùng PloCourseMapping, CLO–PLO dùng CloPloMapping riêng.)
+model PloMatrixCell {
+  id                 String   @id @default(cuid())
+  tenantId           String
+  programmeVersionId String
+  ploId              String
+  dimension          String
+  colKey             String
+  value              String   @default("x")
+  note               String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  createdBy          String?
+  updatedBy          String?
+
+  tenant  Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  version ProgrammeVersion         @relation(fields: [programmeVersionId], references: [id], onDelete: Cascade)
+  plo     ProgrammeLearningOutcome @relation(fields: [ploId], references: [id], onDelete: Cascade)
+
+  @@unique([programmeVersionId, ploId, dimension, colKey])
+  @@index([tenantId, programmeVersionId, dimension])
+  @@map("plo_matrix_cells")
 }
 
 // ════════════════════════════════════════════════════════════════════════════

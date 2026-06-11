@@ -9,6 +9,14 @@ import { getSar } from "@/lib/sar/service";
 import { docxToText } from "@/lib/import/docx";
 import { pdfToText } from "@/lib/import/syllabus";
 import { matrixDraftSchema, type MatrixDraft } from "@/lib/obe/matrix";
+import { coverageWarnings } from "@/lib/obe/coverage";
+import {
+  DIMENSION_LABELS,
+  matrixCellsDraftSchema,
+  ploMatrix,
+  type MatrixCellsDraft,
+  type PloDimension,
+} from "@/lib/obe/plo-matrix";
 import { aiComplete, aiCompleteJson } from "./service";
 
 const SYSTEM_VI =
@@ -296,6 +304,120 @@ export async function synthesizeMatrixFromDocs(
   const cloPlo = draft.cloPlo.filter((m) => m.ploCode && ploCodes.has(m.ploCode.trim().toUpperCase()));
   await writeAudit({ action: "ai.synthesize_matrix", entity: "ProgrammeVersion", entityId: programmeVersionId, meta: { ploCourse: ploCourse.length, cloPlo: cloPlo.length } });
   return { ploCourse, cloPlo, ploCount: plos.length, courseCount: courses.length, docCount: ctdtDocs.length + sylDocs.length };
+}
+
+// ─── AI cho HỆ MA TRẬN PLO (đánh giá / nâng cấp-gợi ý) ───────────────────────
+/** Tóm tắt hiện trạng các ma trận của một phiên bản CTĐT để đưa vào prompt. */
+async function matrixSnapshot(programmeVersionId: string) {
+  const [plos, courses, warnings] = await Promise.all([
+    prisma.programmeLearningOutcome.findMany({ where: { programmeVersionId }, orderBy: { order: "asc" }, include: { courseMappings: true } }),
+    prisma.course.findMany({ where: { deletedAt: null }, select: { code: true, name: true } }),
+    coverageWarnings(programmeVersionId),
+  ]);
+  const cells = await prisma.ploMatrixCell.findMany({ where: { programmeVersionId } });
+  const byDim = (d: string) => cells.filter((c) => c.dimension === d).length;
+  return { plos, courses, warnings, dimCounts: { peo: byDim("peo"), teaching: byDim("teaching"), assessment: byDim("assessment"), measurement: byDim("measurement") } };
+}
+
+/** AI ĐÁNH GIÁ hệ ma trận PLO theo AUN-QA (constructive alignment, độ phủ, cân bằng I/R/M…). */
+export async function evaluateMatrices(programmeVersionId: string): Promise<string> {
+  const snap = await matrixSnapshot(programmeVersionId);
+  if (snap.plos.length === 0) throw badRequest("Phiên bản CTĐT chưa có PLO để đánh giá.");
+  const ploLines = snap.plos
+    .map((p) => `${p.code}: ${p.courseMappings.length} học phần (mức ${[...new Set(p.courseMappings.map((m) => m.level))].sort().join("/") || "—"})`)
+    .join("\n");
+  const warnLines = snap.warnings.map((w) => `- [${w.severity}] ${w.message}`).join("\n") || "(không có cảnh báo tự động)";
+
+  const review = await aiComplete("evaluate_matrix", [
+    {
+      role: "system",
+      content:
+        "Bạn là đánh giá viên AUN-QA. Đánh giá HỆ MA TRẬN PLO của chương trình theo các tiêu chí: " +
+        "constructive alignment (PEO–PLO–học phần–CLO–đánh giá), độ phủ (mỗi PLO có học phần đóng góp), " +
+        "tiến trình I→R→M (mỗi PLO cần có mức M cuối khóa, không chỉ I), cân bằng tải, đa dạng phương pháp " +
+        "dạy học (C3) và đánh giá (C4), minh chứng đo lường (C8). Nhận xét NGẮN GỌN theo gạch đầu dòng: " +
+        "điểm đạt, điểm yếu, và đề xuất cải thiện cụ thể cho từng ma trận.",
+    },
+    {
+      role: "user",
+      content:
+        `PLO và độ phủ học phần:\n${ploLines}\n\n` +
+        `Cảnh báo độ phủ tự động:\n${warnLines}\n\n` +
+        `Số ô đã khai báo: PEO–PLO=${snap.dimCounts.peo}, PLO–PPdạy=${snap.dimCounts.teaching}, ` +
+        `PLO–PPđánh giá=${snap.dimCounts.assessment}, PLO–Minh chứng=${snap.dimCounts.measurement}. ` +
+        `Tổng học phần trong CTĐT: ${snap.courses.length}.`,
+    },
+  ]);
+  await writeAudit({ action: "ai.evaluate_matrix", entity: "ProgrammeVersion", entityId: programmeVersionId });
+  return review;
+}
+
+/**
+ * AI NÂNG CẤP / GỢI Ý ô cho một ma trận PLO (peo|teaching|assessment|measurement) — dùng
+ * DỮ LIỆU THẬT: PEO/PLO đã import + phương pháp dạy/đánh giá trong đề cương đã upload.
+ * Human-in-the-loop: trả bản nháp các ô, người dùng duyệt rồi áp dụng.
+ */
+export async function suggestPloMatrix(
+  programmeVersionId: string,
+  dimension: PloDimension,
+): Promise<MatrixCellsDraft & { dimension: PloDimension; label: string }> {
+  const m = await ploMatrix(programmeVersionId, dimension);
+  if (m.plos.length === 0) throw badRequest("Phiên bản CTĐT chưa có PLO.");
+  if (m.columns.length === 0) throw badRequest("Chưa có cột cho ma trận này (vd PEO–PLO cần có PEO trước).");
+
+  const ploList = m.plos.map((p) => `${p.code}: ${(p.description ?? "").slice(0, 120)}`).join("\n");
+  const colList = m.columns.map((c) => `${c.key} (${c.label})`).join(", ");
+
+  // Dữ liệu thật: phương pháp dạy/đánh giá lấy từ đề cương các học phần.
+  let realData = "";
+  if (dimension === "teaching" || dimension === "assessment") {
+    const courses = await prisma.course.findMany({
+      where: { deletedAt: null },
+      select: { code: true, name: true, teachingMethods: true, assessmentMethods: true },
+      take: 60,
+    });
+    realData = courses
+      .map((c) => `${c.code} ${c.name}: ${(dimension === "teaching" ? c.teachingMethods : c.assessmentMethods) ?? ""}`.slice(0, 200))
+      .join("\n")
+      .slice(0, 8000);
+  } else if (dimension === "peo") {
+    const peos = await prisma.programmeObjective.findMany({ where: { programmeVersionId }, orderBy: { order: "asc" } });
+    realData = peos.map((p) => `${p.code}: ${p.description.slice(0, 160)}`).join("\n");
+  }
+
+  const valueHint = m.textMode
+    ? 'value là VĂN BẢN ngắn (vd nguồn minh chứng/chu kỳ/đơn vị).'
+    : 'value = "x" cho ô có liên kết.';
+
+  const draft = await aiCompleteJson(
+    "suggest_plo_matrix",
+    [
+      {
+        role: "system",
+        content:
+          `Bạn là chuyên gia thiết kế CTĐT theo AUN-QA. Lập ma trận "${m.label}". ` +
+          "CHỈ dùng mã PLO và khóa cột trong danh sách cho sẵn; ưu tiên dữ liệu thật được cung cấp; không bịa. " +
+          "Trả về JSON thuần.",
+      },
+      {
+        role: "user",
+        content:
+          `PLO (hàng):\n${ploList}\n\nCỘT (colKey):\n${colList}\n\n` +
+          (realData ? `DỮ LIỆU THẬT (đề cương/PEO):\n${realData}\n\n` : "") +
+          `Trả JSON: {"cells":[{"ploCode","colKey","value"}]}. ${valueHint} ` +
+          "Chỉ thêm ô thực sự phù hợp. JSON THUẦN, không xuống dòng/giải thích thừa.",
+      },
+    ],
+    matrixCellsDraftSchema,
+  );
+
+  const colKeys = new Set(m.columns.map((c) => c.key.toLowerCase()));
+  const ploCodes = new Set(m.plos.map((p) => p.code.toUpperCase()));
+  const cells = draft.cells.filter(
+    (c) => c.ploCode && ploCodes.has(c.ploCode.trim().toUpperCase()) && colKeys.has((c.colKey ?? "").trim().toLowerCase()),
+  );
+  await writeAudit({ action: "ai.suggest_plo_matrix", entity: "ProgrammeVersion", entityId: programmeVersionId, meta: { dimension, cells: cells.length } });
+  return { cells, dimension, label: DIMENSION_LABELS[dimension] };
 }
 
 // ─── Chỉnh sửa ĐỀ CƯƠNG học phần bằng AI (human-in-the-loop) ─────────────────

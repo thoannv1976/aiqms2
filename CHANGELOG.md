@@ -21,6 +21,20 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
 - **Lưu trữ GCS**: cài sẵn `@aws-sdk/client-s3` → driver S3 chạy với GCS (S3-compatible) chỉ
   bằng cấu hình env; hướng dẫn HMAC + bucket ở `DEPLOY.md` mục 7b.
 
+## [Hệ ma trận PLO đầy đủ (6 ma trận) + AI đánh giá/gợi ý/nâng cấp] — ✅ Done
+
+- Bổ sung **4 ma trận PLO** (ngoài PLO–Học phần & CLO–PLO đã có) bằng mô hình data-driven
+  `PloMatrixCell` (migration `plo_matrix_cells`): **PEO–PLO** (C1), **PLO–PP dạy học** (C3),
+  **PLO–PP đánh giá** (C4), **PLO–Minh chứng đo lường** (C8). Cột PEO lấy động từ CTĐT; cột
+  PP dạy/đánh giá theo danh mục chuẩn; measurement nhập văn bản. Trang Ma trận thêm **tab**
+  cho từng ma trận, lưới bấm ô (✓) hoặc nhập văn bản, lưu tức thì (`/api/matrices/plo`).
+- **AI đánh giá ma trận** (`evaluateMatrices` → nút "✨ AI đánh giá ma trận"): nhận xét theo
+  AUN-QA (constructive alignment, độ phủ, tiến trình I→R→M, cân bằng tải, đa dạng PP, minh
+  chứng) — kết hợp cảnh báo độ phủ tự động.
+- **AI gợi ý/nâng cấp ma trận** (`suggestPloMatrix` → nút "🤖 AI nâng cấp / gợi ý" mỗi tab):
+  dùng **dữ liệu thật** (PEO/PLO đã import + phương pháp dạy/đánh giá trong đề cương đã upload)
+  đề xuất ô → duyệt → áp dụng (`/api/matrices/plo/apply`). 117 test (thêm 4 test ma trận PLO).
+
 ## [AI trích xuất ma trận PLO × Học phần từ Đề án/CTĐT] — ✅ Done
 
 - Đổi trọng tâm chức năng "AI tổng hợp ma trận" sang **trích xuất ma trận PLO × Học phần**
