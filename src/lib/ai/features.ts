@@ -363,12 +363,11 @@ export async function suggestPloMatrix(
 ): Promise<MatrixCellsDraft & { dimension: PloDimension; label: string }> {
   const m = await ploMatrix(programmeVersionId, dimension);
   if (m.plos.length === 0) throw badRequest("Phiên bản CTĐT chưa có PLO.");
-  if (m.columns.length === 0) throw badRequest("Chưa có cột cho ma trận này (vd PEO–PLO cần có PEO trước).");
+  if (dimension === "peo" && m.columns.length === 0) throw badRequest("Ma trận PEO–PLO cần có PEO trước.");
 
   const ploList = m.plos.map((p) => `${p.code}: ${(p.description ?? "").slice(0, 120)}`).join("\n");
-  const colList = m.columns.map((c) => `${c.key} (${c.label})`).join(", ");
 
-  // Dữ liệu thật: phương pháp dạy/đánh giá lấy từ đề cương các học phần.
+  // Dữ liệu thật theo từng chiều.
   let realData = "";
   if (dimension === "teaching" || dimension === "assessment") {
     const courses = await prisma.course.findMany({
@@ -378,15 +377,25 @@ export async function suggestPloMatrix(
     });
     realData = courses
       .map((c) => `${c.code} ${c.name}: ${(dimension === "teaching" ? c.teachingMethods : c.assessmentMethods) ?? ""}`.slice(0, 200))
-      .join("\n")
-      .slice(0, 8000);
+      .join("\n").slice(0, 8000);
   } else if (dimension === "peo") {
     const peos = await prisma.programmeObjective.findMany({ where: { programmeVersionId }, orderBy: { order: "asc" } });
     realData = peos.map((p) => `${p.code}: ${p.description.slice(0, 160)}`).join("\n");
+  } else if (dimension === "job") {
+    // Vị trí việc làm: lấy từ Đề án/CTĐT đã upload (đề án SBI có ma trận vị trí việc làm).
+    const docs = await prisma.document.findMany({ where: { category: "ctdt_source" }, orderBy: { createdAt: "desc" }, take: 1 });
+    for (const d of docs) realData += await documentText(d, 6000, (l) => /việc làm|vị trí|nghề|chuyên viên|nhân viên|quản (lý|trị)|chuyên gia|giám đốc/i.test(l));
   }
 
+  // Cột: chiều cố định liệt kê sẵn; chiều động (job/pi) để AI tự đề xuất nhãn cột.
+  const colInstruction = m.dynamicCols
+    ? (dimension === "job"
+        ? "colKey = TÊN VỊ TRÍ VIỆC LÀM cụ thể (vd 'Chuyên viên Marketing số', 'Quản trị sàn TMĐT') — tự đề xuất 5–10 vị trí phù hợp ngành."
+        : "colKey = MÃ CHỈ BÁO (vd 'PI1.1','PI1.2') — mỗi PLO tách 2–3 chỉ báo (PI) đo lường được.")
+    : "CHỈ dùng khóa cột trong danh sách: " + m.columns.map((c) => `${c.key} (${c.label})`).join(", ");
+
   const valueHint = m.textMode
-    ? 'value là VĂN BẢN ngắn (vd nguồn minh chứng/chu kỳ/đơn vị).'
+    ? "value là VĂN BẢN ngắn (vd: PI = phát biểu chỉ báo; cải tiến = hành động; minh chứng = nguồn/chu kỳ/đơn vị)."
     : 'value = "x" cho ô có liên kết.';
 
   const draft = await aiCompleteJson(
@@ -396,14 +405,13 @@ export async function suggestPloMatrix(
         role: "system",
         content:
           `Bạn là chuyên gia thiết kế CTĐT theo AUN-QA. Lập ma trận "${m.label}". ` +
-          "CHỈ dùng mã PLO và khóa cột trong danh sách cho sẵn; ưu tiên dữ liệu thật được cung cấp; không bịa. " +
-          "Trả về JSON thuần.",
+          "Dùng đúng mã PLO trong danh sách; ưu tiên dữ liệu thật; không bịa. Trả về JSON thuần.",
       },
       {
         role: "user",
         content:
-          `PLO (hàng):\n${ploList}\n\nCỘT (colKey):\n${colList}\n\n` +
-          (realData ? `DỮ LIỆU THẬT (đề cương/PEO):\n${realData}\n\n` : "") +
+          `PLO (hàng):\n${ploList}\n\nQUY TẮC CỘT: ${colInstruction}\n\n` +
+          (realData ? `DỮ LIỆU THẬT:\n${realData.slice(0, 9000)}\n\n` : "") +
           `Trả JSON: {"cells":[{"ploCode","colKey","value"}]}. ${valueHint} ` +
           "Chỉ thêm ô thực sự phù hợp. JSON THUẦN, không xuống dòng/giải thích thừa.",
       },
@@ -411,11 +419,14 @@ export async function suggestPloMatrix(
     matrixCellsDraftSchema,
   );
 
-  const colKeys = new Set(m.columns.map((c) => c.key.toLowerCase()));
   const ploCodes = new Set(m.plos.map((p) => p.code.toUpperCase()));
-  const cells = draft.cells.filter(
-    (c) => c.ploCode && ploCodes.has(c.ploCode.trim().toUpperCase()) && colKeys.has((c.colKey ?? "").trim().toLowerCase()),
-  );
+  const colKeys = new Set(m.columns.map((c) => c.key.toLowerCase()));
+  const cells = draft.cells.filter((c) => {
+    if (!c.ploCode || !ploCodes.has(c.ploCode.trim().toUpperCase())) return false;
+    if (!(c.colKey ?? "").trim()) return false;
+    // Chiều động: chấp nhận cột AI đề xuất; chiều cố định: chỉ cột hợp lệ.
+    return m.dynamicCols || colKeys.has((c.colKey ?? "").trim().toLowerCase());
+  });
   await writeAudit({ action: "ai.suggest_plo_matrix", entity: "ProgrammeVersion", entityId: programmeVersionId, meta: { dimension, cells: cells.length } });
   return { cells, dimension, label: DIMENSION_LABELS[dimension] };
 }

@@ -21,6 +21,16 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
 - **Lưu trữ GCS**: cài sẵn `@aws-sdk/client-s3` → driver S3 chạy với GCS (S3-compatible) chỉ
   bằng cấu hình env; hướng dẫn HMAC + bucket ở `DEPLOY.md` mục 7b.
 
+## [Ma trận PLO mở rộng (bên liên quan / việc làm / PI-KPI / PDCA)] — ✅ Done
+
+- Thêm 4 chiều ma trận mở rộng vào `PloMatrixCell` (cùng mô hình, không migration mới):
+  **PLO–Bên liên quan** (cột cố định: DN/cựu SV/SV/GV/hội đồng), **PLO–Vị trí việc làm** &
+  **PLO–PI/KPI** (**cột động** — người dùng/AI tự thêm), **PLO–Cải tiến PDCA** (Plan/Do/Check/Act,
+  nhập văn bản). Trang Ma trận thêm 4 tab; lưới hỗ trợ **"+ Thêm cột"** cho chiều động.
+- AI gợi ý/nâng cấp (`suggestPloMatrix`) xử lý chiều động: tự đề xuất vị trí việc làm (từ Đề án/
+  CTĐT đã upload) hoặc tách PLO thành PI/KPI; `applyPloMatrixCells` chấp nhận cột tự đặt cho
+  chiều động, vẫn lọc cột lạ cho chiều cố định. 118 test.
+
 ## [Hệ ma trận PLO đầy đủ (6 ma trận) + AI đánh giá/gợi ý/nâng cấp] — ✅ Done
 
 - Bổ sung **4 ma trận PLO** (ngoài PLO–Học phần & CLO–PLO đã có) bằng mô hình data-driven

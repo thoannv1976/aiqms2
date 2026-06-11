@@ -14,6 +14,10 @@ const TABS: { key: string; label: string }[] = [
   { key: "teaching", label: "PLO–PP dạy học" },
   { key: "assessment", label: "PLO–PP đánh giá" },
   { key: "measurement", label: "PLO–Minh chứng" },
+  { key: "stakeholder", label: "PLO–Bên liên quan" },
+  { key: "job", label: "PLO–Vị trí việc làm" },
+  { key: "pi", label: "PLO–PI/KPI" },
+  { key: "improvement", label: "PLO–Cải tiến PDCA" },
 ];
 
 interface Programme { id: string; code: string; name: string; versions: { id: string; version: string }[] }

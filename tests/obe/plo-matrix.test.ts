@@ -14,8 +14,8 @@ async function seed(tenantId: string) {
   return asTenant(tenantId, async () => {
     const prog = await createProgramme({ code: "SBI", name: "TMĐT", level: "bachelor", initialVersion: "2026" });
     const versionId = prog.versions[0].id;
-    await addPeo(versionId, { code: "PEO1", description: "Mục tiêu 1" });
-    for (const code of ["PLO1", "PLO2", "PLO3"]) await addPlo(versionId, { code, description: `${code} desc` });
+    await addPeo(versionId, { code: "PEO1", description: "Mục tiêu 1", order: 1 });
+    for (const [i, code] of ["PLO1", "PLO2", "PLO3"].entries()) await addPlo(versionId, { code, description: `${code} desc`, order: i + 1 });
     return versionId;
   });
 }
@@ -66,6 +66,23 @@ describe("Hệ ma trận PLO tổng quát (PEO/teaching/assessment/measurement)"
       expect(res.errors.length).toBe(2);
       const m = await ploMatrix(versionId, "teaching");
       expect(m.cells).toHaveLength(2);
+    });
+  });
+
+  it("chiều cột động (job): chấp nhận cột tự đặt; cột PEO/teaching cố định thì lọc", async () => {
+    const t = await createTenantFixture("demo");
+    const versionId = await seed(t.id);
+    await asTenant(t.id, async () => {
+      const res = await applyPloMatrixCells(versionId, "job", {
+        cells: [
+          { ploCode: "PLO1", colKey: "Chuyên viên Marketing số", value: "x" },
+          { ploCode: "PLO2", colKey: "Quản trị sàn TMĐT", value: "x" },
+        ],
+      });
+      expect(res.applied).toBe(2);
+      const m = await ploMatrix(versionId, "job");
+      expect(m.dynamicCols).toBe(true);
+      expect(m.columns.map((c) => c.key).sort()).toEqual(["Chuyên viên Marketing số", "Quản trị sàn TMĐT"]);
     });
   });
 
