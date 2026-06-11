@@ -64,10 +64,14 @@ export function CyclePlanPanel({ cycleId }: { cycleId: string }) {
   }
 
   async function aiPlan() {
-    setBusy(true); setNote(null);
-    try { setPlan((await api.post<{ tasks: PlanItem[] }>(`/api/ai/cycle-plan?cycleId=${cycleId}`, {}))?.tasks ?? []); }
-    catch (e) { setNote(e instanceof ApiClientError ? e.message : "Lỗi gọi AI (cần bật AI + có quyền)"); }
-    finally { setBusy(false); }
+    setBusy(true); setErr(null); setNote("⏳ AI đang lập kế hoạch kiểm định… (có thể mất 30–60 giây, vui lòng đợi)");
+    try {
+      const r = (await api.post<{ tasks: PlanItem[] }>(`/api/ai/cycle-plan?cycleId=${cycleId}`, {}))?.tasks ?? [];
+      setPlan(r);
+      setNote(r.length ? null : "AI không tạo được công việc nào — thử lại hoặc thêm thủ công.");
+    } catch (e) {
+      setNote(e instanceof ApiClientError ? `Lỗi AI: ${e.message}` : "Lỗi gọi AI (cần bật AI + có quyền)");
+    } finally { setBusy(false); }
   }
   async function applyPlan() {
     if (!plan) return;
@@ -93,7 +97,7 @@ export function CyclePlanPanel({ cycleId }: { cycleId: string }) {
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-semibold text-slate-700">Kế hoạch & phân công ({tasks.length})</h3>
         <div className="flex flex-wrap gap-2">
-          <button className="btn-outline" onClick={aiPlan} disabled={busy}>{busy ? "…" : "🤖 AI tạo kế hoạch"}</button>
+          <button className="btn-outline" onClick={aiPlan} disabled={busy}>{busy ? "⏳ Đang xử lý…" : "🤖 AI tạo kế hoạch"}</button>
           <button className="btn-outline" onClick={notifyMembers} disabled={busy}>🔔 Thông báo thành viên</button>
           <button className="btn-primary" onClick={() => setAddOpen(true)}>+ Thêm công việc</button>
         </div>

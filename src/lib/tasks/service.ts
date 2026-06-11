@@ -69,6 +69,29 @@ export async function boardView() {
   return TASK_STATUSES.map((status) => ({ status, tasks: columns[status] ?? [] }));
 }
 
+/** Công việc được giao cho người dùng hiện tại (kèm tên đợt + mã tiêu chí). */
+export async function listMyTasks() {
+  const ctx = requireTenantContext();
+  const tasks = await prisma.task.findMany({
+    where: { assigneeId: ctx.actorId, deletedAt: null },
+    orderBy: [{ status: "asc" }, { dueDate: "asc" }],
+  });
+  const cycleIds = [...new Set(tasks.map((t) => t.cycleId).filter((v): v is string => !!v))];
+  const critIds = [...new Set(tasks.map((t) => t.criterionId).filter((v): v is string => !!v))];
+  const [cycles, crits] = await Promise.all([
+    cycleIds.length ? prisma.assessmentCycle.findMany({ where: { id: { in: cycleIds } }, select: { id: true, name: true } }) : [],
+    critIds.length ? prisma.criterion.findMany({ where: { id: { in: critIds } }, select: { id: true, code: true } }) : [],
+  ]);
+  const cycleById = new Map(cycles.map((c) => [c.id, c.name]));
+  const codeById = new Map(crits.map((c) => [c.id, c.code]));
+  return tasks.map((t) => ({
+    id: t.id, title: t.title, status: t.status, priority: t.priority,
+    deliverables: t.deliverables, dueDate: t.dueDate, cycleId: t.cycleId,
+    cycleName: t.cycleId ? cycleById.get(t.cycleId) ?? null : null,
+    criterionCode: t.criterionId ? codeById.get(t.criterionId) ?? null : null,
+  }));
+}
+
 export async function updateTask(id: string, input: z.infer<typeof updateTaskSchema>) {
   const ctx = requireTenantContext();
   const existing = await prisma.task.findFirst({ where: { id } });
@@ -79,7 +102,7 @@ export async function updateTask(id: string, input: z.infer<typeof updateTaskSch
     await notify([input.assigneeId], {
       title: `Bạn được phân công: ${task.title}`,
       body: task.deliverables ? `Minh chứng cần nộp: ${task.deliverables}` : "Có công việc mới được giao cho bạn.",
-      link: task.cycleId ? `/cycles/${task.cycleId}` : "/tasks",
+      link: "/my-tasks",
     });
   }
   await writeAudit({ action: "task.update", entity: "Task", entityId: id });

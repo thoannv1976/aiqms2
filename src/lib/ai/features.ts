@@ -432,19 +432,18 @@ export async function suggestPloMatrix(
 }
 
 // ─── AI lập KẾ HOẠCH đợt tự đánh giá (AUN-QA) ───────────────────────────────
-const cyclePlanAiSchema = z.object({
-  tasks: z
-    .array(z.object({
-      title: z.string(),
-      type: z.string().optional(),
-      criterionCode: z.string().optional(),
-      deliverables: z.string().optional(),
-      role: z.string().optional(),
-      priority: z.enum(["low", "normal", "high"]).optional(),
-      dueOffsetDays: z.number().int().optional(),
-    }))
-    .default([]),
-});
+const planTaskItem = z
+  .object({
+    title: z.string(),
+    type: z.string().optional(),
+    criterionCode: z.string().optional(),
+    deliverables: z.string().optional(),
+    role: z.string().optional(),
+    priority: z.string().optional(),
+    dueOffsetDays: z.coerce.number().int().optional(),
+  })
+  .catch({ title: "" }); // item lỗi -> bỏ (lọc title rỗng) thay vì hỏng cả kế hoạch
+const cyclePlanAiSchema = z.object({ tasks: z.array(planTaskItem).default([]) });
 export type CyclePlanAi = z.infer<typeof cyclePlanAiSchema>;
 
 /** AI đề xuất kế hoạch công việc cho một đợt tự đánh giá AUN-QA (human-in-the-loop). */
@@ -485,8 +484,9 @@ export async function generateCyclePlan(cycleId: string): Promise<CyclePlanAi> {
     ],
     cyclePlanAiSchema,
   );
-  await writeAudit({ action: "ai.cycle_plan", entity: "AssessmentCycle", entityId: cycleId, meta: { tasks: result.tasks.length } });
-  return result;
+  const tasks = result.tasks.filter((t) => t.title?.trim());
+  await writeAudit({ action: "ai.cycle_plan", entity: "AssessmentCycle", entityId: cycleId, meta: { tasks: tasks.length } });
+  return { tasks };
 }
 
 // ─── Chỉnh sửa ĐỀ CƯƠNG học phần bằng AI (human-in-the-loop) ─────────────────

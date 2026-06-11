@@ -68,7 +68,7 @@ export async function createCycleTask(cycleId: string, input: z.infer<typeof cyc
     await notify([input.assigneeId], {
       title: `Bạn được phân công: ${task.title}`,
       body: `Đợt "${cycle.name}"${input.deliverables ? ` · Minh chứng cần nộp: ${input.deliverables}` : ""}`,
-      link: `/cycles/${cycleId}`,
+      link: "/my-tasks",
     });
   }
   return task;
@@ -83,11 +83,12 @@ export const cyclePlanSchema = z.object({
       criterionCode: z.string().optional(),
       deliverables: z.string().optional(),
       role: z.string().optional(),
-      priority: z.enum(["low", "normal", "high"]).optional(),
-      dueOffsetDays: z.number().int().optional(),
+      priority: z.string().optional(), // chuẩn hóa low|normal|high khi ghi
+      dueOffsetDays: z.coerce.number().int().optional(),
     }))
     .default([]),
 });
+const normPriority = (p?: string) => (p === "low" || p === "high" ? p : "normal");
 export type CyclePlanDraft = z.infer<typeof cyclePlanSchema>;
 
 /**
@@ -116,7 +117,7 @@ export async function applyCyclePlan(cycleId: string, input: CyclePlanDraft, ass
         assigneeId,
         criterionId: await criterionIdForCode(cycleId, t.criterionCode),
         deliverables: t.deliverables ?? null,
-        priority: t.priority ?? "normal",
+        priority: normPriority(t.priority),
         dueDate: t.dueOffsetDays != null ? new Date(base + t.dueOffsetDays * 86400000) : null,
         createdBy: ctx.actorId,
       }),
@@ -129,7 +130,7 @@ export async function applyCyclePlan(cycleId: string, input: CyclePlanDraft, ass
     await notify([userId], {
       title: `Bạn được giao ${n} công việc trong đợt "${cycle.name}"`,
       body: "Vui lòng xem chi tiết và minh chứng cần nộp trong đợt tự đánh giá.",
-      link: `/cycles/${cycleId}`,
+      link: "/my-tasks",
     });
   }
   await writeAudit({ action: "cycle.plan.apply", entity: "AssessmentCycle", entityId: cycleId, meta: { created, assigned } });
@@ -145,7 +146,7 @@ export async function notifyCycleMembers(cycleId: string, message?: string) {
   const res = await notify(userIds, {
     title: `Cập nhật đợt "${cycle.name}"`,
     body: message?.trim() || "Vui lòng kiểm tra công việc được phân công trong đợt tự đánh giá.",
-    link: `/cycles/${cycleId}`,
+    link: "/my-tasks",
   });
   await writeAudit({ action: "cycle.notify", entity: "AssessmentCycle", entityId: cycleId, meta: { sent: res.sent } });
   return res;

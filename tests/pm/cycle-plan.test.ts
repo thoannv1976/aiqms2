@@ -5,6 +5,7 @@ import { seedAunqa } from "@/lib/standards/seed";
 import { runWithTenant } from "@/lib/tenant/context";
 import { createCycle } from "@/lib/sar/service";
 import { applyCyclePlan, createCycleTask, listCycleTasks, notifyCycleMembers } from "@/lib/cycle-plan/service";
+import { listMyTasks } from "@/lib/tasks/service";
 import { generateCyclePlan } from "@/lib/ai/features";
 import { listMyNotifications } from "@/lib/notifications/service";
 import { updateSettings } from "@/lib/ai/settings";
@@ -45,7 +46,7 @@ describe("Kế hoạch đợt tự đánh giá + phân công + thông báo", () 
       const noti = await asUser(t.id, member.id, () => listMyNotifications());
       expect(noti.unread).toBe(1);
       expect(noti.items[0].title).toContain("Thu thập minh chứng C1");
-      expect(noti.items[0].link).toBe(`/cycles/${cycle.id}`);
+      expect(noti.items[0].link).toBe("/my-tasks");
     });
   });
 
@@ -84,6 +85,22 @@ describe("Kế hoạch đợt tự đánh giá + phân công + thông báo", () 
       const cycle = await createCycle({ name: "Đợt", standardVersionId: aunVersionId });
       const plan = await generateCyclePlan(cycle.id);
       expect(Array.isArray(plan.tasks)).toBe(true);
+    });
+  });
+
+  it("listMyTasks: thành viên chỉ thấy công việc của mình, kèm tên đợt + minh chứng", async () => {
+    const t = await createTenantFixture("demo");
+    await asUser(t.id, "admin", async () => {
+      const m = await createUser({ email: "tv@demo.local", fullName: "Thành viên", password: "password123", roleCodes: [] });
+      const cycle = await createCycle({ name: "Đợt X", standardVersionId: aunVersionId });
+      await createCycleTask(cycle.id, { title: "Thu thập C1", criterionCode: "C1", assigneeId: m.id, deliverables: "Bảng PLO", priority: "normal" });
+      await createCycleTask(cycle.id, { title: "Việc người khác", priority: "normal" }); // không gán m
+      const mine = await asUser(t.id, m.id, () => listMyTasks());
+      expect(mine).toHaveLength(1);
+      expect(mine[0].title).toBe("Thu thập C1");
+      expect(mine[0].cycleName).toBe("Đợt X");
+      expect(mine[0].deliverables).toBe("Bảng PLO");
+      expect(mine[0].criterionCode).toBe("C1");
     });
   });
 

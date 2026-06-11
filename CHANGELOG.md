@@ -21,6 +21,17 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
 - **Lưu trữ GCS**: cài sẵn `@aws-sdk/client-s3` → driver S3 chạy với GCS (S3-compatible) chỉ
   bằng cấu hình env; hướng dẫn HMAC + bucket ở `DEPLOY.md` mục 7b.
 
+## [Công việc của tôi + sửa AI kế hoạch đợt + cảnh báo storage] — ✅ Done
+
+- **Sửa AI tạo kế hoạch đợt**: schema kế hoạch khoan dung (item lỗi `.catch`, priority chuẩn
+  hóa low/normal/high, `dueOffsetDays` coerce) → không còn fail schema sau khi chờ; UX rõ ràng
+  ("⏳ AI đang lập kế hoạch… 30–60 giây") thay vì chỉ "…"; báo lỗi/０-task tường minh.
+- **Màn hình "Công việc của tôi"** (`/my-tasks` + `/api/tasks/mine`): thành viên thấy các công
+  việc được giao (kèm tên đợt, tiêu chí, **minh chứng phải nộp**, hạn), tự **đổi trạng thái**
+  và link **Nộp minh chứng**. Thông báo phân công nay trỏ tới `/my-tasks`. Thêm menu sidebar.
+- **Cảnh báo storage**: log cảnh báo khi `STORAGE_DRIVER=local` chạy production (Cloud Run ổ
+  đĩa không bền vững) — nhắc dùng GCS (`scripts/setup-gcs.sh`). 126 test.
+
 ## [Kho đề cương: trích xuất hàng loạt (chọn nhiều)] — ✅ Done
 
 - Mỗi đề cương trong kho có **"Trích xuất"** riêng (theo đúng documentId của dòng đó) → xem

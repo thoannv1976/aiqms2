@@ -21,6 +21,10 @@ export function getStorage(): Storage {
       secretAccessKey: requireEnv("S3_SECRET_ACCESS_KEY", env.S3_SECRET_ACCESS_KEY),
     });
   } else {
+    if (env.NODE_ENV === "production") {
+      // Cloud Run: ổ đĩa local KHÔNG bền vững (mất khi restart/scale). Khuyến nghị GCS.
+      console.warn("[STORAGE] STORAGE_DRIVER=local trên production — file upload KHÔNG bền vững. Chuyển sang GCS/S3 (xem scripts/setup-gcs.sh, DEPLOY.md mục 7b).");
+    }
     cached = new LocalStorage(env.STORAGE_LOCAL_DIR);
   }
   return cached;
