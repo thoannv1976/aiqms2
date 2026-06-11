@@ -63,3 +63,35 @@ export async function safePut(
     );
   }
 }
+
+/** Kho lưu trữ có BỀN VỮNG không (S3/GCS) — local trên prod là tạm (mất khi restart). */
+export function isDurableStorage(): boolean {
+  return env.STORAGE_DRIVER === "s3";
+}
+
+export function storageStatus() {
+  return {
+    driver: env.STORAGE_DRIVER,
+    durable: isDurableStorage(),
+    bucket: env.STORAGE_DRIVER === "s3" ? env.S3_BUCKET ?? null : null,
+  };
+}
+
+/**
+ * Lỗi RÕ RÀNG khi file không còn trong kho (bytes đã mất dù bản ghi DB còn).
+ * Nguyên nhân phổ biến nhất trên Cloud Run: driver `local` ghi vào /tmp tạm bị xóa khi
+ * container restart/scale → hướng dẫn bật GCS hoặc tải lại file.
+ */
+export function storageMissingError(): ApiError {
+  if (!isDurableStorage() && env.NODE_ENV === "production") {
+    return new ApiError(
+      404,
+      "File không còn trong kho lưu trữ TẠM. Trên Cloud Run, kho 'local' nằm ở /tmp và bị xóa khi " +
+        "máy chủ khởi động lại/mở rộng — nên file upload trước đó bị mất. Hãy BẬT lưu trữ bền vững GCS " +
+        "(STORAGE_DRIVER=s3 + S3_*; xem scripts/setup-gcs.sh, DEPLOY.md mục 7b) rồi tải lại file, hoặc dùng " +
+        "“Tải lên phiên bản mới” để thay thế.",
+      "storage_file_lost",
+    );
+  }
+  return new ApiError(404, "File không tồn tại trong kho lưu trữ.", "not_found");
+}

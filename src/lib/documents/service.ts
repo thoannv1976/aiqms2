@@ -5,7 +5,7 @@ import { requireTenantContext } from "@/lib/tenant/context";
 import { withTenantId } from "@/lib/prisma/tenant-create";
 import { writeAudit } from "@/lib/audit/log";
 import { softDeleteData } from "@/lib/prisma/soft-delete";
-import { getStorage, safePut, tenantKey } from "@/lib/storage";
+import { getStorage, safePut, storageMissingError, tenantKey } from "@/lib/storage";
 import { badRequest, notFound } from "@/lib/http/responses";
 import { paginated, type PageParams } from "@/lib/http/pagination";
 import { addFile, createEvidence } from "@/lib/evidence/service";
@@ -95,7 +95,7 @@ export async function getDocument(id: string) {
 export async function downloadDocument(id: string) {
   const doc = await getDocument(id);
   const body = await getStorage().get(doc.storageKey);
-  if (!body) throw notFound("File không tồn tại trong kho lưu trữ");
+  if (!body) throw storageMissingError();
   return { body, fileName: doc.fileName, contentType: doc.contentType ?? "application/octet-stream" };
 }
 
@@ -195,7 +195,7 @@ export async function promoteDocumentToEvidence(documentId: string) {
   const doc = await prisma.document.findFirst({ where: { id: documentId } });
   if (!doc) throw notFound("Tài liệu không tồn tại");
   const bytes = await getStorage().get(doc.storageKey);
-  if (!bytes) throw badRequest("File không còn trong kho lưu trữ");
+  if (!bytes) throw storageMissingError();
 
   // Tiêu chí lấy từ công việc gắn với tài liệu (nếu có).
   let criterionIds: string[] = [];

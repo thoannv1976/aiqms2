@@ -21,6 +21,16 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
 - **Lưu trữ GCS**: cài sẵn `@aws-sdk/client-s3` → driver S3 chạy với GCS (S3-compatible) chỉ
   bằng cấu hình env; hướng dẫn HMAC + bucket ở `DEPLOY.md` mục 7b.
 
+## [Kho đề cương: lỗi "file không còn trong kho" — chẩn đoán rõ + cảnh báo lưu trữ tạm] — ✅ Done
+- **Nguyên nhân**: trên Cloud Run, driver `local` ghi file vào `/tmp` (tạm) — file bị mất khi máy chủ
+  khởi động lại/mở rộng, trong khi bản ghi DB vẫn còn → file cũ hiện trong danh sách nhưng "Trích xuất"/"Tải"
+  báo "không tồn tại trong kho lưu trữ". Đây là vấn đề **cấu hình lưu trữ**, không phải lỗi logic.
+- **Sửa/cải thiện**: thông báo lỗi mới `storage_file_lost` nêu rõ nguyên nhân + cách xử lý (bật GCS hoặc
+  "Tải lên phiên bản mới"); dùng chung cho tải tài liệu, trích xuất đề cương, đưa vào hồ sơ MC. Thêm
+  `GET /api/storage/status` + **banner cảnh báo** trong "Kho đề cương" khi lưu trữ chưa bền vững.
+  Cách khắc phục triệt để: chạy `scripts/setup-gcs.sh` để bật `STORAGE_DRIVER=s3` (GCS). Test:
+  `tests/storage/storage-status.test.ts`.
+
 ## [Xuất "Công việc của tôi" ra Excel/Word] — ✅ Done
 - Mỗi thành viên **xuất danh sách công việc của mình** đầy đủ chi tiết (tên người phụ trách, đợt
   kiểm định, tiêu chí, công việc, **minh chứng phải nộp**, hạn, ưu tiên, trạng thái): Excel (bảng

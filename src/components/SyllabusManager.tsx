@@ -31,6 +31,7 @@ export function SyllabusManager({ onChanged }: { onChanged?: () => void }) {
   // Chọn nhiều để trích xuất & ghi hàng loạt.
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [progress, setProgress] = useState<string | null>(null);
+  const [durable, setDurable] = useState<boolean | null>(null);
 
   const loadDocs = useCallback(async () => {
     try {
@@ -41,6 +42,7 @@ export function SyllabusManager({ onChanged }: { onChanged?: () => void }) {
 
   useEffect(() => { if (open) api.get<{ items: Programme[] }>("/api/programmes?pageSize=100").then((d) => setProgrammes(d?.items ?? [])).catch(() => {}); }, [open]);
   useEffect(() => { if (open) loadDocs(); }, [open, loadDocs]);
+  useEffect(() => { if (open) api.get<{ durable: boolean }>("/api/storage/status").then((s) => setDurable(s?.durable ?? null)).catch(() => {}); }, [open]);
 
   async function upload() {
     const files = fileRef.current?.files;
@@ -127,6 +129,14 @@ export function SyllabusManager({ onChanged }: { onChanged?: () => void }) {
       <button className="btn-outline" onClick={() => { setOpen(true); setNote(null); setErr(null); }}>Kho đề cương</button>
       <Modal open={open} title="Kho đề cương học phần (upload nhiều · trích xuất sau)" onClose={() => setOpen(false)}>
         <div className="space-y-4">
+          {durable === false && (
+            <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-800">
+              ⚠ <b>Kho lưu trữ đang ở chế độ TẠM (local /tmp)</b> — trên Cloud Run, file sẽ bị mất khi máy chủ
+              khởi động lại/mở rộng. Vì vậy file cũ có thể báo “không còn trong kho”. Hãy <b>bật lưu trữ bền vững GCS</b>
+              (STORAGE_DRIVER=s3 + S3_*; xem scripts/setup-gcs.sh / DEPLOY.md mục 7b). Trong lúc chờ: nên
+              <b> upload và Trích xuất ngay</b>, hoặc dùng “Tải lên phiên bản mới” để thay file đã mất.
+            </div>
+          )}
           <div>
             <label className="label">Chương trình đào tạo</label>
             <select className="input" value={programmeId} onChange={(e) => setProgrammeId(e.target.value)}>

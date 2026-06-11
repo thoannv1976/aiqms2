@@ -4,7 +4,7 @@ import { requireTenantContext } from "@/lib/tenant/context";
 import { withTenantId } from "@/lib/prisma/tenant-create";
 import { writeAudit } from "@/lib/audit/log";
 import { badRequest, notFound } from "@/lib/http/responses";
-import { getStorage } from "@/lib/storage";
+import { getStorage, storageMissingError } from "@/lib/storage";
 import { aiCompleteJson } from "@/lib/ai/service";
 import { docxToText } from "./docx";
 import type { ImportResult } from "./excel";
@@ -181,7 +181,7 @@ export async function extractStoredSyllabus(documentId: string): Promise<{ sourc
   const doc = await prisma.document.findFirst({ where: { id: documentId } });
   if (!doc) throw notFound("Tài liệu không tồn tại");
   const bytes = await getStorage().get(doc.storageKey);
-  if (!bytes) throw badRequest("File không còn trong kho lưu trữ");
+  if (!bytes) throw storageMissingError();
   const kind = /\.pdf$/i.test(doc.fileName) ? "pdf" : /\.docx$/i.test(doc.fileName) ? "docx" : null;
   if (!kind) throw badRequest("Chỉ trích xuất được file .docx hoặc .pdf");
   const { source, data } = await extractSyllabusDoc(bytes, kind);
