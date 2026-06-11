@@ -15,7 +15,7 @@
 - [x] D3. Chấm theo 53 yêu cầu (sub-criteria): checklist mức đáp ứng từng yêu cầu
 
 ### Ưu tiên trung bình
-- [ ] D4. Bảng theo dõi tiến độ đợt (% theo tiêu chí, MC đã thu, ai trễ hạn)
+- [x] D4. Bảng theo dõi tiến độ đợt (% theo tiêu chí, MC đã thu, ai trễ hạn) — panel ở chi tiết đợt
 - [ ] D5. Email + nhắc hạn tự động (SMTP)
 - [x] D6. Tạo cải tiến từ điểm yếu (= C3)
 - [ ] D7. Đo lường mức đạt PLO (PLO attainment) theo khóa/kỳ → C8

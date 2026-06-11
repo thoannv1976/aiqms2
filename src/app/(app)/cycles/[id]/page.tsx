@@ -7,6 +7,7 @@ import { api, ApiClientError } from "@/lib/api/client";
 import { PageHeader, StatusBadge, Spinner, ErrorBox } from "@/components/ui";
 import { Modal } from "@/components/Modal";
 import { CyclePlanPanel } from "@/components/CyclePlanPanel";
+import { CycleProgressPanel } from "@/components/CycleProgressPanel";
 
 interface Sar { id: string; title: string; status: string }
 interface Cycle { id: string; name: string; year: number | null; status: string; reports: Sar[]; programme: { code: string; name: string } | null }
@@ -66,6 +67,8 @@ export default function CycleDetailPage() {
           </table>
         )}
       </div>
+
+      <CycleProgressPanel cycleId={cycle.id} />
 
       <CyclePlanPanel cycleId={cycle.id} />
 

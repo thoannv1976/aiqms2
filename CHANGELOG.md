@@ -21,6 +21,13 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
 - **Lưu trữ GCS**: cài sẵn `@aws-sdk/client-s3` → driver S3 chạy với GCS (S3-compatible) chỉ
   bằng cấu hình env; hướng dẫn HMAC + bucket ở `DEPLOY.md` mục 7b.
 
+## [Bảng theo dõi tiến độ đợt (D4)] — ✅ Done
+- **Theo dõi tiến độ đợt** (`cycleProgress`): % hoàn thiện theo từng tiêu chí (phân tích 30 /
+  điểm 20 / minh chứng 30 / yêu cầu con 20), % chung, số minh chứng đã thu, thống kê nhiệm vụ
+  (tổng / hoàn thành / quá hạn) và **danh sách ai đang trễ hạn** (gộp theo người phụ trách).
+  Panel `CycleProgressPanel` ở chi tiết đợt, API `GET /api/cycles/[id]/progress`. Test trên
+  Postgres (`tests/cycle/progress.test.ts`).
+
 ## [Khảo sát → C8 (C4)] — ✅ Done
 - **Đưa kết quả khảo sát vào dữ liệu C8** (`promoteSurveyToOutcome`): tổng hợp điểm trung bình
   các câu hỏi rating thành chỉ số `OutcomeMetric` (category=satisfaction, kèm nhóm bên liên quan),
