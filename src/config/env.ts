@@ -48,6 +48,16 @@ const schema = z.object({
   S3_ACCESS_KEY_ID: z.string().optional(),
   S3_SECRET_ACCESS_KEY: z.string().optional(),
 
+  // Email + nhắc hạn
+  EMAIL_DRIVER: z.enum(["log", "smtp"]).default("log"),
+  EMAIL_FROM: z.string().default("AIQMS <no-reply@aiqms.local>"),
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().int().positive().default(587),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  SMTP_SECURE: boolFromEnv,
+  REMINDER_DUE_WITHIN_DAYS: z.coerce.number().int().nonnegative().default(3),
+
   // AI
   AI_PROVIDER: z
     .enum(["openai", "azure", "gemini", "claude", "local"])

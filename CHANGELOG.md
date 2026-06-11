@@ -21,6 +21,15 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
 - **Lưu trữ GCS**: cài sẵn `@aws-sdk/client-s3` → driver S3 chạy với GCS (S3-compatible) chỉ
   bằng cấu hình env; hướng dẫn HMAC + bucket ở `DEPLOY.md` mục 7b.
 
+## [Email + nhắc hạn tự động (D5)] — ✅ Done
+- **Mailer abstraction** (`getMailer`): driver `log` (mặc định, không gửi) và `smtp` (nodemailer,
+  nạp động — không bắt buộc khi dùng `log`; fallback an toàn nếu thiếu cấu hình). Cấu hình env
+  `EMAIL_DRIVER/EMAIL_FROM/SMTP_*`.
+- **Nhắc hạn nhiệm vụ tự động** (`dueReminders`): quét nhiệm vụ chưa hoàn thành sắp đến hạn /
+  quá hạn (trong `REMINDER_DUE_WITHIN_DAYS` ngày), gộp theo người phụ trách, tạo thông báo
+  trong app + gửi email. Nút "Gửi nhắc hạn" ở trang Nhiệm vụ, API `POST /api/reminders/run`
+  (có thể gọi định kỳ qua cron). Test trên Postgres (`tests/reminders/reminders.test.ts`).
+
 ## [Bảng theo dõi tiến độ đợt (D4)] — ✅ Done
 - **Theo dõi tiến độ đợt** (`cycleProgress`): % hoàn thiện theo từng tiêu chí (phân tích 30 /
   điểm 20 / minh chứng 30 / yêu cầu con 20), % chung, số minh chứng đã thu, thống kê nhiệm vụ

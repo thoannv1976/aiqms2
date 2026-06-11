@@ -16,7 +16,7 @@
 
 ### Ưu tiên trung bình
 - [x] D4. Bảng theo dõi tiến độ đợt (% theo tiêu chí, MC đã thu, ai trễ hạn) — panel ở chi tiết đợt
-- [ ] D5. Email + nhắc hạn tự động (SMTP)
+- [x] D5. Email + nhắc hạn tự động (SMTP) — mailer abstraction (log|smtp) + dueReminders + nút "Gửi nhắc hạn"
 - [x] D6. Tạo cải tiến từ điểm yếu (= C3)
 - [ ] D7. Đo lường mức đạt PLO (PLO attainment) theo khóa/kỳ → C8
 

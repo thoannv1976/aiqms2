@@ -67,6 +67,15 @@ export default function TasksPage() {
     }
   }
 
+  async function runReminders() {
+    try {
+      const r = await api.post<{ notified: number; emailsSent: number }>("/api/reminders/run", {});
+      alert(`Đã nhắc ${r?.notified ?? 0} người (email gửi: ${r?.emailsSent ?? 0}).`);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Lỗi gửi nhắc hạn");
+    }
+  }
+
   if (error) return <ErrorBox message={error} />;
 
   return (
@@ -74,7 +83,12 @@ export default function TasksPage() {
       <PageHeader
         title="Nhiệm vụ"
         subtitle="Bảng Kanban — kéo‑thả thẻ giữa các cột để đổi trạng thái"
-        action={<button className="btn-primary" onClick={() => setOpen(true)}>+ Tạo nhiệm vụ</button>}
+        action={
+          <div className="flex items-center gap-2">
+            <button className="btn-outline" onClick={runReminders}>Gửi nhắc hạn</button>
+            <button className="btn-primary" onClick={() => setOpen(true)}>+ Tạo nhiệm vụ</button>
+          </div>
+        }
       />
       {loading ? <Spinner /> : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
