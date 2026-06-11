@@ -51,6 +51,19 @@ describe("P7 — Xuất báo cáo (background job)", () => {
     });
   });
 
+  it("xuất HỒ SƠ SAR đầy đủ (.docx) — có phụ lục ma trận/C5-C8/MC", async () => {
+    const t = await createTenantFixture("demo");
+    const sar = await makeSar(t.id);
+    await asTenant(t.id, async () => {
+      await createEvidence({ title: "MC dossier", criterionIds: [], requirementIds: [] });
+      const job = await createExportJob({ type: "sar_dossier_docx", sarId: sar.id });
+      expect(job.status).toBe("done");
+      const dl = await downloadJob(job.id);
+      expect(isZip(dl.body)).toBe(true);
+      expect(dl.body.byteLength).toBeGreaterThan(2000);
+    });
+  });
+
   it("xuất SAR ra PDF", async () => {
     const t = await createTenantFixture("demo");
     const sar = await makeSar(t.id);

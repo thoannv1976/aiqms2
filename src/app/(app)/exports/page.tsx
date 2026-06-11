@@ -12,6 +12,7 @@ interface Plan { id: string; title: string }
 
 const TYPES: { value: string; label: string; needsSar?: boolean; needsPlan?: boolean }[] = [
   { value: "sar_docx", label: "SAR → Word", needsSar: true },
+  { value: "sar_dossier_docx", label: "Hồ sơ SAR đầy đủ (SAR+ma trận+C5–C8+điểm+MC) → Word", needsSar: true },
   { value: "sar_pdf", label: "SAR → PDF", needsSar: true },
   { value: "evidence_xlsx", label: "Danh mục minh chứng → Excel" },
   { value: "evidence_zip", label: "Gói minh chứng → ZIP" },

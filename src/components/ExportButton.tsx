@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { api, authedUrl, ApiClientError } from "@/lib/api/client";
 
-type ExportType = "sar_docx" | "sar_pdf" | "evidence_xlsx" | "evidence_zip";
+type ExportType = "sar_docx" | "sar_dossier_docx" | "sar_pdf" | "evidence_xlsx" | "evidence_zip";
 
 interface Job { id: string; status: string }
 

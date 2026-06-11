@@ -112,6 +112,7 @@ export default function SarEditorPage() {
               <button key={s} className="btn-outline" onClick={() => changeStatus(s)}>→ {sarStatusVi(s)}</button>
             ))}
             <ExportButton type="sar_docx" sarId={sar.id} label="Xuất Word" />
+            <ExportButton type="sar_dossier_docx" sarId={sar.id} label="Xuất hồ sơ đầy đủ" />
             <ExportButton type="sar_pdf" sarId={sar.id} label="Xuất PDF" />
           </div>
         }

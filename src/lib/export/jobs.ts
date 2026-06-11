@@ -13,9 +13,11 @@ import { buildEvidenceXlsx } from "./evidence-xlsx";
 import { buildEvidenceZip } from "./evidence-zip";
 import { buildImprovementDocx } from "./improvement-docx";
 import { buildImprovementXlsx } from "./improvement-xlsx";
+import { buildSarDossierDocx } from "./sar-dossier-docx";
 
 export const EXPORT_TYPES = [
   "sar_docx",
+  "sar_dossier_docx",
   "sar_pdf",
   "evidence_xlsx",
   "evidence_zip",
@@ -35,6 +37,7 @@ type Params = z.infer<typeof createExportSchema>;
 
 const MIME: Record<ExportType, { ext: string; contentType: string }> = {
   sar_docx: { ext: "docx", contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" },
+  sar_dossier_docx: { ext: "docx", contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" },
   sar_pdf: { ext: "pdf", contentType: "application/pdf" },
   evidence_xlsx: { ext: "xlsx", contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" },
   evidence_zip: { ext: "zip", contentType: "application/zip" },
@@ -47,6 +50,9 @@ async function runExporter(type: ExportType, params: Params): Promise<Buffer> {
     case "sar_docx":
       if (!params.sarId) throw badRequest("sar_docx cần sarId");
       return buildSarDocx(params.sarId);
+    case "sar_dossier_docx":
+      if (!params.sarId) throw badRequest("sar_dossier_docx cần sarId");
+      return buildSarDossierDocx(params.sarId);
     case "sar_pdf":
       if (!params.sarId) throw badRequest("sar_pdf cần sarId");
       return buildSarPdf(params.sarId);

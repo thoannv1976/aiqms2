@@ -21,6 +21,16 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
 - **Lưu trữ GCS**: cài sẵn `@aws-sdk/client-s3` → driver S3 chạy với GCS (S3-compatible) chỉ
   bằng cấu hình env; hướng dẫn HMAC + bucket ở `DEPLOY.md` mục 7b.
 
+## [Xuất hồ sơ SAR đầy đủ (D1/C2)] — ✅ Done
+- **Xuất hồ sơ tự đánh giá đầy đủ → Word** (`sar_dossier_docx`): gộp toàn bộ phụ lục vào một
+  tài liệu — PHẦN I phân tích theo tiêu chí kèm **checklist 53 yêu cầu** (mức đáp ứng + ghi
+  chú) và **điểm hội đồng** (TB/min–max); PHẦN II **các ma trận PLO** (PLO×Học phần I/R/M +
+  toàn bộ ma trận theo `PLO_DIMENSIONS`); PHẦN III **dữ liệu C5–C8** (giảng viên, người học,
+  CSVC, kết quả đầu ra); PHẦN IV **khảo sát các bên liên quan**; PHẦN V **danh mục minh chứng**
+  theo mã tiêu chí.
+- Nối vào job xuất nền (`createExportJob`), trang **Xuất báo cáo** và nút "Xuất hồ sơ đầy đủ"
+  ở chi tiết SAR. Có test trên Postgres (`tests/export/export.test.ts`).
+
 ## [Task → hồ sơ minh chứng + AI gợi ý hành động mọi màn hình] — ✅ Done
 
 - **"→ Hồ sơ"** tại mỗi file nộp ở task: `promoteDocumentToEvidence` tạo **Evidence
