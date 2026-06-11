@@ -28,6 +28,9 @@ export function SyllabusManager({ onChanged }: { onChanged?: () => void }) {
   const [previewDoc, setPreviewDoc] = useState<string | null>(null);
   const [extracted, setExtracted] = useState<Extracted | null>(null);
   const [source, setSource] = useState<string | null>(null);
+  // Chọn nhiều để trích xuất & ghi hàng loạt.
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [progress, setProgress] = useState<string | null>(null);
 
   const loadDocs = useCallback(async () => {
     try {
@@ -91,6 +94,34 @@ export function SyllabusManager({ onChanged }: { onChanged?: () => void }) {
     try { await api.delete(`/api/documents/${docId}`); await loadDocs(); } catch { /* bỏ qua */ }
   }
 
+  function toggleSel(id: string) {
+    setSelected((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  }
+  function toggleAll() {
+    setSelected((s) => (s.size === docs.length ? new Set() : new Set(docs.map((d) => d.id))));
+  }
+
+  /** Trích xuất + ghi học phần cho tất cả đề cương đã chọn (tuần tự, có tiến độ). */
+  async function bulkExtract() {
+    const ids = docs.filter((d) => selected.has(d.id)).map((d) => d.id);
+    if (ids.length === 0) return;
+    setBusy(true); setErr(null); setNote(null); setProgress(null);
+    let okN = 0; const errs: string[] = [];
+    for (let i = 0; i < ids.length; i++) {
+      setProgress(`Đang xử lý ${i + 1}/${ids.length}…`);
+      try {
+        await api.post("/api/import/courses/doc/extract-apply", { documentId: ids[i], programmeId: programmeId || undefined });
+        okN++;
+      } catch (e) {
+        errs.push(e instanceof ApiClientError ? e.message : "lỗi");
+      }
+    }
+    setProgress(null);
+    setNote(`Đã trích xuất & ghi ${okN}/${ids.length} đề cương${errs.length ? ` · ${errs.length} lỗi` : ""}.`);
+    setSelected(new Set()); await loadDocs(); onChanged?.();
+    setBusy(false);
+  }
+
   return (
     <>
       <button className="btn-outline" onClick={() => { setOpen(true); setNote(null); setErr(null); }}>Kho đề cương</button>
@@ -132,14 +163,30 @@ export function SyllabusManager({ onChanged }: { onChanged?: () => void }) {
             </div>
           ) : (
             <div>
-              <p className="mb-1 text-sm font-medium text-slate-700">Đề cương đã upload ({docs.length})</p>
+              <div className="mb-1 flex items-center justify-between">
+                <p className="text-sm font-medium text-slate-700">Đề cương đã upload ({docs.length})</p>
+                {docs.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <label className="flex items-center gap-1 text-xs text-slate-500">
+                      <input type="checkbox" checked={selected.size === docs.length && docs.length > 0} onChange={toggleAll} /> Chọn tất cả
+                    </label>
+                    <button className="btn-primary h-8 py-0 text-xs disabled:opacity-50" disabled={busy || selected.size === 0} onClick={bulkExtract}>
+                      Trích xuất & ghi đã chọn ({selected.size})
+                    </button>
+                  </div>
+                )}
+              </div>
+              {progress && <p className="mb-1 text-xs text-indigo-600">{progress}</p>}
               {docs.length === 0 ? (
                 <p className="text-sm text-slate-400">Chưa có đề cương trong kho.</p>
               ) : (
                 <ul className="max-h-60 space-y-1 overflow-y-auto">
                   {docs.map((d) => (
                     <li key={d.id} className="flex items-center justify-between gap-2 rounded border border-slate-100 px-2 py-1.5 text-sm">
-                      <span className="line-clamp-1 text-slate-700" title={d.fileName}>{d.title}</span>
+                      <label className="flex min-w-0 flex-1 items-center gap-2">
+                        <input type="checkbox" checked={selected.has(d.id)} onChange={() => toggleSel(d.id)} />
+                        <span className="line-clamp-1 text-slate-700" title={d.fileName}>{d.title}</span>
+                      </label>
                       <span className="flex shrink-0 gap-3 text-xs">
                         <button className="text-indigo-600 hover:underline disabled:text-slate-300" disabled={busy} onClick={() => extract(d.id)}>Trích xuất</button>
                         <a className="text-slate-500 hover:underline" href={authedUrl(`/api/documents/${d.id}/download`)}>Tải</a>

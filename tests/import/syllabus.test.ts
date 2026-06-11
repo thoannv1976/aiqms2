@@ -4,7 +4,7 @@ import { prisma, resetDb } from "../helpers/db";
 import { createTenantFixture } from "../helpers/fixtures";
 import { runWithTenant } from "@/lib/tenant/context";
 import { docxToText } from "@/lib/import/docx";
-import { applyExtractedSyllabus, extractSyllabusByRules, extractStoredSyllabus, pdfToText } from "@/lib/import/syllabus";
+import { applyExtractedSyllabus, extractAndApplyStored, extractSyllabusByRules, extractStoredSyllabus, pdfToText } from "@/lib/import/syllabus";
 import { createDocument } from "@/lib/documents/service";
 import { createProgramme } from "@/lib/programmes/service";
 
@@ -107,6 +107,23 @@ describe("Import đề cương học phần từ Word/PDF", () => {
       expect(r.documentId).toBe(doc.id);
       expect(r.data.code).toBe("TMAE306");
       expect(r.data.clos.map((c) => c.code)).toEqual(["CLO1", "CLO2"]);
+    });
+  });
+
+  it("extractAndApplyStored: trích + ghi học phần từ tài liệu kho + gắn file vào học phần", async () => {
+    const t = await createTenantFixture("demo");
+    await asTenant(t.id, async () => {
+      const doc = await createDocument(
+        { title: "Đề cương TMAE306", category: "syllabus" },
+        { fileName: "tmae306.docx", body: await buildSyllabusDocx() },
+      );
+      const r = await extractAndApplyStored(doc.id);
+      expect(r.code).toBe("TMAE306");
+      const course = await prisma.course.findFirstOrThrow({ where: { code: "TMAE306" }, include: { clos: true } });
+      expect(course.clos).toHaveLength(2);
+      // File được gắn vào học phần vừa tạo.
+      const linked = await prisma.document.findFirstOrThrow({ where: { id: doc.id } });
+      expect(linked.courseId).toBe(course.id);
     });
   });
 

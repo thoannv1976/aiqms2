@@ -21,6 +21,14 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
 - **Lưu trữ GCS**: cài sẵn `@aws-sdk/client-s3` → driver S3 chạy với GCS (S3-compatible) chỉ
   bằng cấu hình env; hướng dẫn HMAC + bucket ở `DEPLOY.md` mục 7b.
 
+## [Kho đề cương: trích xuất hàng loạt (chọn nhiều)] — ✅ Done
+
+- Mỗi đề cương trong kho có **"Trích xuất"** riêng (theo đúng documentId của dòng đó) → xem
+  trước → ghi học phần.
+- **Chọn nhiều đề cương** (checkbox + "Chọn tất cả") → nút **"Trích xuất & ghi đã chọn (N)"**:
+  xử lý tuần tự, có tiến độ, mỗi đề cương được trích xuất + tạo/cập nhật học phần + **gắn file
+  vào học phần** (`extractAndApplyStored` + `/api/import/courses/doc/extract-apply`). 125 test.
+
 ## [Kho đề cương: upload nhiều + trích xuất sau + AI tạo bản chuẩn AUN-QA] — ✅ Done
 
 - **Kho đề cương** (nút "Kho đề cương" ở trang Đề cương): **tải lên NHIỀU file .docx/.pdf** một

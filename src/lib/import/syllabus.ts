@@ -248,3 +248,16 @@ export async function applyExtractedSyllabus(
   await writeAudit({ action: "import.syllabus.doc", entity: "Course", entityId: course.id, meta: res.details });
   return { ...res, courseId: course.id };
 }
+
+/** Trích xuất + ghi một tài liệu đề cương trong kho thành học phần (cho xử lý hàng loạt). */
+export async function extractAndApplyStored(documentId: string, programmeId?: string) {
+  const ctx = requireTenantContext();
+  const { data, programmeId: docProg } = await extractStoredSyllabus(documentId);
+  if (!data.code) throw badRequest("Không trích được mã học phần từ tài liệu");
+  const result = await applyExtractedSyllabus(data, programmeId ?? docProg ?? undefined);
+  await prisma.document.update({
+    where: { id: documentId },
+    data: { courseId: result.courseId, ...(programmeId ? { programmeId } : {}), updatedBy: ctx.actorId },
+  });
+  return { code: data.code, name: data.name, created: result.created, updated: result.updated, clos: data.clos.length, courseId: result.courseId };
+}
