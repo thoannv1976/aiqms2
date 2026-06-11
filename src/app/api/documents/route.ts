@@ -16,6 +16,7 @@ export const GET = authedRoute(async (req) => {
       category: url.searchParams.get("category") ?? undefined,
       programmeId: url.searchParams.get("programmeId") ?? undefined,
       courseId: url.searchParams.get("courseId") ?? undefined,
+      taskId: url.searchParams.get("taskId") ?? undefined,
     }),
   );
 });
@@ -33,6 +34,7 @@ export const POST = authedRoute(async (req) => {
     category: (form.get("category") as string) || "other",
     programmeId: (form.get("programmeId") as string) || undefined,
     courseId: (form.get("courseId") as string) || undefined,
+    taskId: (form.get("taskId") as string) || undefined,
     note: (form.get("note") as string) || undefined,
   });
   const body = Buffer.from(await file.arrayBuffer());

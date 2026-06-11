@@ -14,7 +14,7 @@ const ROLE_VI: Record<string, string> = {
 interface Task {
   id: string; title: string; status: string; priority: string;
   assigneeId: string | null; assigneeName: string | null;
-  criterionCode: string | null; deliverables: string | null; dueDate: string | null;
+  criterionCode: string | null; deliverables: string | null; dueDate: string | null; fileCount: number;
 }
 interface PlanItem { title: string; criterionCode?: string; deliverables?: string; role?: string; priority?: string; dueOffsetDays?: number }
 
@@ -173,6 +173,7 @@ export function CyclePlanPanel({ cycleId }: { cycleId: string }) {
                   </td>
                   <td className="px-2 text-xs text-slate-600">
                     <input className="input h-8 py-0 text-xs" defaultValue={t.deliverables ?? ""} placeholder="vd: file biên bản, bảng số liệu…" onBlur={(e) => { if (e.target.value !== (t.deliverables ?? "")) patch(t.id, { deliverables: e.target.value || null }); }} />
+                    <span className={`mt-0.5 block text-[11px] ${t.fileCount > 0 ? "text-emerald-600" : "text-slate-400"}`}>📎 đã nộp: {t.fileCount}</span>
                   </td>
                   <td className="px-2 text-xs text-slate-500">{t.dueDate ? new Date(t.dueDate).toLocaleDateString("vi-VN") : "—"}</td>
                   <td className="px-2">

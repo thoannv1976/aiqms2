@@ -84,12 +84,25 @@ export async function listMyTasks() {
   ]);
   const cycleById = new Map(cycles.map((c) => [c.id, c.name]));
   const codeById = new Map(crits.map((c) => [c.id, c.code]));
+  const fileById = await fileCountByTask(tasks.map((t) => t.id));
   return tasks.map((t) => ({
     id: t.id, title: t.title, status: t.status, priority: t.priority,
     deliverables: t.deliverables, dueDate: t.dueDate, cycleId: t.cycleId,
     cycleName: t.cycleId ? cycleById.get(t.cycleId) ?? null : null,
     criterionCode: t.criterionId ? codeById.get(t.criterionId) ?? null : null,
+    fileCount: fileById.get(t.id) ?? 0,
   }));
+}
+
+/** Đếm số minh chứng (Document.taskId) theo từng task. */
+export async function fileCountByTask(taskIds: string[]): Promise<Map<string, number>> {
+  if (taskIds.length === 0) return new Map();
+  const rows = await prisma.document.groupBy({
+    by: ["taskId"],
+    where: { taskId: { in: taskIds }, deletedAt: null },
+    _count: { _all: true },
+  });
+  return new Map(rows.map((r) => [r.taskId as string, r._count._all]));
 }
 
 export async function updateTask(id: string, input: z.infer<typeof updateTaskSchema>) {

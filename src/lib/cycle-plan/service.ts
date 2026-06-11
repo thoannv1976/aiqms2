@@ -5,8 +5,9 @@ import { withTenantId } from "@/lib/prisma/tenant-create";
 import { writeAudit } from "@/lib/audit/log";
 import { badRequest, notFound } from "@/lib/http/responses";
 import { notify } from "@/lib/notifications/service";
+import { fileCountByTask } from "@/lib/tasks/service";
 
-/** Công việc trong một đợt tự đánh giá (kèm tên người phụ trách + tiêu chí). */
+/** Công việc trong một đợt tự đánh giá (kèm tên người phụ trách + tiêu chí + số minh chứng đã nộp). */
 export async function listCycleTasks(cycleId: string) {
   const tasks = await prisma.task.findMany({
     where: { cycleId, deletedAt: null },
@@ -14,9 +15,10 @@ export async function listCycleTasks(cycleId: string) {
   });
   const assigneeIds = [...new Set(tasks.map((t) => t.assigneeId).filter((v): v is string => !!v))];
   const critIds = [...new Set(tasks.map((t) => t.criterionId).filter((v): v is string => !!v))];
-  const [users, crits] = await Promise.all([
+  const [users, crits, fileById] = await Promise.all([
     assigneeIds.length ? prisma.user.findMany({ where: { id: { in: assigneeIds } }, select: { id: true, fullName: true } }) : [],
     critIds.length ? prisma.criterion.findMany({ where: { id: { in: critIds } }, select: { id: true, code: true } }) : [],
+    fileCountByTask(tasks.map((t) => t.id)),
   ]);
   const nameById = new Map(users.map((u) => [u.id, u.fullName]));
   const codeById = new Map(crits.map((c) => [c.id, c.code]));
@@ -24,6 +26,7 @@ export async function listCycleTasks(cycleId: string) {
     ...t,
     assigneeName: t.assigneeId ? nameById.get(t.assigneeId) ?? null : null,
     criterionCode: t.criterionId ? codeById.get(t.criterionId) ?? null : null,
+    fileCount: fileById.get(t.id) ?? 0,
   }));
 }
 

@@ -15,6 +15,7 @@ export const DOCUMENT_CATEGORIES = [
   "regulation", // quy chế / quy định
   "template", // biểu mẫu
   "report", // báo cáo
+  "task_evidence", // minh chứng nộp cho một công việc (gắn taskId)
   "other",
 ] as const;
 
@@ -24,6 +25,7 @@ export const DOC_CATEGORY_LABELS: Record<string, string> = {
   regulation: "Quy chế / quy định",
   template: "Biểu mẫu",
   report: "Báo cáo",
+  task_evidence: "Minh chứng công việc",
   other: "Khác",
 };
 
@@ -32,6 +34,7 @@ export const createDocumentSchema = z.object({
   category: z.enum(DOCUMENT_CATEGORIES).default("other"),
   programmeId: z.string().optional(),
   courseId: z.string().optional(),
+  taskId: z.string().optional(),
   note: z.string().optional(),
 });
 
@@ -51,6 +54,7 @@ export async function createDocument(
       category: meta.category,
       programmeId: meta.programmeId ?? null,
       courseId: meta.courseId ?? null,
+      taskId: meta.taskId ?? null,
       note: meta.note ?? null,
       fileName: file.fileName,
       storageKey: key,
@@ -65,13 +69,14 @@ export async function createDocument(
 
 export async function listDocuments(
   p: PageParams,
-  filters: { category?: string; programmeId?: string; courseId?: string } = {},
+  filters: { category?: string; programmeId?: string; courseId?: string; taskId?: string } = {},
 ) {
   const where: Prisma.DocumentWhereInput = {};
   if (p.search) where.title = { contains: p.search, mode: "insensitive" };
   if (filters.category) where.category = filters.category;
   if (filters.programmeId) where.programmeId = filters.programmeId;
   if (filters.courseId) where.courseId = filters.courseId;
+  if (filters.taskId) where.taskId = filters.taskId;
   const [items, total] = await Promise.all([
     prisma.document.findMany({ where, orderBy: { createdAt: "desc" }, skip: p.skip, take: p.take }),
     prisma.document.count({ where }),

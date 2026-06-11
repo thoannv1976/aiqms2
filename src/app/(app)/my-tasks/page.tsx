@@ -4,11 +4,12 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { api, ApiClientError } from "@/lib/api/client";
 import { PageHeader, ErrorBox, Spinner } from "@/components/ui";
+import { TaskEvidenceUpload } from "@/components/TaskEvidenceUpload";
 
 interface Task {
   id: string; title: string; status: string; priority: string;
   deliverables: string | null; dueDate: string | null;
-  cycleId: string | null; cycleName: string | null; criterionCode: string | null;
+  cycleId: string | null; cycleName: string | null; criterionCode: string | null; fileCount: number;
 }
 
 const STATUS_VI: Record<string, string> = { todo: "Cần làm", in_progress: "Đang làm", review: "Rà soát", done: "Hoàn thành" };
@@ -79,7 +80,7 @@ function Section({ title, tasks, onStatus, muted }: { title: string; tasks: Task
             <select className="input h-9 w-32 py-0 text-sm" value={t.status} onChange={(e) => onStatus(t.id, e.target.value)}>
               {Object.entries(STATUS_VI).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
             </select>
-            <Link href="/evidence" className="btn-outline h-9 py-0 text-xs leading-9">Nộp minh chứng</Link>
+            <TaskEvidenceUpload taskId={t.id} initialCount={t.fileCount} />
           </div>
         ))}
       </div>

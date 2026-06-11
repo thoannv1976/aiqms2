@@ -21,6 +21,15 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
 - **Lưu trữ GCS**: cài sẵn `@aws-sdk/client-s3` → driver S3 chạy với GCS (S3-compatible) chỉ
   bằng cấu hình env; hướng dẫn HMAC + bucket ở `DEPLOY.md` mục 7b.
 
+## [Nộp minh chứng trực tiếp theo công việc] — ✅ Done
+
+- **Gắn file minh chứng vào đúng công việc** (`Document.taskId`, migration `document_task_link`,
+  category `task_evidence`): thành viên ở **"Công việc của tôi"** bấm **"📎 Minh chứng"** để
+  upload nhiều file ngay tại task (không cần sang kho Minh chứng chung), xem/gỡ file đã nộp.
+- **Đếm minh chứng đã nộp**: "Công việc của tôi" và bảng kế hoạch của QA (chi tiết đợt) hiển
+  thị số file đã nộp mỗi việc (`fileCountByTask`) → QA theo dõi tiến độ nộp. API `/api/documents`
+  nhận/lọc `taskId`. 127 test.
+
 ## [Công việc của tôi + sửa AI kế hoạch đợt + cảnh báo storage] — ✅ Done
 
 - **Sửa AI tạo kế hoạch đợt**: schema kế hoạch khoan dung (item lỗi `.catch`, priority chuẩn
