@@ -8,7 +8,7 @@ import { Modal } from "@/components/Modal";
 
 interface Doc {
   id: string; title: string; category: string; fileName: string;
-  size: number; createdAt: string;
+  size: number; createdAt: string; version: number;
 }
 interface PageData { items: Doc[]; total: number; page: number; totalPages: number }
 
@@ -24,6 +24,7 @@ export default function DocumentsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+  const [versionsOf, setVersionsOf] = useState<Doc | null>(null);
 
   const load = useCallback(async (p: number, category: string) => {
     setLoading(true);
@@ -48,6 +49,7 @@ export default function DocumentsPage() {
     { header: "Tiêu đề", cell: (r) => <span className="font-medium text-slate-900">{r.title}</span> },
     { header: "Nhóm", cell: (r) => CATS[r.category] ?? r.category },
     { header: "Tệp", cell: (r) => <span className="text-slate-500">{r.fileName}</span> },
+    { header: "Phiên bản", cell: (r) => <span className="badge bg-slate-100 text-slate-600">v{r.version}</span> },
     { header: "Dung lượng", cell: (r) => fmtSize(r.size) },
     { header: "Ngày tải lên", cell: (r) => new Date(r.createdAt).toLocaleDateString("vi-VN") },
     {
@@ -55,6 +57,7 @@ export default function DocumentsPage() {
       cell: (r) => (
         <div className="flex gap-3">
           <a className="text-indigo-600 hover:underline" href={authedUrl(`/api/documents/${r.id}/download`)}>Tải</a>
+          <button className="text-slate-600 hover:underline" onClick={() => setVersionsOf(r)}>Phiên bản</button>
           <button className="text-rose-500 hover:underline" onClick={() => remove(r.id)}>Xóa</button>
         </div>
       ),
@@ -84,7 +87,67 @@ export default function DocumentsPage() {
       {data && <Pagination page={data.page} totalPages={data.totalPages} total={data.total} onChange={setPage} />}
 
       <UploadModal open={open} onClose={() => setOpen(false)} onDone={() => { setOpen(false); setPage(1); load(1, cat); }} />
+      {versionsOf && <VersionsModal doc={versionsOf} onClose={() => setVersionsOf(null)} onChanged={() => load(page, cat)} />}
     </div>
+  );
+}
+
+interface Version { id: string; version: number; fileName: string; size: number; createdAt: string; isCurrent: boolean }
+
+function VersionsModal({ doc, onClose, onChanged }: { doc: Doc; onClose: () => void; onChanged: () => void }) {
+  const [versions, setVersions] = useState<Version[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const load = useCallback(async () => {
+    try { setVersions((await api.get<Version[]>(`/api/documents/${doc.id}/versions`)) ?? []); }
+    catch (e) { setErr(e instanceof Error ? e.message : "Lỗi tải lịch sử"); }
+  }, [doc.id]);
+  useEffect(() => { load(); }, [load]);
+
+  async function uploadVersion() {
+    const file = fileRef.current?.files?.[0];
+    if (!file) { setErr("Hãy chọn file"); return; }
+    setBusy(true); setErr(null);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      await apiUpload(`/api/documents/${doc.id}/versions`, form);
+      if (fileRef.current) fileRef.current.value = "";
+      await load();
+      onChanged();
+    } catch (e) {
+      setErr(e instanceof ApiClientError ? e.message : "Lỗi tải phiên bản");
+    } finally { setBusy(false); }
+  }
+
+  return (
+    <Modal open title={`Lịch sử phiên bản — ${doc.title}`} onClose={onClose}>
+      <div className="space-y-3">
+        <table className="w-full text-sm">
+          <thead className="bg-slate-50"><tr><th className="th">Phiên bản</th><th className="th">Tệp</th><th className="th">Ngày</th><th className="th"></th></tr></thead>
+          <tbody>
+            {versions.map((v) => (
+              <tr key={v.id}>
+                <td className="td">v{v.version} {v.isCurrent && <span className="badge bg-emerald-100 text-emerald-700">hiện hành</span>}</td>
+                <td className="td text-slate-500">{v.fileName}</td>
+                <td className="td">{new Date(v.createdAt).toLocaleDateString("vi-VN")}</td>
+                <td className="td"><a className="text-indigo-600 hover:underline" href={authedUrl(`/api/documents/${v.id}/download`)}>Tải</a></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div className="border-t border-slate-100 pt-3">
+          <label className="label">Tải lên phiên bản mới</label>
+          <div className="flex gap-2">
+            <input ref={fileRef} type="file" className="input" />
+            <button className="btn-primary whitespace-nowrap" onClick={uploadVersion} disabled={busy}>{busy ? "Đang tải…" : "Thêm bản mới"}</button>
+          </div>
+        </div>
+        {err && <ErrorBox message={err} />}
+      </div>
+    </Modal>
   );
 }
 

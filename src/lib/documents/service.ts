@@ -72,7 +72,8 @@ export async function listDocuments(
   p: PageParams,
   filters: { category?: string; programmeId?: string; courseId?: string; taskId?: string } = {},
 ) {
-  const where: Prisma.DocumentWhereInput = {};
+  // Chỉ hiển thị bản hiện hành của mỗi chuỗi phiên bản (D10); bản cũ xem qua lịch sử.
+  const where: Prisma.DocumentWhereInput = { isCurrent: true };
   if (p.search) where.title = { contains: p.search, mode: "insensitive" };
   if (filters.category) where.category = filters.category;
   if (filters.programmeId) where.programmeId = filters.programmeId;
@@ -110,6 +111,70 @@ export async function linkDocument(id: string, link: { courseId?: string; progra
       programmeId: link.programmeId ?? doc.programmeId,
       updatedBy: ctx.actorId,
     },
+  });
+}
+
+/**
+ * Tải lên PHIÊN BẢN MỚI của một tài liệu (D10): tạo bản ghi mới cùng chuỗi (rootId),
+ * tăng version, đánh dấu bản mới là hiện hành và hạ cờ các bản cũ trong chuỗi.
+ * Giữ nguyên metadata gắn kết (category/CTĐT/học phần/task) trừ khi truyền mới.
+ */
+export async function uploadNewVersion(
+  documentId: string,
+  file: { fileName: string; body: Buffer; contentType?: string },
+  overrides: { title?: string; note?: string } = {},
+) {
+  const ctx = requireTenantContext();
+  if (!file.body.byteLength) throw badRequest("File rỗng");
+  const base = await prisma.document.findFirst({ where: { id: documentId } });
+  if (!base) throw notFound("Tài liệu không tồn tại");
+  const rootId = base.rootId ?? base.id;
+
+  // Version kế tiếp = max(version) trong chuỗi + 1.
+  const agg = await prisma.document.aggregate({
+    where: { OR: [{ id: rootId }, { rootId }] },
+    _max: { version: true },
+  });
+  const nextVersion = (agg._max.version ?? base.version) + 1;
+
+  const key = tenantKey(ctx.tenantId, "documents", `${Date.now()}-${file.fileName}`);
+  await safePut(key, file.body, { contentType: file.contentType });
+
+  const doc = await prisma.document.create({
+    data: withTenantId({
+      title: overrides.title ?? base.title,
+      category: base.category,
+      programmeId: base.programmeId,
+      courseId: base.courseId,
+      taskId: base.taskId,
+      note: overrides.note ?? base.note,
+      fileName: file.fileName,
+      storageKey: key,
+      size: file.body.byteLength,
+      contentType: file.contentType ?? null,
+      version: nextVersion,
+      rootId,
+      isCurrent: true,
+      createdBy: ctx.actorId,
+    }),
+  });
+  // Hạ cờ hiện hành của tất cả bản còn lại trong chuỗi.
+  await prisma.document.updateMany({
+    where: { OR: [{ id: rootId }, { rootId }], id: { not: doc.id } },
+    data: { isCurrent: false },
+  });
+  await writeAudit({ action: "document.new_version", entity: "Document", entityId: doc.id, meta: { rootId, version: nextVersion } });
+  return doc;
+}
+
+/** Liệt kê toàn bộ phiên bản của một tài liệu (theo chuỗi rootId), mới nhất trước. */
+export async function listDocumentVersions(documentId: string) {
+  const doc = await prisma.document.findFirst({ where: { id: documentId } });
+  if (!doc) throw notFound("Tài liệu không tồn tại");
+  const rootId = doc.rootId ?? doc.id;
+  return prisma.document.findMany({
+    where: { OR: [{ id: rootId }, { rootId }], deletedAt: null },
+    orderBy: { version: "desc" },
   });
 }
 

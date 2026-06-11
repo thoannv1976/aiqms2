@@ -1346,6 +1346,10 @@ model Document {
   taskId      String? // minh chứng nộp cho một công việc (task)
   note        String?
   status      String    @default("active")
+  // Quản lý phiên bản tài liệu (version chain) — D10.
+  version     Int       @default(1)
+  rootId      String? // gốc của chuỗi phiên bản (null = chính nó là gốc)
+  isCurrent   Boolean   @default(true) // bản hiện hành của chuỗi
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   createdBy   String?
@@ -1358,6 +1362,7 @@ model Document {
   @@index([tenantId, programmeId])
   @@index([tenantId, courseId])
   @@index([tenantId, taskId])
+  @@index([tenantId, rootId])
   @@index([tenantId, deletedAt])
   @@map("documents")
 }

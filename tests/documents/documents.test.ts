@@ -2,7 +2,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { prisma, resetDb } from "../helpers/db";
 import { createTenantFixture } from "../helpers/fixtures";
 import { runWithTenant } from "@/lib/tenant/context";
-import { createDocument, downloadDocument, listDocuments, promoteDocumentToEvidence } from "@/lib/documents/service";
+import { createDocument, downloadDocument, listDocumentVersions, listDocuments, promoteDocumentToEvidence, uploadNewVersion } from "@/lib/documents/service";
 import { fileCountByTask } from "@/lib/tasks/service";
 
 const asTenant = <T>(tenantId: string, fn: () => Promise<T>) =>
@@ -64,6 +64,36 @@ describe("Kho tài liệu (upload/lưu trữ/quản lý)", () => {
       // Tài liệu được đánh dấu đã đưa vào hồ sơ.
       const fresh = await prisma.document.findFirstOrThrow({ where: { id: doc.id } });
       expect(fresh.note).toContain(r.code);
+    });
+  });
+
+  it("quản lý phiên bản tài liệu: tải bản mới → chỉ bản hiện hành hiển thị, lịch sử đủ chuỗi (D10)", async () => {
+    const t = await createTenantFixture("demo");
+    await asTenant(t.id, async () => {
+      const v1 = await createDocument({ title: "Quy chế ĐT", category: "regulation" }, { fileName: "qc-v1.docx", body: Buffer.from("ban 1") });
+      expect(v1.version).toBe(1);
+      expect(v1.isCurrent).toBe(true);
+
+      const v2 = await uploadNewVersion(v1.id, { fileName: "qc-v2.docx", body: Buffer.from("ban 2 cap nhat") });
+      expect(v2.version).toBe(2);
+      expect(v2.rootId).toBe(v1.id);
+
+      // Tải tiếp bản 3 từ bản 2 (chuỗi vẫn cùng root).
+      const v3 = await uploadNewVersion(v2.id, { fileName: "qc-v3.docx", body: Buffer.from("ban 3") });
+      expect(v3.version).toBe(3);
+      expect(v3.rootId).toBe(v1.id);
+
+      // Danh sách chỉ còn 1 dòng (bản hiện hành = v3).
+      const page = await listDocuments({ page: 1, pageSize: 20, skip: 0, take: 20 }, { category: "regulation" });
+      expect(page.total).toBe(1);
+      expect(page.items[0].id).toBe(v3.id);
+
+      // Lịch sử đủ 3 bản, chỉ v3 là hiện hành.
+      const history = await listDocumentVersions(v1.id);
+      expect(history).toHaveLength(3);
+      expect(history[0].version).toBe(3);
+      expect(history.filter((h) => h.isCurrent)).toHaveLength(1);
+      expect(history.find((h) => h.isCurrent)?.id).toBe(v3.id);
     });
   });
 

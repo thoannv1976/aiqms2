@@ -21,6 +21,13 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
 - **Lưu trữ GCS**: cài sẵn `@aws-sdk/client-s3` → driver S3 chạy với GCS (S3-compatible) chỉ
   bằng cấu hình env; hướng dẫn HMAC + bucket ở `DEPLOY.md` mục 7b.
 
+## [Quản lý phiên bản tài liệu (D10)] — ✅ Done
+- **Version chain cho `Document`** (migration `document_versioning`): thêm `version`, `rootId`,
+  `isCurrent`. `uploadNewVersion` tạo bản mới cùng chuỗi (tăng version, hạ cờ bản cũ),
+  `listDocumentVersions` trả lịch sử đầy đủ; danh sách tài liệu chỉ hiển thị bản hiện hành.
+  API `GET/POST /api/documents/[id]/versions`. **UI**: cột "Phiên bản" + nút "Phiên bản" mở
+  modal lịch sử (tải từng bản + thêm bản mới). Test trên Postgres (`tests/documents/documents.test.ts`).
+
 ## [Đối sánh / benchmarking (D9)] — ✅ Done
 - **Báo cáo đối sánh** (`benchmarkReport`): so sánh giá trị chỉ số C8 với mốc đối sánh (CT tham
   chiếu) và chỉ tiêu — tính chênh lệch, xếp trạng thái (vượt/ngang/dưới mốc) và tổng hợp số liệu.

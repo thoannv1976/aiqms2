@@ -23,7 +23,8 @@
 ### Ưu tiên thấp
 - [x] D8. Module Đánh giá ngoài (đoàn ĐGN chấm, lịch khảo sát, khuyến nghị, kết luận) — tab "Đánh giá ngoài" ở SAR
 - [x] D9. Đối sánh (benchmarking) với CT tham chiếu — trang "Đối sánh" so sánh C8 với mốc/chỉ tiêu
-- [ ] D10. Quản lý phiên bản tài liệu (version chain)
+- [x] D10. Quản lý phiên bản tài liệu (version chain) — tải bản mới + lịch sử phiên bản ở Tài liệu
 
 ## Tiến độ
-- (đang cập nhật theo từng commit)
+- ✅ HOÀN THÀNH toàn bộ C1–C4 và D1–D10 (xem CHANGELOG.md). Mỗi mục đã có service + API +
+  UI + test trên PostgreSQL và được commit riêng.
