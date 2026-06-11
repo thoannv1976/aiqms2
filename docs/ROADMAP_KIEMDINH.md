@@ -6,7 +6,7 @@
 - [x] C1. SAR tự tổng hợp dữ liệu — workspace tiêu chí (minh chứng đã gắn + gợi ý) + ma trận/C5-C8/khảo sát đưa vào bản xuất (C2/D1)
 - [x] C2. Bản xuất SAR đầy đủ phụ lục (10 ma trận, C5–C8, khảo sát, điểm hội đồng)
 - [x] C3. Tạo kế hoạch cải tiến từ điểm yếu (gap-check/đánh giá nội bộ) — nút "Tạo cải tiến từ điểm tồn tại" ở SAR (=D6)
-- [ ] C4. Khảo sát → C8 / ma trận PLO–Bên liên quan
+- [x] C4. Khảo sát → C8 (nút "Đưa vào C8" tổng hợp rating → OutcomeMetric satisfaction); ma trận PLO–Bên liên quan đã có sẵn (dimension stakeholder)
 
 ## D. Chức năng còn thiếu (build)
 ### Ưu tiên cao

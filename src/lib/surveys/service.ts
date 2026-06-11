@@ -119,6 +119,40 @@ export async function surveyResults(surveyId: string) {
   return { surveyId, totalResponses: responses.length, perQuestion };
 }
 
+/**
+ * Đưa kết quả khảo sát vào dữ liệu C8 (Output & Outcomes) — C4.
+ * Tổng hợp điểm trung bình các câu hỏi rating thành một chỉ số "mức hài lòng" của nhóm
+ * bên liên quan, tạo `OutcomeMetric` (category=satisfaction) để dùng cho tiêu chí 8 và
+ * ma trận PLO–Bên liên quan. Idempotent theo nguồn (dataSource = survey:<id>).
+ */
+export async function promoteSurveyToOutcome(surveyId: string) {
+  const ctx = requireTenantContext();
+  const survey = await prisma.survey.findFirst({ where: { id: surveyId }, include: { group: true } });
+  if (!survey) throw notFound("Khảo sát không tồn tại");
+  const results = await surveyResults(surveyId);
+  const ratings = results.perQuestion.filter((q) => q.type === "rating" && q.average != null);
+  if (ratings.length === 0) throw badRequest("Khảo sát chưa có câu hỏi rating có dữ liệu để tổng hợp");
+  const avg = ratings.reduce((a, q) => a + (q.average ?? 0), 0) / ratings.length;
+
+  const dataSource = `survey:${surveyId}`;
+  const groupLabel = survey.group?.name ? ` (${survey.group.name})` : "";
+  const data = {
+    name: `Mức hài lòng${groupLabel} — ${survey.title}`,
+    category: "satisfaction",
+    value: Math.round(avg * 100) / 100,
+    unit: "điểm",
+    dataSource,
+    note: `Tổng hợp từ ${results.totalResponses} phản hồi, ${ratings.length} câu hỏi rating`,
+  };
+  // Idempotent: cập nhật nếu đã đẩy từ khảo sát này.
+  const existing = await prisma.outcomeMetric.findFirst({ where: { dataSource, deletedAt: null } });
+  const row = existing
+    ? await prisma.outcomeMetric.update({ where: { id: existing.id }, data: { ...data, updatedBy: ctx.actorId } })
+    : await prisma.outcomeMetric.create({ data: withTenantId({ ...data, createdBy: ctx.actorId }) });
+  await writeAudit({ action: existing ? "survey.to_outcome.update" : "survey.to_outcome.create", entity: "OutcomeMetric", entityId: row.id, meta: { surveyId } });
+  return row;
+}
+
 export async function deleteSurvey(id: string) {
   const ctx = requireTenantContext();
   const survey = await prisma.survey.findFirst({ where: { id } });

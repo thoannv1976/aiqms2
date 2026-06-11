@@ -16,6 +16,7 @@ export default function SurveyDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [qText, setQText] = useState("");
   const [qType, setQType] = useState("rating");
+  const [outcomeMsg, setOutcomeMsg] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -41,6 +42,14 @@ export default function SurveyDetailPage() {
       load();
     } catch (e) {
       setError(e instanceof ApiClientError ? e.message : "Lỗi mở khảo sát");
+    }
+  }
+  async function toOutcome() {
+    try {
+      const o = await api.post<{ name: string; value: number }>(`/api/surveys/${id}/to-outcome`, {});
+      setOutcomeMsg(`Đã đưa vào C8: "${o?.name}" = ${o?.value} điểm.`);
+    } catch (e) {
+      setOutcomeMsg(e instanceof ApiClientError ? e.message : "Lỗi đưa vào C8");
     }
   }
 
@@ -103,7 +112,13 @@ export default function SurveyDetailPage() {
         </div>
 
         <div className="card p-5">
-          <h3 className="mb-3 text-sm font-semibold text-slate-700">Kết quả ({results?.totalResponses ?? 0} phản hồi)</h3>
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-slate-700">Kết quả ({results?.totalResponses ?? 0} phản hồi)</h3>
+            {results && results.totalResponses > 0 && (
+              <button className="btn-outline text-xs" onClick={toOutcome}>Đưa vào C8</button>
+            )}
+          </div>
+          {outcomeMsg && <p className="mb-2 text-xs text-emerald-600">{outcomeMsg}</p>}
           {!results || results.perQuestion.length === 0 ? (
             <p className="text-sm text-slate-400">Chưa có dữ liệu</p>
           ) : (

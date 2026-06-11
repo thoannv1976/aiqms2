@@ -21,6 +21,13 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
 - **Lưu trữ GCS**: cài sẵn `@aws-sdk/client-s3` → driver S3 chạy với GCS (S3-compatible) chỉ
   bằng cấu hình env; hướng dẫn HMAC + bucket ở `DEPLOY.md` mục 7b.
 
+## [Khảo sát → C8 (C4)] — ✅ Done
+- **Đưa kết quả khảo sát vào dữ liệu C8** (`promoteSurveyToOutcome`): tổng hợp điểm trung bình
+  các câu hỏi rating thành chỉ số `OutcomeMetric` (category=satisfaction, kèm nhóm bên liên quan),
+  dùng cho tiêu chí 8 và ma trận PLO–Bên liên quan. **Idempotent** theo `dataSource=survey:<id>`
+  (đẩy lại sẽ cập nhật, không trùng). Nút "Đưa vào C8" ở chi tiết khảo sát, API
+  `POST /api/surveys/[id]/to-outcome`. Test trên Postgres (`tests/p9/surveys.test.ts`).
+
 ## [Tạo cải tiến từ điểm tồn tại SAR (C3/D6)] — ✅ Done
 - **Tạo kế hoạch cải tiến từ điểm tồn tại** (`createPlansFromSarWeaknesses`): quét từng tiêu chí
   trong SAR, gộp "điểm tồn tại" người dùng nhập + khoảng trống tự phát hiện (chưa có minh chứng /

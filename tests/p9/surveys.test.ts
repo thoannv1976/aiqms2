@@ -7,6 +7,7 @@ import {
   createSurvey,
   getByToken,
   openSurvey,
+  promoteSurveyToOutcome,
   submitByToken,
   surveyResults,
 } from "@/lib/surveys/service";
@@ -39,6 +40,30 @@ describe("P9 — Khảo sát bên liên quan", () => {
       expect(results.totalResponses).toBe(2);
       const ratingResult = results.perQuestion.find((p) => p.questionId === q1.id)!;
       expect(ratingResult.average).toBe(4); // (5+3)/2
+    });
+  });
+
+  it("đưa kết quả khảo sát vào C8 (OutcomeMetric), idempotent (C4)", async () => {
+    const t = await createTenantFixture("demo");
+    await asTenant(t.id, async () => {
+      const survey = await createSurvey({ title: "Hài lòng nhà tuyển dụng" });
+      const q1 = await addQuestion(survey.id, { text: "Mức hài lòng?", type: "rating", order: 1 });
+      const opened = await openSurvey(survey.id);
+      await submitByToken(opened.token!, { [q1.id]: 5 });
+      await submitByToken(opened.token!, { [q1.id]: 4 });
+
+      const outcome = await promoteSurveyToOutcome(survey.id);
+      expect(outcome.category).toBe("satisfaction");
+      expect(outcome.value).toBe(4.5);
+      expect(outcome.dataSource).toBe(`survey:${survey.id}`);
+
+      // Chạy lại cập nhật cùng bản ghi (không tạo trùng).
+      await submitByToken(opened.token!, { [q1.id]: 3 });
+      const again = await promoteSurveyToOutcome(survey.id);
+      expect(again.id).toBe(outcome.id);
+      expect(again.value).toBe(4); // (5+4+3)/3
+      const count = await prisma.outcomeMetric.count({ where: { dataSource: `survey:${survey.id}` } });
+      expect(count).toBe(1);
     });
   });
 
