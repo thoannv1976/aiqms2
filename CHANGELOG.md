@@ -21,6 +21,16 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
 - **Lưu trữ GCS**: cài sẵn `@aws-sdk/client-s3` → driver S3 chạy với GCS (S3-compatible) chỉ
   bằng cấu hình env; hướng dẫn HMAC + bucket ở `DEPLOY.md` mục 7b.
 
+## [Đo lường mức đạt PLO → C8 (D7)] — ✅ Done
+- **Model `PloAttainment`** (migration `plo_attainment`): mức đạt PLO theo khóa/kỳ (% đạt, cỡ mẫu,
+  chỉ tiêu, phương pháp). Thêm vào `TENANT_SCOPED_MODELS`.
+- **Service** `createAttainment/listAttainments/deleteAttainment` + `promoteAttainmentsToOutcomes`
+  (tổng hợp trung bình mỗi PLO → `OutcomeMetric` category=plo_attainment, idempotent theo
+  `dataSource=plo_attainment:<ploId>`). API `/api/plo-attainments` (GET/POST/DELETE) +
+  `/api/plo-attainments/to-outcome`.
+- **UI**: tab "Mức đạt PLO → C8" ở trang Hệ ma trận — nhập/đo theo PLO/khóa/kỳ, tô đỏ khi dưới
+  chỉ tiêu, nút "Tổng hợp → C8". Test trên Postgres (`tests/obe/plo-attainment.test.ts`).
+
 ## [Email + nhắc hạn tự động (D5)] — ✅ Done
 - **Mailer abstraction** (`getMailer`): driver `log` (mặc định, không gửi) và `smtp` (nodemailer,
   nạp động — không bắt buộc khi dùng `log`; fallback an toàn nếu thiếu cấu hình). Cấu hình env

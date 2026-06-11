@@ -44,6 +44,7 @@ model Tenant {
   sarResponses      SarCriterionResponse[]
   sarComments       SarComment[]
   sarRequirementResponses SarRequirementResponse[]
+  ploAttainments    PloAttainment[]
   internalReviews   InternalReview[]
   internalReviewScores InternalReviewScore[]
   evidences            Evidence[]
@@ -387,6 +388,7 @@ model ProgrammeVersion {
   peos       ProgrammeObjective[]
   plos       ProgrammeLearningOutcome[]
   matrixCells PloMatrixCell[]
+  attainments PloAttainment[]
 
   @@unique([tenantId, programmeId, version])
   @@index([tenantId, programmeId])
@@ -426,10 +428,39 @@ model ProgrammeLearningOutcome {
   courseMappings PloCourseMapping[]
   cloMappings    CloPloMapping[]
   matrixCells    PloMatrixCell[]
+  attainments    PloAttainment[]
 
   @@unique([programmeVersionId, code])
   @@index([tenantId, programmeVersionId])
   @@map("programme_learning_outcomes")
+}
+
+/// Đo lường mức đạt chuẩn đầu ra (PLO attainment) theo khóa/kỳ — nguồn cho C8 (D7).
+model PloAttainment {
+  id                 String    @id @default(cuid())
+  tenantId           String
+  programmeVersionId String
+  ploId              String
+  cohort             String? // khóa (vd: K60)
+  term               String? // học kỳ / năm học
+  attainmentRate     Float // % người học đạt PLO (0–100)
+  sampleSize         Int? // cỡ mẫu
+  target             Float? // chỉ tiêu mong đợi (%)
+  method             String? // phương pháp đo (rubric/bài thi/khảo sát…)
+  note               String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  createdBy          String?
+  updatedBy          String?
+  deletedAt          DateTime?
+
+  tenant  Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  version ProgrammeVersion         @relation(fields: [programmeVersionId], references: [id], onDelete: Cascade)
+  plo     ProgrammeLearningOutcome @relation(fields: [ploId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, programmeVersionId])
+  @@index([tenantId, ploId])
+  @@map("plo_attainments")
 }
 
 model Course {

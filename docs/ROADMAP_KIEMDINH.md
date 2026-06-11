@@ -18,7 +18,7 @@
 - [x] D4. Bảng theo dõi tiến độ đợt (% theo tiêu chí, MC đã thu, ai trễ hạn) — panel ở chi tiết đợt
 - [x] D5. Email + nhắc hạn tự động (SMTP) — mailer abstraction (log|smtp) + dueReminders + nút "Gửi nhắc hạn"
 - [x] D6. Tạo cải tiến từ điểm yếu (= C3)
-- [ ] D7. Đo lường mức đạt PLO (PLO attainment) theo khóa/kỳ → C8
+- [x] D7. Đo lường mức đạt PLO (PLO attainment) theo khóa/kỳ → C8 — tab "Mức đạt PLO → C8" ở Ma trận
 
 ### Ưu tiên thấp
 - [ ] D8. Module Đánh giá ngoài (đoàn ĐGN chấm, lịch khảo sát, khuyến nghị, kết luận)

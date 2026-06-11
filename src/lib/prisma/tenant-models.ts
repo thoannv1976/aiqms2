@@ -63,6 +63,7 @@ export const TENANT_SCOPED_MODELS = new Set<string>([
   "PloMatrixCell",
   "Notification",
   "SarRequirementResponse",
+  "PloAttainment",
 ]);
 
 export function isTenantScoped(model: string | undefined): boolean {

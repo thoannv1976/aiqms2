@@ -7,6 +7,7 @@ import { ImportButton } from "@/components/ImportButton";
 import { AiMatrixButton } from "@/components/AiMatrixButton";
 import { PloMatrixGrid } from "@/components/PloMatrixGrid";
 import { EvaluateMatrixButton } from "@/components/EvaluateMatrixButton";
+import { PloAttainmentPanel } from "@/components/PloAttainmentPanel";
 
 const TABS: { key: string; label: string }[] = [
   { key: "core", label: "PLO–Học phần & CLO–PLO" },
@@ -18,6 +19,7 @@ const TABS: { key: string; label: string }[] = [
   { key: "job", label: "PLO–Vị trí việc làm" },
   { key: "pi", label: "PLO–PI/KPI" },
   { key: "improvement", label: "PLO–Cải tiến PDCA" },
+  { key: "attainment", label: "Mức đạt PLO → C8" },
 ];
 
 interface Programme { id: string; code: string; name: string; versions: { id: string; version: string }[] }
@@ -94,6 +96,8 @@ export default function MatricesPage() {
           </div>
           {tab === "core"
             ? <MatrixWorkspace key={`${versionId}:${refreshKey}`} versionId={versionId} />
+            : tab === "attainment"
+            ? <PloAttainmentPanel key={`${versionId}:attainment:${refreshKey}`} versionId={versionId} />
             : <PloMatrixGrid key={`${versionId}:${tab}:${refreshKey}`} versionId={versionId} dimension={tab} />}
         </>
       ) : (
