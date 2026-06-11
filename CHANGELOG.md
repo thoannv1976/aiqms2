@@ -31,6 +31,14 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
   Cách khắc phục triệt để: chạy `scripts/setup-gcs.sh` để bật `STORAGE_DRIVER=s3` (GCS). Test:
   `tests/storage/storage-status.test.ts`.
 
+## [Sửa: áp dụng ma trận AI không hiện I/R/M trong lưới] — ✅ Done
+- **Nguyên nhân**: (1) lưới ma trận chỉ lấy 100 học phần đầu của tenant làm cột → học phần do AI
+  trích xuất có thể bị cắt khỏi cột nên ô đã ghi không hiển thị; (2) khớp mã học phần khi áp dụng là
+  exact + phân biệt hoa thường → dễ trượt.
+- **Sửa**: lưới PLO×Học phần nay dựng cột từ **hợp của học phần tải về + học phần đã ánh xạ trong ma
+  trận** (ô vừa áp dụng LUÔN có cột; tăng pageSize 100→500). `applyMatrixMappings` khớp mã học phần
+  **trim + không phân biệt hoa thường**. Test: `tests/obe/matrix-ai.test.ts`.
+
 ## [Xuất công việc TOÀN ĐỘI (mọi thành viên) ra Excel/Word] — ✅ Done
 - **Xuất công việc toàn đội kiểm định** (`listAllTasksForExport` + `buildTeamTasksXlsx/Docx`): mọi
   người × mọi đợt, đầy đủ **tên người phụ trách (+email), đợt kiểm định, tiêu chí, công việc, minh

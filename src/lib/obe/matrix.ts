@@ -84,6 +84,13 @@ export const matrixDraftSchema = z.object({
 });
 export type MatrixDraft = z.infer<typeof matrixDraftSchema>;
 
+/** Tìm học phần theo mã: trim + KHÔNG phân biệt hoa thường (AI có thể trả "tmae306 " v.v.). */
+async function findCourseByCode(code: string) {
+  const c = code.trim();
+  if (!c) return null;
+  return prisma.course.findFirst({ where: { code: { equals: c, mode: "insensitive" }, deletedAt: null } });
+}
+
 /** Ghi ma trận đã DUYỆT (PLO×học phần I/R/M + CLO–PLO) theo mã, trong phạm vi 1 phiên bản CTĐT. */
 export async function applyMatrixMappings(programmeVersionId: string, input: MatrixDraft) {
   const data = matrixDraftSchema.parse(input);
@@ -96,7 +103,7 @@ export async function applyMatrixMappings(programmeVersionId: string, input: Mat
   for (const m of data.ploCourse) {
     const ploId = ploByCode.get(m.ploCode.trim().toUpperCase());
     if (!ploId) { res.errors.push(`Bỏ qua: không có ${m.ploCode} trong phiên bản này`); continue; }
-    const course = await prisma.course.findFirst({ where: { code: m.courseCode, deletedAt: null } });
+    const course = await findCourseByCode(m.courseCode);
     if (!course) { res.errors.push(`Bỏ qua: không tìm thấy học phần ${m.courseCode}`); continue; }
     await prisma.ploCourseMapping.upsert({
       where: { ploId_courseId: { ploId, courseId: course.id } },
@@ -109,7 +116,7 @@ export async function applyMatrixMappings(programmeVersionId: string, input: Mat
   for (const m of data.cloPlo) {
     const ploId = ploByCode.get(m.ploCode.trim().toUpperCase());
     if (!ploId) continue;
-    const course = await prisma.course.findFirst({ where: { code: m.courseCode, deletedAt: null } });
+    const course = await findCourseByCode(m.courseCode);
     if (!course) continue;
     const clo = await prisma.courseLearningOutcome.findFirst({ where: { courseId: course.id, code: m.cloCode } });
     if (!clo) continue;

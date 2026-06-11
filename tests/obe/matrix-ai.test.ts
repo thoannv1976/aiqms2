@@ -57,6 +57,22 @@ describe("AI tổng hợp ma trận PLO-CLO", () => {
     });
   });
 
+  it("applyMatrixMappings: khớp mã học phần KHÔNG phân biệt hoa thường + thừa khoảng trắng", async () => {
+    const t = await createTenantFixture("demo");
+    const { versionId } = await seedProgramme(t.id);
+    await asTenant(t.id, async () => {
+      // AI trả mã viết thường + có khoảng trắng -> vẫn phải khớp học phần "TMAE306".
+      const res = await applyMatrixMappings(versionId, {
+        ploCourse: [{ courseCode: " tmae306 ", ploCode: "plo1", level: "M" }],
+        cloPlo: [],
+      });
+      expect(res.ploCourse).toBe(1);
+      expect(res.errors.length).toBe(0);
+      const m = await prisma.ploCourseMapping.findFirst({ where: { plo: { code: "PLO1" } } });
+      expect(m?.level).toBe("M");
+    });
+  });
+
   it("synthesizeMatrixFromDocs: AI bật (mock) -> trả structure hợp lệ, lọc mã PLO lạ", async () => {
     const t = await createTenantFixture("demo");
     const { versionId } = await seedProgramme(t.id);

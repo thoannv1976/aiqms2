@@ -120,7 +120,7 @@ function MatrixWorkspace({ versionId }: { versionId: string }) {
     try {
       const [p, c, m, w] = await Promise.all([
         api.get<Plo[]>(`/api/plos?versionId=${versionId}`),
-        api.get<{ items: Course[] }>(`/api/courses?pageSize=100`),
+        api.get<{ items: Course[] }>(`/api/courses?pageSize=500`),
         api.get<MatrixRow[]>(`/api/matrices/plo-course?versionId=${versionId}`),
         api.get<Warning[]>(`/api/coverage?versionId=${versionId}`),
       ]);
@@ -139,6 +139,15 @@ function MatrixWorkspace({ versionId }: { versionId: string }) {
   function levelOf(ploId: string, courseId: string): string | undefined {
     return matrix.find((r) => r.ploId === ploId)?.courses.find((c) => c.courseId === courseId)?.level;
   }
+
+  // Cột ma trận = hợp của học phần tải về + học phần ĐÃ ÁNH XẠ (kể cả khi nằm ngoài trang đầu
+  // hoặc thuộc CTĐT khác) — đảm bảo ô I/R/M vừa áp dụng LUÔN có cột hiển thị.
+  const columns: Course[] = (() => {
+    const map = new Map<string, Course>();
+    for (const c of courses) map.set(c.id, c);
+    for (const row of matrix) for (const c of row.courses) if (!map.has(c.courseId)) map.set(c.courseId, { id: c.courseId, code: c.code, name: c.code, clos: [] });
+    return [...map.values()];
+  })();
   async function toggleCell(ploId: string, courseId: string) {
     const lvl = nextLevel(levelOf(ploId, courseId));
     try {
@@ -165,21 +174,21 @@ function MatrixWorkspace({ versionId }: { versionId: string }) {
         <div className="border-b border-slate-100 px-4 py-3 text-sm font-semibold text-slate-700">
           Ma trận PLO × Học phần <span className="font-normal text-slate-400">(bấm ô để đặt mức I → R → M)</span>
         </div>
-        {plos.length === 0 || courses.length === 0 ? (
+        {plos.length === 0 || columns.length === 0 ? (
           <p className="p-6 text-sm text-slate-400">Cần có ít nhất 1 PLO và 1 học phần.</p>
         ) : (
           <table className="w-full">
             <thead className="bg-slate-50">
               <tr>
                 <th className="th sticky left-0 bg-slate-50">PLO \ Học phần</th>
-                {courses.map((c) => <th key={c.id} className="th text-center" title={c.name}>{c.code}</th>)}
+                {columns.map((c) => <th key={c.id} className="th text-center" title={c.name}>{c.code}</th>)}
               </tr>
             </thead>
             <tbody>
               {plos.map((plo) => (
                 <tr key={plo.id}>
                   <td className="td sticky left-0 bg-white font-medium" title={plo.description}>{plo.code}</td>
-                  {courses.map((c) => {
+                  {columns.map((c) => {
                     const lvl = levelOf(plo.id, c.id);
                     return (
                       <td key={c.id} className="td text-center">
