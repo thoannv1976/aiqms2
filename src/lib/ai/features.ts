@@ -223,12 +223,15 @@ export async function synthesizeMatrixFromDocs(
   if (plos.length === 0) {
     throw badRequest("Phiên bản CTĐT chưa có PLO — hãy import/khai báo PLO trước khi tổng hợp.");
   }
-  const courses = await prisma.course.findMany({
-    where: { deletedAt: null },
-    orderBy: { code: "asc" },
-    take: 100,
-    include: { clos: { orderBy: { order: "asc" } } },
-  });
+  // Ưu tiên học phần thuộc CTĐT này; nếu chưa gán thì lấy tất cả. Giới hạn để output JSON
+  // không quá lớn (tránh bị cắt cụt theo token).
+  const version = await prisma.programmeVersion.findFirst({ where: { id: programmeVersionId }, select: { programmeId: true } });
+  const ofProgramme = version
+    ? await prisma.course.findMany({ where: { deletedAt: null, programmeId: version.programmeId }, orderBy: { code: "asc" }, take: 80, include: { clos: { orderBy: { order: "asc" } } } })
+    : [];
+  const courses = ofProgramme.length
+    ? ofProgramme
+    : await prisma.course.findMany({ where: { deletedAt: null }, orderBy: { code: "asc" }, take: 80, include: { clos: { orderBy: { order: "asc" } } } });
   if (courses.length === 0) throw badRequest("Chưa có học phần nào để tổng hợp ma trận.");
 
   const ploCodes = new Set(plos.map((p) => p.code.toUpperCase()));
@@ -272,7 +275,8 @@ export async function synthesizeMatrixFromDocs(
           '\n\nTrả JSON: {"ploCourse":[{"courseCode","ploCode","level":"I|R|M"}],' +
           '"cloPlo":[{"courseCode","cloCode","ploCode"}]}. ' +
           "Mức I=giới thiệu, R=củng cố, M=thành thạo (chấp nhận 1/2/3 hoặc I/T/U, sẽ tự quy đổi). " +
-          "Mỗi học phần đóng góp vào 1–4 PLO phù hợp nhất; không để học phần nào trống nếu suy luận được.",
+          "Mỗi học phần đóng góp vào 1–3 PLO phù hợp nhất. " +
+          "QUAN TRỌNG: trả JSON THUẦN, KHÔNG xuống dòng/khoảng trắng thừa, KHÔNG kèm văn bản giải thích.",
       },
     ],
     matrixDraftSchema,

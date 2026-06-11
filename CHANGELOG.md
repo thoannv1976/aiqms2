@@ -21,6 +21,16 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
 - **Lưu trữ GCS**: cài sẵn `@aws-sdk/client-s3` → driver S3 chạy với GCS (S3-compatible) chỉ
   bằng cấu hình env; hướng dẫn HMAC + bucket ở `DEPLOY.md` mục 7b.
 
+## [Sửa lỗi AI tổng hợp ma trận PLO-CLO (JSON lớn bị cắt cụt)] — ✅ Done
+
+- **Lỗi**: AI tổng hợp ma trận báo "Output AI không đúng schema" — JSON nhiều dòng (nhiều
+  học phần × PLO) bị **cắt cụt** theo token, hoặc có item lỗi làm hỏng cả mảng.
+- **Fix**: `aiCompleteJson` thêm `parseLenientJson` — khi JSON cắt cụt thì **cắt lùi tới ranh
+  giới `}`/`]` gần nhất và tự đóng ngoặc** để giữ phần đã hoàn chỉnh. `matrixDraftSchema`
+  cho item lỗi dùng `.catch` (bỏ qua thay vì hỏng cả mảng). `synthesizeMatrixFromDocs` ưu
+  tiên học phần thuộc đúng CTĐT, giới hạn 80 học phần + ép AI trả JSON gọn. 113 test (thêm
+  test JSON ma trận cắt cụt vẫn cứu được phần hoàn chỉnh).
+
 ## [Sửa lỗi AI JSON "không đúng schema sau khi thử lại"] — ✅ Done
 
 - **Lỗi**: AI điền nhanh đề cương / tổng hợp ma trận báo "Output AI không đúng schema" — JSON

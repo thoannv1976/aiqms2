@@ -169,27 +169,43 @@ export async function aiComplete(
   }
 }
 
-/** Lấy phần JSON từ output LLM: bỏ ```json fences, cắt từ '{' đầu tới '}'. Chịu lỗi JSON
- *  bị cắt cụt (tự đóng ngoặc/nháy còn thiếu) và bỏ dấu phẩy thừa. */
+/** Lấy phần JSON từ output LLM: bỏ ```json fences, lấy từ '{' đầu, bỏ dấu phẩy thừa. */
 function extractJson(text: string): string {
   let t = text.trim();
   const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/i);
   if (fence) t = fence[1].trim();
   const first = t.indexOf("{");
-  if (first < 0) return t;
-  const last = t.lastIndexOf("}");
-  let body = last > first ? t.slice(first, last + 1) : t.slice(first); // cắt cụt -> lấy tới hết
-  // Bỏ dấu phẩy thừa trước } hoặc ].
-  body = body.replace(/,\s*([}\]])/g, "$1");
-  // Nếu JSON bị cắt giữa chuỗi/ngoặc: đóng nháy + đóng ngoặc còn thiếu.
-  if (last <= first) {
-    const quotes = (body.match(/(?<!\\)"/g) ?? []).length;
-    if (quotes % 2 === 1) body += '"';
-    const opens = (body.match(/\{/g) ?? []).length - (body.match(/\}/g) ?? []).length;
-    const opensArr = (body.match(/\[/g) ?? []).length - (body.match(/\]/g) ?? []).length;
-    body += "]".repeat(Math.max(0, opensArr)) + "}".repeat(Math.max(0, opens));
+  if (first > 0) t = t.slice(first);
+  return t.replace(/,\s*([}\]])/g, "$1");
+}
+
+/**
+ * Parse JSON từ output LLM, CHỊU ĐƯỢC bị cắt cụt (output dài bị giới hạn token):
+ * thử parse trực tiếp; nếu lỗi, cắt lùi tới ranh giới '}' / ']' gần nhất rồi tự đóng
+ * các ngoặc còn mở để giữ lại phần đã hoàn chỉnh (vd ma trận nhiều dòng).
+ */
+function parseLenientJson(text: string): unknown {
+  const cleaned = extractJson(text);
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    /* thử cứu phần hoàn chỉnh bên dưới */
   }
-  return body;
+  for (let i = cleaned.length - 1; i >= 0; i--) {
+    const ch = cleaned[i];
+    if (ch !== "}" && ch !== "]") continue;
+    let cand = cleaned.slice(0, i + 1).replace(/,\s*$/, "");
+    const openCurly = (cand.match(/\{/g) ?? []).length - (cand.match(/\}/g) ?? []).length;
+    const openSquare = (cand.match(/\[/g) ?? []).length - (cand.match(/\]/g) ?? []).length;
+    if (openCurly < 0 || openSquare < 0) continue;
+    cand += "]".repeat(openSquare) + "}".repeat(openCurly);
+    try {
+      return JSON.parse(cand);
+    } catch {
+      /* thử ranh giới trước đó */
+    }
+  }
+  throw new Error("Không parse được JSON từ output AI");
 }
 
 /** Gọi LLM và validate output JSON bằng Zod (ép JSON; sai schema -> retry rồi báo lỗi). */
@@ -200,14 +216,14 @@ export async function aiCompleteJson<T>(
 ): Promise<T> {
   let lastText = "";
   for (let attempt = 0; attempt < 2; attempt++) {
-    // maxTokens lớn để JSON nhiều mục (vd đề cương 6 mục, ma trận) không bị cắt cụt.
+    // maxTokens lớn để JSON nhiều mục (đề cương 6 mục, ma trận nhiều dòng) đỡ bị cắt cụt.
     const text = await aiComplete(module, messages, { json: true, maxTokens: 8000 });
     lastText = text;
     try {
-      return schema.parse(JSON.parse(extractJson(text)));
+      return schema.parse(parseLenientJson(text));
     } catch {
       if (attempt === 1) {
-        console.error("[AI] JSON output không hợp schema:", lastText.slice(0, 500));
+        console.error("[AI] JSON output không hợp schema:", lastText.slice(0, 600));
         throw badRequest("Output AI không đúng schema sau khi thử lại", "ai_bad_output");
       }
     }

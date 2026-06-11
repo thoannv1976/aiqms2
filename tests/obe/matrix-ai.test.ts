@@ -72,6 +72,28 @@ describe("AI tổng hợp ma trận PLO-CLO", () => {
     });
   });
 
+  it("synthesizeMatrixFromDocs: JSON bị cắt cụt vẫn cứu được phần hoàn chỉnh", async () => {
+    const t = await createTenantFixture("demo");
+    const { versionId } = await seedProgramme(t.id);
+    await asTenant(t.id, async () => {
+      await updateSettings({ enabled: true, apiKey: "sk-ant-test" });
+      const orig = global.fetch;
+      // JSON cắt cụt giữa item cuối (thiếu phần đóng) — mô phỏng output dài bị giới hạn token.
+      const truncated =
+        '{"ploCourse":[{"courseCode":"TMAE306","ploCode":"PLO1","level":"M"},' +
+        '{"courseCode":"TMAE306","ploCode":"PLO2","level":"R"},{"courseCode":"TMAE306","ploCo';
+      global.fetch = (async () =>
+        new Response(JSON.stringify({ content: [{ type: "text", text: truncated }], usage: { input_tokens: 10, output_tokens: 8000 } }),
+          { status: 200, headers: { "content-type": "application/json" } })) as typeof fetch;
+      try {
+        const draft = await synthesizeMatrixFromDocs(versionId);
+        // 2 item đầu hoàn chỉnh được giữ lại; item cuối cắt cụt bị bỏ.
+        expect(draft.ploCourse.length).toBe(2);
+        expect(draft.ploCourse.map((m) => m.ploCode).sort()).toEqual(["PLO1", "PLO2"]);
+      } finally { global.fetch = orig; }
+    });
+  });
+
   it("synthesizeMatrixFromDocs: chưa có PLO -> báo lỗi rõ ràng", async () => {
     const t = await createTenantFixture("demo");
     await asTenant(t.id, async () => {

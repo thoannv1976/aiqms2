@@ -69,13 +69,18 @@ function mapIRM(s?: string): "I" | "R" | "M" {
   return "I";
 }
 
+// Item lỗi/cắt cụt -> trả về object rỗng (.catch) để KHÔNG làm hỏng cả mảng;
+// các item mã rỗng sẽ bị bỏ qua ở applyMatrixMappings / lọc theo PLO.
+const ploCourseItem = z
+  .object({ courseCode: z.string(), ploCode: z.string(), level: z.string().optional() })
+  .catch({ courseCode: "", ploCode: "" });
+const cloPloItem = z
+  .object({ courseCode: z.string(), cloCode: z.string(), ploCode: z.string() })
+  .catch({ courseCode: "", cloCode: "", ploCode: "" });
+
 export const matrixDraftSchema = z.object({
-  ploCourse: z
-    .array(z.object({ courseCode: z.string(), ploCode: z.string(), level: z.string().optional() }))
-    .default([]),
-  cloPlo: z
-    .array(z.object({ courseCode: z.string(), cloCode: z.string(), ploCode: z.string() }))
-    .default([]),
+  ploCourse: z.array(ploCourseItem).default([]),
+  cloPlo: z.array(cloPloItem).default([]),
 });
 export type MatrixDraft = z.infer<typeof matrixDraftSchema>;
 
