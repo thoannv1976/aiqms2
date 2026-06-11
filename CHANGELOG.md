@@ -21,6 +21,13 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
 - **Lưu trữ GCS**: cài sẵn `@aws-sdk/client-s3` → driver S3 chạy với GCS (S3-compatible) chỉ
   bằng cấu hình env; hướng dẫn HMAC + bucket ở `DEPLOY.md` mục 7b.
 
+## [Công việc của tôi: nhóm theo đợt kiểm định] — ✅ Done
+- Trang **"Công việc của tôi"** nay **nhóm công việc theo từng ĐỢT kiểm định** (việc ngoài đợt gom
+  vào "Nhiệm vụ khác"): mỗi nhóm có **thanh tiến độ + đếm việc/đã xong/quá hạn**, thu gọn/mở rộng,
+  sắp xếp việc chưa xong trước (theo hạn → tiêu chí), đợt có việc quá hạn lên đầu.
+- **Bộ lọc theo đợt** + tùy chọn **ẩn việc đã hoàn thành**; cảnh báo hạn quá hạn (đỏ). Dùng dữ liệu
+  sẵn có (`/api/tasks/mine`), không đổi backend.
+
 ## [AI tạo nhóm kiểm định + Tự động phân công công việc] — ✅ Done
 - **AI tạo nhóm kiểm định + tài khoản** (`suggestAccreditationTeam` + `createAccreditationTeam`):
   AI đề xuất nhóm nhân sự đủ vai trò AUN-QA (qa_office, programme_committee, faculty, lecturer×N,
