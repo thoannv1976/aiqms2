@@ -21,6 +21,16 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
 - **Lưu trữ GCS**: cài sẵn `@aws-sdk/client-s3` → driver S3 chạy với GCS (S3-compatible) chỉ
   bằng cấu hình env; hướng dẫn HMAC + bucket ở `DEPLOY.md` mục 7b.
 
+## [Sửa lỗi AI JSON "không đúng schema sau khi thử lại"] — ✅ Done
+
+- **Lỗi**: AI điền nhanh đề cương / tổng hợp ma trận báo "Output AI không đúng schema" — JSON
+  bị **cắt cụt** do `max_tokens` Anthropic mặc định chỉ 2048 (không đủ cho 6 mục đề cương),
+  hoặc Claude bọc JSON trong ```json kèm văn bản thừa.
+- **Fix**: nâng `max_tokens` mặc định Anthropic 2048→4096 và `aiCompleteJson` xin **8000
+  token**; `extractJson` chịu lỗi tốt hơn (bỏ dấu phẩy thừa, tự đóng nháy/ngoặc còn thiếu khi
+  bị cắt cụt). Log 500 ký tự output khi vẫn sai để chẩn đoán. 112 test (thêm test parse JSON
+  Claude bọc fence + văn bản thừa).
+
 ## [CI/CD tự động — push là tự deploy Cloud Run] — ✅ Done
 
 - **GitHub Actions** `.github/workflows/deploy.yml`: push lên `main` /

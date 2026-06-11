@@ -169,15 +169,27 @@ export async function aiComplete(
   }
 }
 
-/** Lấy phần JSON từ output LLM: bỏ ```json fences, cắt từ '{' đầu tới '}' cuối. */
+/** Lấy phần JSON từ output LLM: bỏ ```json fences, cắt từ '{' đầu tới '}'. Chịu lỗi JSON
+ *  bị cắt cụt (tự đóng ngoặc/nháy còn thiếu) và bỏ dấu phẩy thừa. */
 function extractJson(text: string): string {
   let t = text.trim();
   const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/i);
   if (fence) t = fence[1].trim();
   const first = t.indexOf("{");
+  if (first < 0) return t;
   const last = t.lastIndexOf("}");
-  if (first >= 0 && last > first) return t.slice(first, last + 1);
-  return t;
+  let body = last > first ? t.slice(first, last + 1) : t.slice(first); // cắt cụt -> lấy tới hết
+  // Bỏ dấu phẩy thừa trước } hoặc ].
+  body = body.replace(/,\s*([}\]])/g, "$1");
+  // Nếu JSON bị cắt giữa chuỗi/ngoặc: đóng nháy + đóng ngoặc còn thiếu.
+  if (last <= first) {
+    const quotes = (body.match(/(?<!\\)"/g) ?? []).length;
+    if (quotes % 2 === 1) body += '"';
+    const opens = (body.match(/\{/g) ?? []).length - (body.match(/\}/g) ?? []).length;
+    const opensArr = (body.match(/\[/g) ?? []).length - (body.match(/\]/g) ?? []).length;
+    body += "]".repeat(Math.max(0, opensArr)) + "}".repeat(Math.max(0, opens));
+  }
+  return body;
 }
 
 /** Gọi LLM và validate output JSON bằng Zod (ép JSON; sai schema -> retry rồi báo lỗi). */
@@ -186,13 +198,16 @@ export async function aiCompleteJson<T>(
   messages: LlmMessage[],
   schema: ZodType<T>,
 ): Promise<T> {
+  let lastText = "";
   for (let attempt = 0; attempt < 2; attempt++) {
-    const text = await aiComplete(module, messages, { json: true });
+    // maxTokens lớn để JSON nhiều mục (vd đề cương 6 mục, ma trận) không bị cắt cụt.
+    const text = await aiComplete(module, messages, { json: true, maxTokens: 8000 });
+    lastText = text;
     try {
-      const parsed = schema.parse(JSON.parse(extractJson(text)));
-      return parsed;
+      return schema.parse(JSON.parse(extractJson(text)));
     } catch {
       if (attempt === 1) {
+        console.error("[AI] JSON output không hợp schema:", lastText.slice(0, 500));
         throw badRequest("Output AI không đúng schema sau khi thử lại", "ai_bad_output");
       }
     }

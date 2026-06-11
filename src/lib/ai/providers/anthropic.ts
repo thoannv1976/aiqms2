@@ -31,7 +31,7 @@ export class AnthropicProvider implements LlmProvider {
       },
       body: JSON.stringify({
         model: opts.model,
-        max_tokens: opts.maxTokens ?? 2048,
+        max_tokens: opts.maxTokens ?? 4096,
         // KHÔNG gửi temperature mặc định: model Claude 4.x (opus-4-x, sonnet-4-x, fable-5…)
         // trả 400 "temperature is deprecated for this model". Chỉ gửi khi được chỉ định.
         ...(opts.temperature !== undefined ? { temperature: opts.temperature } : {}),

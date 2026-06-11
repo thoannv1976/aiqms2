@@ -295,6 +295,31 @@ describe("P8 — Lớp AI (service có kiểm soát, human-in-the-loop)", () => 
     });
   });
 
+  it("aiCompleteJson chịu được output Claude bọc ```json + văn bản thừa (điền nhanh đề cương)", async () => {
+    const t = await createTenantFixture("demo");
+    await asTenant(t.id, async () => {
+      await updateSettings({ enabled: true, apiKey: "sk-ant-test" });
+      const course = await prisma.course.create({ data: { tenantId: t.id, code: "DS1", name: "CTDL", credits: 3 } });
+      const orig = global.fetch;
+      const payload = {
+        description: "Mô tả học phần…", prerequisites: "Toán rời rạc",
+        content: "Chương 1…", teachingMethods: "Lecture + Lab",
+        assessmentMethods: "Cuối kỳ 50%", materials: "[TL1] Cormen (2022)",
+      };
+      global.fetch = (async () =>
+        new Response(
+          JSON.stringify({ content: [{ type: "text", text: "Đây là kết quả:\n```json\n" + JSON.stringify(payload) + "\n```\nHy vọng giúp ích." }], usage: { input_tokens: 10, output_tokens: 50 } }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        )) as typeof fetch;
+      try {
+        const fields = await draftFullSyllabus(course.id);
+        expect(fields.description).toBe("Mô tả học phần…");
+        expect(fields.assessmentMethods).toBe("Cuối kỳ 50%");
+        expect(Object.keys(fields)).toHaveLength(6);
+      } finally { global.fetch = orig; }
+    });
+  });
+
   it("cách ly tenant: bản nháp AI của A không thấy ở B", async () => {
     const a = await createTenantFixture("a");
     const b = await createTenantFixture("b");
