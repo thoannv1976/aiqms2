@@ -16,6 +16,7 @@ import { buildImprovementXlsx } from "./improvement-xlsx";
 import { buildSarDossierDocx } from "./sar-dossier-docx";
 import { buildCycleAssignmentXlsx } from "./cycle-assignment-xlsx";
 import { buildCycleAssignmentDocx } from "./cycle-assignment-docx";
+import { buildTeamTasksXlsx, buildTeamTasksDocx } from "./team-tasks-export";
 
 export const EXPORT_TYPES = [
   "sar_docx",
@@ -27,6 +28,8 @@ export const EXPORT_TYPES = [
   "improvement_xlsx",
   "cycle_assignment_xlsx",
   "cycle_assignment_docx",
+  "team_tasks_xlsx",
+  "team_tasks_docx",
 ] as const;
 export type ExportType = (typeof EXPORT_TYPES)[number];
 
@@ -50,6 +53,8 @@ const MIME: Record<ExportType, { ext: string; contentType: string }> = {
   improvement_xlsx: { ext: "xlsx", contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" },
   cycle_assignment_xlsx: { ext: "xlsx", contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" },
   cycle_assignment_docx: { ext: "docx", contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" },
+  team_tasks_xlsx: { ext: "xlsx", contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" },
+  team_tasks_docx: { ext: "docx", contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" },
 };
 
 async function runExporter(type: ExportType, params: Params): Promise<Buffer> {
@@ -78,6 +83,10 @@ async function runExporter(type: ExportType, params: Params): Promise<Buffer> {
     case "cycle_assignment_docx":
       if (!params.cycleId) throw badRequest("cycle_assignment_docx cần cycleId");
       return buildCycleAssignmentDocx(params.cycleId);
+    case "team_tasks_xlsx":
+      return buildTeamTasksXlsx();
+    case "team_tasks_docx":
+      return buildTeamTasksDocx();
   }
 }
 

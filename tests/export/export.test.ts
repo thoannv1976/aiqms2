@@ -8,6 +8,7 @@ import { createCycle, createSar, getSar, updateCriterionResponse } from "@/lib/s
 import { addFile, createEvidence } from "@/lib/evidence/service";
 import { createExportJob, downloadJob, getJob } from "@/lib/export/jobs";
 import { buildMyTasksXlsx, buildMyTasksDocx } from "@/lib/export/my-tasks-export";
+import { buildTeamTasksXlsx, buildTeamTasksDocx } from "@/lib/export/team-tasks-export";
 import { addAction, addKpi, createPlan } from "@/lib/improvement/service";
 
 let aunVersionId: string;
@@ -79,6 +80,26 @@ describe("P7 — Xuất báo cáo (background job)", () => {
       const docx = await buildMyTasksDocx();
       expect(isZip(docx)).toBe(true);
       expect(docx.byteLength).toBeGreaterThan(1000);
+    });
+  });
+
+  it("xuất CÔNG VIỆC TOÀN ĐỘI ra Excel và Word (tên người + đợt + minh chứng)", async () => {
+    const t = await createTenantFixture("demo");
+    await asTenant(t.id, async () => {
+      const cycle = await createCycle({ name: "Đợt toàn đội", standardVersionId: aunVersionId });
+      const u1 = await prisma.user.create({ data: { tenantId: t.id, email: "a@truong.edu.vn", fullName: "GV A", passwordHash: "x" } });
+      const u2 = await prisma.user.create({ data: { tenantId: t.id, email: "b@truong.edu.vn", fullName: "GV B", passwordHash: "x" } });
+      await prisma.task.create({ data: { tenantId: t.id, title: "Thu thập MC C1", cycleId: cycle.id, assigneeId: u1.id, deliverables: "Hồ sơ PLO", priority: "high" } });
+      await prisma.task.create({ data: { tenantId: t.id, title: "Viết SAR C2", cycleId: cycle.id, assigneeId: u2.id, deliverables: "Bản thảo SAR" } });
+      await prisma.task.create({ data: { tenantId: t.id, title: "Việc chưa giao" } });
+
+      const xlsx = await buildTeamTasksXlsx();
+      expect(isZip(xlsx)).toBe(true);
+      expect(xlsx.byteLength).toBeGreaterThan(1500);
+
+      const docx = await buildTeamTasksDocx();
+      expect(isZip(docx)).toBe(true);
+      expect(docx.byteLength).toBeGreaterThan(1500);
     });
   });
 

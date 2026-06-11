@@ -94,6 +94,36 @@ export async function listMyTasks() {
   }));
 }
 
+/** Toàn bộ công việc (mọi người · mọi đợt) cho bản xuất quản lý: kèm tên người phụ trách,
+ *  tên đợt, mã tiêu chí, minh chứng phải nộp, số MC đã nộp. */
+export async function listAllTasksForExport() {
+  const tasks = await prisma.task.findMany({
+    where: { deletedAt: null },
+    orderBy: [{ dueDate: "asc" }, { createdAt: "asc" }],
+  });
+  const assigneeIds = [...new Set(tasks.map((t) => t.assigneeId).filter((v): v is string => !!v))];
+  const cycleIds = [...new Set(tasks.map((t) => t.cycleId).filter((v): v is string => !!v))];
+  const critIds = [...new Set(tasks.map((t) => t.criterionId).filter((v): v is string => !!v))];
+  const [users, cycles, crits, fileById] = await Promise.all([
+    assigneeIds.length ? prisma.user.findMany({ where: { id: { in: assigneeIds } }, select: { id: true, fullName: true, email: true } }) : [],
+    cycleIds.length ? prisma.assessmentCycle.findMany({ where: { id: { in: cycleIds } }, select: { id: true, name: true } }) : [],
+    critIds.length ? prisma.criterion.findMany({ where: { id: { in: critIds } }, select: { id: true, code: true } }) : [],
+    fileCountByTask(tasks.map((t) => t.id)),
+  ]);
+  const userById = new Map(users.map((u) => [u.id, u]));
+  const cycleById = new Map(cycles.map((c) => [c.id, c.name]));
+  const codeById = new Map(crits.map((c) => [c.id, c.code]));
+  return tasks.map((t) => ({
+    id: t.id, title: t.title, status: t.status, priority: t.priority,
+    deliverables: t.deliverables, dueDate: t.dueDate,
+    assigneeName: t.assigneeId ? userById.get(t.assigneeId)?.fullName ?? null : null,
+    assigneeEmail: t.assigneeId ? userById.get(t.assigneeId)?.email ?? null : null,
+    cycleName: t.cycleId ? cycleById.get(t.cycleId) ?? null : null,
+    criterionCode: t.criterionId ? codeById.get(t.criterionId) ?? null : null,
+    fileCount: fileById.get(t.id) ?? 0,
+  }));
+}
+
 /** Đếm số minh chứng (Document.taskId) theo từng task. */
 export async function fileCountByTask(taskIds: string[]): Promise<Map<string, number>> {
   if (taskIds.length === 0) return new Map();

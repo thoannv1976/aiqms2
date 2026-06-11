@@ -21,6 +21,8 @@ const TYPES: { value: string; label: string; needsSar?: boolean; needsPlan?: boo
   { value: "improvement_xlsx", label: "Tất cả kế hoạch cải tiến → Excel" },
   { value: "cycle_assignment_xlsx", label: "Bảng phân công đợt → Excel", needsCycle: true },
   { value: "cycle_assignment_docx", label: "Bảng phân công đợt → Word", needsCycle: true },
+  { value: "team_tasks_xlsx", label: "Công việc TOÀN ĐỘI (mọi người · mọi đợt) → Excel" },
+  { value: "team_tasks_docx", label: "Công việc TOÀN ĐỘI (nhóm theo người) → Word" },
 ];
 
 export default function ExportsPage() {

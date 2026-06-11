@@ -31,6 +31,14 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
   Cách khắc phục triệt để: chạy `scripts/setup-gcs.sh` để bật `STORAGE_DRIVER=s3` (GCS). Test:
   `tests/storage/storage-status.test.ts`.
 
+## [Xuất công việc TOÀN ĐỘI (mọi thành viên) ra Excel/Word] — ✅ Done
+- **Xuất công việc toàn đội kiểm định** (`listAllTasksForExport` + `buildTeamTasksXlsx/Docx`): mọi
+  người × mọi đợt, đầy đủ **tên người phụ trách (+email), đợt kiểm định, tiêu chí, công việc, minh
+  chứng phải nộp, hạn, ưu tiên, trạng thái**. Excel: sheet "Phân công toàn đội" + sheet "Tổng hợp theo
+  người" (số việc·đã xong·ưu tiên cao). Word: **nhóm theo từng người phụ trách**.
+- Loại job `team_tasks_xlsx`/`team_tasks_docx` (trang Xuất báo cáo) + nút tải nhanh "⬇ Excel/Word toàn
+  đội" ở trang Nhiệm vụ (route `GET /api/exports/team-tasks`, cần REPORT_EXPORT). Test trên Postgres.
+
 ## [Xuất "Công việc của tôi" ra Excel/Word] — ✅ Done
 - Mỗi thành viên **xuất danh sách công việc của mình** đầy đủ chi tiết (tên người phụ trách, đợt
   kiểm định, tiêu chí, công việc, **minh chứng phải nộp**, hạn, ưu tiên, trạng thái): Excel (bảng

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { api, ApiClientError } from "@/lib/api/client";
+import { api, authedUrl, ApiClientError } from "@/lib/api/client";
 import { PageHeader, ErrorBox, Spinner } from "@/components/ui";
 import { Modal } from "@/components/Modal";
 
@@ -84,7 +84,9 @@ export default function TasksPage() {
         title="Nhiệm vụ"
         subtitle="Bảng Kanban — kéo‑thả thẻ giữa các cột để đổi trạng thái"
         action={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <a className="btn-outline" href={authedUrl("/api/exports/team-tasks?format=xlsx")}>⬇ Excel toàn đội</a>
+            <a className="btn-outline" href={authedUrl("/api/exports/team-tasks?format=docx")}>⬇ Word toàn đội</a>
             <button className="btn-outline" onClick={runReminders}>Gửi nhắc hạn</button>
             <button className="btn-primary" onClick={() => setOpen(true)}>+ Tạo nhiệm vụ</button>
           </div>
