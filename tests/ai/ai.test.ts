@@ -15,6 +15,7 @@ import {
   suggestImprovementActions,
   draftCourseField,
   draftFullSyllabus,
+  generateCompliantSyllabus,
   reviewCourseSyllabus,
 } from "@/lib/ai/features";
 import { createPlan } from "@/lib/improvement/service";
@@ -253,6 +254,18 @@ describe("P8 — Lớp AI (service có kiểm soát, human-in-the-loop)", () => 
         },
       });
       expect(await draftFullSyllabus(full.id)).toEqual({});
+    });
+  });
+
+  it("AI tạo bản đề cương chuẩn AUN-QA -> trả map các mục, KHÔNG tự lưu", async () => {
+    const t = await createTenantFixture("demo");
+    await asTenant(t.id, async () => {
+      await updateSettings({ enabled: true });
+      const course = await prisma.course.create({ data: { tenantId: t.id, code: "TMAE306", name: "TMĐT", credits: 3, description: "bản cũ" } });
+      const fields = await generateCompliantSyllabus(course.id);
+      expect(typeof fields).toBe("object");
+      const fresh = await prisma.course.findFirstOrThrow({ where: { id: course.id } });
+      expect(fresh.description).toBe("bản cũ"); // chưa ghi đè (human-in-the-loop)
     });
   });
 

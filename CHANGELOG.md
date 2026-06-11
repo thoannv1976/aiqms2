@@ -21,6 +21,19 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
 - **Lưu trữ GCS**: cài sẵn `@aws-sdk/client-s3` → driver S3 chạy với GCS (S3-compatible) chỉ
   bằng cấu hình env; hướng dẫn HMAC + bucket ở `DEPLOY.md` mục 7b.
 
+## [Kho đề cương: upload nhiều + trích xuất sau + AI tạo bản chuẩn AUN-QA] — ✅ Done
+
+- **Kho đề cương** (nút "Kho đề cương" ở trang Đề cương): **tải lên NHIỀU file .docx/.pdf** một
+  lượt vào kho Tài liệu (gắn CTĐT), không trích xuất ngay. Danh sách đề cương đã upload (lọc
+  theo CTĐT) — mỗi cái có **"Trích xuất"** (on-demand) → xem trước → **"Ghi vào hệ thống"**
+  (tạo/cập nhật học phần + gắn file), kèm Tải/Xóa.
+- `extractStoredSyllabus` + `POST /api/import/courses/doc/extract`: trích xuất đề cương từ file
+  đã lưu trong kho (đọc qua Storage), tách khỏi bước upload.
+- **AI tạo bản đề cương chuẩn AUN-QA** (`generateCompliantSyllabus` → nút "✨ AI tạo bản chuẩn
+  AUN-QA" ở trang chi tiết học phần): viết lại TOÀN BỘ các mục dựa trên nội dung hiện có/đã
+  upload, khắc phục điểm chưa đạt (CLO theo Bloom, constructive alignment, học liệu 5 năm,
+  trọng số phủ CLO) → bản nháp để duyệt rồi Lưu. 124 test.
+
 ## [Đợt tự đánh giá: kế hoạch AI + phân công + minh chứng + thông báo] — ✅ Done
 
 - **Kế hoạch & phân công** trong đợt tự đánh giá (Task gắn `cycleId` + `deliverables`;

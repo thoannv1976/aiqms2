@@ -583,6 +583,54 @@ export async function draftFullSyllabus(courseId: string, onlyEmpty = true): Pro
   return out;
 }
 
+/**
+ * AI TẠO BẢN ĐỀ CƯƠNG ĐẠT CHUẨN AUN-QA — viết lại TOÀN BỘ dựa trên nội dung hiện có
+ * (bản đã upload/đánh giá), khắc phục các điểm chưa đạt. Trả về bản nháp đầy đủ để duyệt.
+ */
+export async function generateCompliantSyllabus(courseId: string): Promise<Record<string, string>> {
+  const course = await prisma.course.findFirst({ where: { id: courseId }, include: { clos: { orderBy: { order: "asc" } } } });
+  if (!course) throw notFound("Học phần không tồn tại");
+  const rec = course as unknown as Record<string, string | null>;
+  const clos = course.clos.map((c) => `${c.code}: ${c.description}`).join("\n") || "(chưa có CLO)";
+  const current =
+    `Mô tả: ${rec.description ?? "—"}\nTiên quyết: ${rec.prerequisites ?? "—"}\n` +
+    `Nội dung: ${(rec.content ?? "—").slice(0, 1500)}\nPP giảng dạy: ${rec.teachingMethods ?? "—"}\n` +
+    `Đánh giá: ${rec.assessmentMethods ?? "—"}\nHọc liệu: ${rec.materials ?? "—"}\nCLO:\n${clos}`;
+
+  const result = await aiCompleteJson(
+    "compliant_syllabus",
+    [
+      {
+        role: "system",
+        content:
+          SYSTEM_VI +
+          " Viết lại TOÀN BỘ đề cương để ĐÁP ỨNG Mẫu 5A/5B của ĐHNT và AUN-QA 4.0 (TC2,3,5): CLO đo được " +
+          "theo Bloom & phủ 3 trụ cột (kiến thức–kỹ năng–tự chủ), constructive alignment CLO–nội dung–PP dạy–đánh giá, " +
+          "học liệu xuất bản trong 5 năm, trọng số đánh giá phủ hết CLO, đa dạng phương pháp. Giữ đúng bản chất học phần " +
+          "(không bịa lĩnh vực khác). Trả về JSON thuần.",
+      },
+      {
+        role: "user",
+        content:
+          `Học phần: ${course.code} — ${course.name} (${course.credits} tín chỉ).\n\n` +
+          `NỘI DUNG HIỆN CÓ (cần nâng cấp cho đạt chuẩn):\n${current}\n\n` +
+          'Trả JSON đầy đủ 6 mục: {"description","prerequisites","content","teachingMethods","assessmentMethods","materials"}. ' +
+          "assessmentMethods nêu cấu phần + trọng số (%) và CLO; materials ưu tiên học liệu 5 năm gần nhất. " +
+          "JSON THUẦN, không xuống dòng/giải thích thừa.",
+      },
+    ],
+    fullSyllabusSchema,
+  );
+  const keys = ["description", "prerequisites", "content", "teachingMethods", "assessmentMethods", "materials"] as const;
+  const out: Record<string, string> = {};
+  for (const k of keys) {
+    const v = (result as Record<string, string>)[k];
+    if (v && v.trim()) out[k] = v;
+  }
+  await writeAudit({ action: "ai.compliant_syllabus", entity: "Course", entityId: courseId, meta: { fields: Object.keys(out).length } });
+  return out;
+}
+
 /** AI rà soát toàn bộ đề cương theo Mẫu 5A/5B + AUN-QA, trả về nhận xét + điểm cần sửa. */
 export async function reviewCourseSyllabus(courseId: string): Promise<string> {
   const course = await prisma.course.findFirst({ where: { id: courseId }, include: { clos: { orderBy: { order: "asc" } } } });

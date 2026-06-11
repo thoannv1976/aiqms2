@@ -84,6 +84,20 @@ export default function CourseDetailPage() {
     } finally { setFilling(false); }
   }
 
+  // AI tạo bản đề cương đạt chuẩn AUN-QA (viết lại TOÀN BỘ dựa trên nội dung hiện có).
+  async function aiCompliant() {
+    if (!confirm("AI sẽ viết lại toàn bộ các mục đề cương theo chuẩn AUN-QA (ghi đè nội dung hiện tại trong ô — chưa lưu). Tiếp tục?")) return;
+    setFilling(true); setAiNote(null);
+    try {
+      const r = await api.post<{ fields: Record<string, string> }>("/api/ai/compliant-syllabus", { courseId: id });
+      const f = r?.fields ?? {};
+      if (Object.keys(f).length === 0) setAiNote("AI không tạo được nội dung.");
+      else { setForm((s) => ({ ...s, ...f })); setAiNote(`AI đã tạo bản chuẩn AUN-QA (${Object.keys(f).length} mục) — kiểm tra rồi bấm “Lưu đề cương”.`); }
+    } catch (e) {
+      setAiNote(e instanceof ApiClientError ? e.message : "Lỗi gọi AI (cần bật AI + có quyền)");
+    } finally { setFilling(false); }
+  }
+
   if (error) return <ErrorBox message={error} />;
   if (!course) return <Spinner />;
 
@@ -93,8 +107,9 @@ export default function CourseDetailPage() {
         title={`${course.code} · ${course.name}`}
         subtitle={`${course.credits} tín chỉ · đề cương học phần`}
         action={
-          <div className="flex items-center gap-2">
-            <button className="btn-outline" onClick={aiFillAll} disabled={filling}>{filling ? "Đang điền…" : "✨ AI điền nhanh đề cương"}</button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button className="btn-outline" onClick={aiFillAll} disabled={filling}>{filling ? "Đang xử lý…" : "✨ AI điền nhanh"}</button>
+            <button className="btn-outline" onClick={aiCompliant} disabled={filling}>✨ AI tạo bản chuẩn AUN-QA</button>
             <ReviewButton courseId={course.id} />
           </div>
         }

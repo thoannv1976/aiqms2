@@ -4,7 +4,8 @@ import { prisma, resetDb } from "../helpers/db";
 import { createTenantFixture } from "../helpers/fixtures";
 import { runWithTenant } from "@/lib/tenant/context";
 import { docxToText } from "@/lib/import/docx";
-import { applyExtractedSyllabus, extractSyllabusByRules, pdfToText } from "@/lib/import/syllabus";
+import { applyExtractedSyllabus, extractSyllabusByRules, extractStoredSyllabus, pdfToText } from "@/lib/import/syllabus";
+import { createDocument } from "@/lib/documents/service";
 import { createProgramme } from "@/lib/programmes/service";
 
 const asTenant = <T>(tenantId: string, fn: () => Promise<T>) =>
@@ -91,6 +92,21 @@ describe("Import đề cương học phần từ Word/PDF", () => {
       expect(res2.updated).toBe(1);
       expect(await prisma.courseLearningOutcome.count()).toBe(2);
       expect(await prisma.cloPloMapping.count()).toBe(2);
+    });
+  });
+
+  it("extractStoredSyllabus: tải file đã lưu trong kho rồi trích xuất (on-demand)", async () => {
+    const t = await createTenantFixture("demo");
+    await asTenant(t.id, async () => {
+      const buf = await buildSyllabusDocx();
+      const doc = await createDocument(
+        { title: "Đề cương TMAE306", category: "syllabus" },
+        { fileName: "tmae306.docx", body: buf, contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" },
+      );
+      const r = await extractStoredSyllabus(doc.id);
+      expect(r.documentId).toBe(doc.id);
+      expect(r.data.code).toBe("TMAE306");
+      expect(r.data.clos.map((c) => c.code)).toEqual(["CLO1", "CLO2"]);
     });
   });
 

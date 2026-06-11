@@ -3,7 +3,8 @@ import { prisma } from "@/lib/prisma/client";
 import { requireTenantContext } from "@/lib/tenant/context";
 import { withTenantId } from "@/lib/prisma/tenant-create";
 import { writeAudit } from "@/lib/audit/log";
-import { badRequest } from "@/lib/http/responses";
+import { badRequest, notFound } from "@/lib/http/responses";
+import { getStorage } from "@/lib/storage";
 import { aiCompleteJson } from "@/lib/ai/service";
 import { docxToText } from "./docx";
 import type { ImportResult } from "./excel";
@@ -173,6 +174,18 @@ export async function extractSyllabusDoc(
   } catch {
     return { source: "rule", data: ruleData };
   }
+}
+
+/** Trích xuất đề cương TỪ MỘT TÀI LIỆU đã upload trong kho (on-demand, không tạo học phần). */
+export async function extractStoredSyllabus(documentId: string): Promise<{ source: "ai" | "rule"; data: ExtractedSyllabus; documentId: string; programmeId: string | null }> {
+  const doc = await prisma.document.findFirst({ where: { id: documentId } });
+  if (!doc) throw notFound("Tài liệu không tồn tại");
+  const bytes = await getStorage().get(doc.storageKey);
+  if (!bytes) throw badRequest("File không còn trong kho lưu trữ");
+  const kind = /\.pdf$/i.test(doc.fileName) ? "pdf" : /\.docx$/i.test(doc.fileName) ? "docx" : null;
+  if (!kind) throw badRequest("Chỉ trích xuất được file .docx hoặc .pdf");
+  const { source, data } = await extractSyllabusDoc(bytes, kind);
+  return { source, data, documentId, programmeId: doc.programmeId };
 }
 
 // ─── Ghi vào CSDL: upsert học phần + đề cương + CLO + ma trận CLO–PLO ────────
