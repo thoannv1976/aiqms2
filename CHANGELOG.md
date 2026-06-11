@@ -49,16 +49,6 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
   bị cắt cụt). Log 500 ký tự output khi vẫn sai để chẩn đoán. 112 test (thêm test parse JSON
   Claude bọc fence + văn bản thừa).
 
-## [CI/CD tự động — push là tự deploy Cloud Run] — ✅ Done
-
-- **GitHub Actions** `.github/workflows/deploy.yml`: push lên `main` /
-  `claude/magical-dirac-pUhEy` (bỏ qua khi chỉ sửa md/docs) → tự `gcloud run deploy --source`
-  lên Cloud Run (giữ nguyên secrets/env/Cloud SQL hiện có). Dùng **Workload Identity
-  Federation** (không lưu key JSON); job tự skip tới khi cấu hình xong (`if vars.GCP_SERVICE`).
-- **`scripts/setup-cicd.sh`** (idempotent): tạo SA triển khai + quyền build/deploy + actAs
-  runtime SA, WIF pool/provider khóa theo repo, rồi in 5 biến repo cần dán vào GitHub.
-  `DEPLOY.md` mục 8b hướng dẫn + nêu cách thay thế bằng Cloud Build trigger.
-
 ## [Sửa lỗi lưu đề cương (mục trống = null)] — ✅ Done
 
 - **Lỗi**: lưu đề cương báo `rubric: Invalid input: expected string, received null` — trang

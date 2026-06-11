@@ -213,44 +213,6 @@ cd ~/aiqms2 && git pull
 gcloud run deploy $SERVICE --source . --region $REGION   # giữ nguyên env/secrets đã set
 ```
 
-## 8b. CI/CD tự động — push là tự deploy (KHUYẾN NGHỊ)
-
-Khỏi deploy tay: mỗi lần push code lên nhánh là **GitHub Actions tự build + deploy** lên
-Cloud Run. Dùng **Workload Identity Federation** (không lưu key JSON trong GitHub).
-
-```bash
-# 1) Chạy MỘT LẦN trong Cloud Shell (tài khoản có quyền IAM Admin):
-REGION=asia-southeast1 SERVICE=aiqms2 REPO=thoannv1976/aiqms2 bash scripts/setup-cicd.sh
-```
-
-Script tạo service account triển khai + Workload Identity Pool/Provider (khóa theo đúng
-repo) rồi **in ra 5 biến**. Dán vào GitHub: repo → **Settings → Secrets and variables →
-Actions → tab Variables**:
-
-| Variable | Giá trị |
-|---|---|
-| `GCP_PROJECT_ID` | id project |
-| `GCP_REGION` | `asia-southeast1` |
-| `GCP_SERVICE` | `aiqms2` |
-| `GCP_DEPLOY_SA` | `aiqms-deployer@<project>.iam.gserviceaccount.com` |
-| `GCP_WIF_PROVIDER` | `projects/<num>/locations/global/workloadIdentityPools/github-pool/providers/github-provider` |
-
-Workflow `.github/workflows/deploy.yml` chạy khi push lên `main` hoặc
-`claude/magical-dirac-pUhEy` (bỏ qua khi chỉ sửa `*.md`/`docs/`), hoặc bấm tay ở tab
-**Actions → Deploy to Cloud Run → Run workflow**. Lệnh deploy **giữ nguyên** secrets/env/
-Cloud SQL đã cấu hình trên service (chỉ cập nhật image).
-
-> **Thay thế — Cloud Build trigger** (chạy build trong GCP, không qua GitHub Actions):
-> kết nối repo trong Cloud Build (Console → Cloud Build → Triggers → Connect repository,
-> đăng nhập GitHub App một lần), rồi tạo trigger build từ `Dockerfile`:
-> ```bash
-> gcloud builds triggers create github \
->   --name=aiqms-deploy --repo-name=aiqms2 --repo-owner=thoannv1976 \
->   --branch-pattern='^(main|claude/magical-dirac-pUhEy)$' \
->   --build-config=cloudbuild.yaml
-> ```
-> (cần thêm file `cloudbuild.yaml` build image + `gcloud run deploy --image`).
-
 ## 9. Xem log & sự cố
 
 ```bash
