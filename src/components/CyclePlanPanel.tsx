@@ -100,6 +100,38 @@ export function CyclePlanPanel({ cycleId }: { cycleId: string }) {
     } catch (e) { setNote(e instanceof ApiClientError ? e.message : "Lỗi tạo kế hoạch"); }
     finally { setBusy(false); }
   }
+  async function aiCreateTeam() {
+    if (!confirm("AI sẽ đề xuất nhóm kiểm định và TẠO TÀI KHOẢN cho các vai trò còn thiếu. Tiếp tục?")) return;
+    setBusy(true); setErr(null);
+    setNote("① Đang kiểm tra cấu hình AI…");
+    try {
+      // Bước 1: AI đề xuất nhóm (có dự phòng nhóm chuẩn nếu AI tắt/lỗi).
+      setNote("② AI đang đề xuất nhóm kiểm định…");
+      const draft = await api.post<{ members: { fullName: string; email: string; roleCode: string; title: string }[] }>(`/api/ai/team?cycleId=${cycleId}`, {});
+      const members = draft?.members ?? [];
+      if (members.length === 0) { setNote("AI không đề xuất được nhóm — thử lại hoặc tạo tài khoản thủ công."); return; }
+      // Bước 2: tạo tài khoản (idempotent theo email).
+      setNote(`③ Đang tạo ${members.length} tài khoản…`);
+      const res = await api.post<{ created: number; skipped: number; defaultPassword: string }>("/api/users/team", { members });
+      await loadMembers();
+      setNote(`✅ Nhóm kiểm định: tạo mới ${res?.created ?? 0}, đã có sẵn ${res?.skipped ?? 0}. Mật khẩu mặc định: ${res?.defaultPassword}. Sau đó bấm “Tự động phân công”.`);
+    } catch (e) {
+      setNote(e instanceof ApiClientError ? `Lỗi: ${e.message}` : "Lỗi tạo nhóm (cần quyền quản trị người dùng + AI bật)");
+    } finally { setBusy(false); }
+  }
+
+  async function autoAssign() {
+    setBusy(true); setErr(null); setNote("Đang tự động phân công theo vai trò…");
+    try {
+      const r = await api.post<{ assigned: number; unassignedRoles: string[] }>(`/api/cycles/${cycleId}/auto-assign`, {});
+      const miss = r?.unassignedRoles?.length ? ` Thiếu người cho vai trò: ${r.unassignedRoles.map((x) => ROLE_VI[x] ?? x).join(", ")} (hãy “AI tạo nhóm”).` : "";
+      setNote(`✅ Đã phân công ${r?.assigned ?? 0} công việc.${miss}`);
+      await load();
+    } catch (e) {
+      setNote(e instanceof ApiClientError ? e.message : "Lỗi tự động phân công");
+    } finally { setBusy(false); }
+  }
+
   async function notifyMembers() {
     setBusy(true); setNote(null);
     try {
@@ -115,6 +147,8 @@ export function CyclePlanPanel({ cycleId }: { cycleId: string }) {
         <h3 className="text-sm font-semibold text-slate-700">Kế hoạch & phân công ({tasks.length})</h3>
         <div className="flex flex-wrap gap-2">
           <button className="btn-outline" onClick={aiPlan} disabled={busy}>{busy ? "⏳ Đang xử lý…" : "🤖 AI tạo kế hoạch"}</button>
+          <button className="btn-outline" onClick={aiCreateTeam} disabled={busy}>👥 AI tạo nhóm &amp; tài khoản</button>
+          <button className="btn-outline" onClick={autoAssign} disabled={busy}>🎯 Tự động phân công</button>
           <button className="btn-outline" onClick={notifyMembers} disabled={busy}>🔔 Thông báo thành viên</button>
           <button className="btn-primary" onClick={() => setAddOpen(true)}>+ Thêm công việc</button>
         </div>

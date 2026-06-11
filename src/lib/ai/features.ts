@@ -489,6 +489,89 @@ export async function generateCyclePlan(cycleId: string): Promise<CyclePlanAi> {
   return { tasks };
 }
 
+// ─── AI gợi ý NHÓM KIỂM ĐỊNH (đề xuất tài khoản cần tạo) ────────────────────
+const TEAM_ROLES = new Set(["qa_office", "programme_committee", "faculty", "lecturer", "internal_reviewer", "leadership"]);
+const teamMemberItem = z
+  .object({
+    fullName: z.string(),
+    roleCode: z.string(),
+    title: z.string().optional(),
+    email: z.string().optional(),
+  })
+  .catch({ fullName: "", roleCode: "" });
+const teamDraftSchema = z.object({ members: z.array(teamMemberItem).default([]) });
+export type TeamMember = { fullName: string; roleCode: string; title: string; email: string };
+
+/** Bỏ dấu tiếng Việt + tạo handle email từ họ tên. */
+function emailHandle(name: string): string {
+  const ascii = name.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/gi, "d");
+  return ascii.toLowerCase().replace(/[^a-z0-9]+/g, ".").replace(/^\.+|\.+$/g, "").slice(0, 40) || "thanhvien";
+}
+
+/** Nhóm chuẩn cho một đợt kiểm định AUN-QA (dự phòng khi AI tắt/lỗi/thiếu vai trò). */
+function standardTeam(): { fullName: string; roleCode: string; title: string }[] {
+  return [
+    { fullName: "Cán bộ Phòng Đảm bảo chất lượng", roleCode: "qa_office", title: "Điều phối kiểm định" },
+    { fullName: "Chủ nhiệm chương trình đào tạo", roleCode: "programme_committee", title: "Trưởng nhóm SAR" },
+    { fullName: "Thư ký chương trình đào tạo", roleCode: "programme_committee", title: "Thư ký nhóm SAR" },
+    { fullName: "Trưởng khoa/Bộ môn", roleCode: "faculty", title: "Phụ trách cấp khoa" },
+    { fullName: "Giảng viên chủ nhiệm học phần 1", roleCode: "lecturer", title: "Thu thập minh chứng học phần" },
+    { fullName: "Giảng viên chủ nhiệm học phần 2", roleCode: "lecturer", title: "Thu thập minh chứng học phần" },
+    { fullName: "Thành viên hội đồng rà soát 1", roleCode: "internal_reviewer", title: "Rà soát/chấm điểm nội bộ" },
+    { fullName: "Thành viên hội đồng rà soát 2", roleCode: "internal_reviewer", title: "Rà soát/chấm điểm nội bộ" },
+    { fullName: "Lãnh đạo phụ trách đào tạo", roleCode: "leadership", title: "Phê duyệt" },
+  ];
+}
+
+/**
+ * AI đề xuất NHÓM KIỂM ĐỊNH cho một đợt (human-in-the-loop): danh sách tài khoản cần có theo
+ * vai trò AUN-QA. Trả về BẢN NHÁP (không tạo tài khoản) để người quản trị duyệt rồi mới tạo.
+ * Có dự phòng nhóm chuẩn nếu AI tắt/lỗi/thiếu vai trò → luôn dùng được.
+ */
+export async function suggestAccreditationTeam(cycleId: string): Promise<{ members: TeamMember[] }> {
+  const cycle = await prisma.assessmentCycle.findFirst({ where: { id: cycleId } });
+  if (!cycle) throw notFound("Đợt tự đánh giá không tồn tại");
+  const programme = cycle.programmeId
+    ? await prisma.programme.findFirst({ where: { id: cycle.programmeId }, select: { code: true, name: true } })
+    : null;
+  const domain = `${(requireTenantContext().tenantId || "demo").slice(0, 12)}.edu.vn`;
+
+  let proposed: { fullName: string; roleCode: string; title?: string; email?: string }[] = [];
+  try {
+    const draft = await aiCompleteJson(
+      "team_plan",
+      [
+        { role: "system", content: "Bạn là điều phối viên kiểm định AUN-QA. Đề xuất NHÓM nhân sự cần có cho một đợt tự đánh giá CTĐT." },
+        {
+          role: "user",
+          content:
+            `Đợt: ${cycle.name}. ${programme ? `Chương trình: ${programme.code} — ${programme.name}.` : ""}\n` +
+            'Trả JSON: {"members":[{"fullName","roleCode","title"}]}. roleCode CHỈ thuộc: ' +
+            "qa_office, programme_committee, faculty, lecturer, internal_reviewer, leadership. " +
+            "Cần đủ: 1 qa_office, 1-2 programme_committee, 1 faculty, 2-4 lecturer, 2 internal_reviewer, 1 leadership. Tiếng Việt.",
+        },
+      ],
+      teamDraftSchema,
+    );
+    proposed = draft.members.filter((m) => m.fullName?.trim() && TEAM_ROLES.has(m.roleCode));
+  } catch {
+    proposed = [];
+  }
+  if (proposed.length < 4) proposed = standardTeam();
+
+  // Sinh email duy nhất theo handle (tránh trùng trong danh sách đề xuất).
+  const seen = new Map<string, number>();
+  const members: TeamMember[] = proposed.map((m) => {
+    const base = emailHandle(m.fullName);
+    const n = (seen.get(base) ?? 0) + 1;
+    seen.set(base, n);
+    const handle = n > 1 ? `${base}${n}` : base;
+    return { fullName: m.fullName.trim(), roleCode: m.roleCode, title: m.title?.trim() || "", email: m.email?.trim() || `${handle}@${domain}` };
+  });
+  await writeAudit({ action: "ai.team_plan", entity: "AssessmentCycle", entityId: cycleId, meta: { members: members.length } });
+  return { members };
+}
+
 // ─── Chỉnh sửa ĐỀ CƯƠNG học phần bằng AI (human-in-the-loop) ─────────────────
 const COURSE_FIELD_LABELS: Record<string, string> = {
   description: "Mô tả học phần",

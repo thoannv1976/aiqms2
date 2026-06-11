@@ -110,6 +110,52 @@ export async function createUser(input: z.infer<typeof createUserSchema>) {
   return user;
 }
 
+export const teamMemberSchema = z.object({
+  fullName: z.string().min(1),
+  email: z.string().email(),
+  roleCode: z.string().min(1),
+  title: z.string().optional(),
+});
+export const createTeamSchema = z.object({
+  members: z.array(teamMemberSchema).min(1),
+  defaultPassword: z.string().min(8).default("Aiqms@12345"),
+});
+
+/**
+ * Tạo HÀNG LOẠT tài khoản cho nhóm kiểm định (từ đề xuất của AI) — idempotent theo email:
+ * email đã tồn tại thì bỏ qua (không ghi đè). Trả về danh sách kèm trạng thái + mật khẩu mặc định.
+ */
+export async function createAccreditationTeam(input: z.input<typeof createTeamSchema>) {
+  const ctx = requireTenantContext();
+  const password = input.defaultPassword || "Aiqms@12345";
+  const passwordHash = await hashPassword(password);
+  const accounts: { email: string; fullName: string; roleCode: string; status: "created" | "exists" | "error"; message?: string }[] = [];
+  let created = 0;
+
+  for (const m of input.members) {
+    const existing = await prisma.user.findFirst({ where: { email: m.email, deletedAt: null } });
+    if (existing) { accounts.push({ email: m.email, fullName: m.fullName, roleCode: m.roleCode, status: "exists" }); continue; }
+    try {
+      const roleIds = await roleIdsForCodes([m.roleCode]);
+      await prisma.user.create({
+        data: {
+          email: m.email,
+          fullName: m.fullName,
+          passwordHash,
+          createdBy: ctx.actorId,
+          userRoles: { create: roleIds.map((roleId) => ({ roleId, tenantId: ctx.tenantId, createdBy: ctx.actorId })) },
+        } as unknown as Prisma.UserUncheckedCreateInput,
+      });
+      created++;
+      accounts.push({ email: m.email, fullName: m.fullName, roleCode: m.roleCode, status: "created" });
+    } catch (e) {
+      accounts.push({ email: m.email, fullName: m.fullName, roleCode: m.roleCode, status: "error", message: e instanceof Error ? e.message : "lỗi" });
+    }
+  }
+  await writeAudit({ action: "user.team_create", entity: "User", meta: { created, total: input.members.length } });
+  return { created, skipped: accounts.filter((a) => a.status === "exists").length, defaultPassword: password, accounts };
+}
+
 export async function updateUser(id: string, input: z.infer<typeof updateUserSchema>) {
   const ctx = requireTenantContext();
   const current = await prisma.user.findFirst({ where: { id } });

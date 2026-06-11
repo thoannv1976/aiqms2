@@ -140,6 +140,90 @@ export async function applyCyclePlan(cycleId: string, input: CyclePlanDraft, ass
   return { created, assigned };
 }
 
+/** Suy ra vai trò phù hợp cho một công việc: ưu tiên "Vai trò đề xuất" đã lưu ở mô tả,
+ *  nếu không có thì suy từ từ khóa tiêu đề. */
+function roleForTask(t: { title: string; description: string | null }): string {
+  const m = t.description?.match(/Vai trò đề xuất:\s*([a-z_]+)/i);
+  if (m) return m[1].toLowerCase();
+  const s = `${t.title}`.toLowerCase();
+  if (/(rà soát|đánh giá nội bộ|chấm điểm)/.test(s)) return "internal_reviewer";
+  if (/(viết sar|soạn sar|phân tích tiêu chí)/.test(s)) return "programme_committee";
+  if (/(thu thập|minh chứng|đề cương|học phần)/.test(s)) return "lecturer";
+  if (/(kế hoạch|thành lập|xuất hồ sơ|hồ sơ|tổng hợp)/.test(s)) return "qa_office";
+  return "programme_committee";
+}
+
+/**
+ * Tự động phân công công việc trong đợt theo VAI TRÒ (D-bổ sung):
+ * khớp vai trò đề xuất của từng công việc với thành viên có vai trò đó, chia đều (round-robin).
+ * `onlyUnassigned` (mặc định) chỉ gán việc chưa có người; đặt false để phân công lại toàn bộ.
+ * Người được giao nhận thông báo tổng hợp.
+ */
+export async function autoAssignCycleTasks(cycleId: string, opts: { onlyUnassigned?: boolean } = {}) {
+  const onlyUnassigned = opts.onlyUnassigned ?? true;
+  const cycle = await prisma.assessmentCycle.findFirst({ where: { id: cycleId } });
+  if (!cycle) throw notFound("Đợt tự đánh giá không tồn tại");
+
+  const tasks = await prisma.task.findMany({ where: { cycleId, deletedAt: null }, orderBy: { createdAt: "asc" } });
+  // Thành viên theo vai trò (chỉ tài khoản đang hoạt động).
+  const members = await prisma.user.findMany({
+    where: { status: "active", deletedAt: null },
+    select: { id: true, userRoles: { select: { role: { select: { code: true } } } } },
+  });
+  const byRole = new Map<string, string[]>();
+  for (const u of members) {
+    for (const r of u.userRoles) {
+      const arr = byRole.get(r.role.code) ?? [];
+      arr.push(u.id);
+      byRole.set(r.role.code, arr);
+    }
+  }
+  // Vai trò dự phòng khi không có thành viên đúng vai trò đề xuất.
+  const FALLBACK: Record<string, string[]> = {
+    lecturer: ["faculty", "programme_committee", "qa_office"],
+    faculty: ["programme_committee", "qa_office"],
+    programme_committee: ["qa_office", "faculty"],
+    internal_reviewer: ["qa_office", "faculty"],
+    qa_office: ["programme_committee", "leadership"],
+    leadership: ["qa_office"],
+  };
+  const cursor = new Map<string, number>();
+  const pick = (role: string): string | null => {
+    for (const r of [role, ...(FALLBACK[role] ?? [])]) {
+      const pool = byRole.get(r);
+      if (pool && pool.length) {
+        const i = cursor.get(r) ?? 0;
+        cursor.set(r, i + 1);
+        return pool[i % pool.length];
+      }
+    }
+    return null;
+  };
+
+  let assigned = 0;
+  const unassignedRoles = new Set<string>();
+  const notifyCount = new Map<string, number>();
+  for (const t of tasks) {
+    if (onlyUnassigned && t.assigneeId) continue;
+    const role = roleForTask(t);
+    const userId = pick(role);
+    if (!userId) { unassignedRoles.add(role); continue; }
+    if (t.assigneeId === userId) continue;
+    await prisma.task.update({ where: { id: t.id }, data: { assigneeId: userId } });
+    assigned++;
+    notifyCount.set(userId, (notifyCount.get(userId) ?? 0) + 1);
+  }
+  for (const [userId, n] of notifyCount) {
+    await notify([userId], {
+      title: `Bạn được giao ${n} công việc trong đợt "${cycle.name}"`,
+      body: "Hệ thống đã tự động phân công theo vai trò. Xem chi tiết trong Công việc của tôi.",
+      link: "/my-tasks",
+    });
+  }
+  await writeAudit({ action: "cycle.auto_assign", entity: "AssessmentCycle", entityId: cycleId, meta: { assigned } });
+  return { assigned, unassignedRoles: [...unassignedRoles] };
+}
+
 /** Gửi thông báo tới tất cả thành viên được phân công trong đợt. */
 export async function notifyCycleMembers(cycleId: string, message?: string) {
   const cycle = await prisma.assessmentCycle.findFirst({ where: { id: cycleId } });

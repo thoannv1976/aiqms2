@@ -21,6 +21,19 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
 - **Lưu trữ GCS**: cài sẵn `@aws-sdk/client-s3` → driver S3 chạy với GCS (S3-compatible) chỉ
   bằng cấu hình env; hướng dẫn HMAC + bucket ở `DEPLOY.md` mục 7b.
 
+## [AI tạo nhóm kiểm định + Tự động phân công công việc] — ✅ Done
+- **AI tạo nhóm kiểm định + tài khoản** (`suggestAccreditationTeam` + `createAccreditationTeam`):
+  AI đề xuất nhóm nhân sự đủ vai trò AUN-QA (qa_office, programme_committee, faculty, lecturer×N,
+  internal_reviewer×2, leadership) — có **dự phòng nhóm chuẩn** khi AI tắt/lỗi nên luôn dùng được;
+  tự sinh email (bỏ dấu tiếng Việt, không trùng). Tạo hàng loạt tài khoản **idempotent theo email**
+  (mật khẩu mặc định `Aiqms@12345`). Nút "👥 AI tạo nhóm & tài khoản". API `POST /api/ai/team`,
+  `POST /api/users/team`.
+- **Tự động phân công công việc** (`autoAssignCycleTasks`): khớp vai trò đề xuất của từng công việc
+  (lấy từ mô tả hoặc suy theo từ khóa tiêu đề) với thành viên có vai trò đó, **chia đều round-robin**,
+  có vai trò dự phòng khi thiếu người; gửi thông báo tổng hợp. Gán cả công việc đã tạo trước đó.
+  Nút "🎯 Tự động phân công". API `POST /api/cycles/[id]/auto-assign`. Test trên Postgres
+  (`tests/cycle/team-assign.test.ts`).
+
 ## [Chẩn đoán AI tạo kế hoạch: timeout + kiểm tra cấu hình theo bước] — ✅ Done
 - **Timeout gọi LLM** (`fetchWithTimeout`, mặc định 120s) cho cả Anthropic và OpenAI provider —
   hết giờ trả lỗi rõ ràng thay vì treo vô hạn ở "Đang xử lý" (model mạnh như Opus rất chậm).
