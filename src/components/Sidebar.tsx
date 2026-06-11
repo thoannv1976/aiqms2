@@ -34,6 +34,7 @@ const NAV: { section: string; items: NavItem[] }[] = [
       { href: "/students", label: "Người học & hỗ trợ", ready: true },
       { href: "/facilities", label: "Cơ sở vật chất", ready: true },
       { href: "/outcomes", label: "Kết quả đầu ra", ready: true },
+      { href: "/benchmarking", label: "Đối sánh (benchmarking)", ready: true },
     ],
   },
   {

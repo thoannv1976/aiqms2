@@ -22,7 +22,7 @@
 
 ### Ưu tiên thấp
 - [x] D8. Module Đánh giá ngoài (đoàn ĐGN chấm, lịch khảo sát, khuyến nghị, kết luận) — tab "Đánh giá ngoài" ở SAR
-- [ ] D9. Đối sánh (benchmarking) với CT tham chiếu
+- [x] D9. Đối sánh (benchmarking) với CT tham chiếu — trang "Đối sánh" so sánh C8 với mốc/chỉ tiêu
 - [ ] D10. Quản lý phiên bản tài liệu (version chain)
 
 ## Tiến độ

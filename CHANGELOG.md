@@ -21,6 +21,12 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
 - **Lưu trữ GCS**: cài sẵn `@aws-sdk/client-s3` → driver S3 chạy với GCS (S3-compatible) chỉ
   bằng cấu hình env; hướng dẫn HMAC + bucket ở `DEPLOY.md` mục 7b.
 
+## [Đối sánh / benchmarking (D9)] — ✅ Done
+- **Báo cáo đối sánh** (`benchmarkReport`): so sánh giá trị chỉ số C8 với mốc đối sánh (CT tham
+  chiếu) và chỉ tiêu — tính chênh lệch, xếp trạng thái (vượt/ngang/dưới mốc) và tổng hợp số liệu.
+  Trang `/benchmarking` (thẻ tổng hợp + bảng so sánh, tô đỏ chỗ dưới mốc), API `GET /api/benchmarking`.
+  Test trên Postgres (`tests/institutional/benchmark.test.ts`).
+
 ## [Module Đánh giá ngoài (D8)] — ✅ Done
 - **Model `ExternalAssessment` + `ExternalAssessmentScore`** (migration `external_assessment`):
   đợt đánh giá ngoài gắn SAR — thành viên đoàn, lịch khảo sát, trạng thái (planned/onsite/completed),
