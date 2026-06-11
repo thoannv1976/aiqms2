@@ -21,6 +21,13 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
 - **Lưu trữ GCS**: cài sẵn `@aws-sdk/client-s3` → driver S3 chạy với GCS (S3-compatible) chỉ
   bằng cấu hình env; hướng dẫn HMAC + bucket ở `DEPLOY.md` mục 7b.
 
+## [Tạo cải tiến từ điểm tồn tại SAR (C3/D6)] — ✅ Done
+- **Tạo kế hoạch cải tiến từ điểm tồn tại** (`createPlansFromSarWeaknesses`): quét từng tiêu chí
+  trong SAR, gộp "điểm tồn tại" người dùng nhập + khoảng trống tự phát hiện (chưa có minh chứng /
+  chưa phân tích / chưa chấm điểm) thành "vấn đề" của một kế hoạch PDCA gắn `criterionId`.
+  **Idempotent**: bỏ qua tiêu chí đã có kế hoạch. Nút "Tạo cải tiến từ điểm tồn tại" ở chi tiết SAR,
+  API `POST /api/sars/[id]/improvement-plans`. Test trên Postgres (`tests/pm/p6.test.ts`).
+
 ## [Xuất hồ sơ SAR đầy đủ (D1/C2)] — ✅ Done
 - **Xuất hồ sơ tự đánh giá đầy đủ → Word** (`sar_dossier_docx`): gộp toàn bộ phụ lục vào một
   tài liệu — PHẦN I phân tích theo tiêu chí kèm **checklist 53 yêu cầu** (mức đáp ứng + ghi

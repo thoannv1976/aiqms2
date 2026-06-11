@@ -5,7 +5,7 @@
 ## C. Chưa đồng bộ (nối liền)
 - [x] C1. SAR tự tổng hợp dữ liệu — workspace tiêu chí (minh chứng đã gắn + gợi ý) + ma trận/C5-C8/khảo sát đưa vào bản xuất (C2/D1)
 - [x] C2. Bản xuất SAR đầy đủ phụ lục (10 ma trận, C5–C8, khảo sát, điểm hội đồng)
-- [ ] C3. Tạo kế hoạch cải tiến từ điểm yếu (gap-check/đánh giá nội bộ)
+- [x] C3. Tạo kế hoạch cải tiến từ điểm yếu (gap-check/đánh giá nội bộ) — nút "Tạo cải tiến từ điểm tồn tại" ở SAR (=D6)
 - [ ] C4. Khảo sát → C8 / ma trận PLO–Bên liên quan
 
 ## D. Chức năng còn thiếu (build)
@@ -17,7 +17,7 @@
 ### Ưu tiên trung bình
 - [ ] D4. Bảng theo dõi tiến độ đợt (% theo tiêu chí, MC đã thu, ai trễ hạn)
 - [ ] D5. Email + nhắc hạn tự động (SMTP)
-- [ ] D6. Tạo cải tiến từ điểm yếu (= C3)
+- [x] D6. Tạo cải tiến từ điểm yếu (= C3)
 - [ ] D7. Đo lường mức đạt PLO (PLO attainment) theo khóa/kỳ → C8
 
 ### Ưu tiên thấp

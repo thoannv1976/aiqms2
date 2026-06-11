@@ -6,6 +6,7 @@ import { writeAudit } from "@/lib/audit/log";
 import { softDeleteData } from "@/lib/prisma/soft-delete";
 import { notFound } from "@/lib/http/responses";
 import { paginated, type PageParams } from "@/lib/http/pagination";
+import { getSar } from "@/lib/sar/service";
 
 export const createPlanSchema = z.object({
   title: z.string().min(1),
@@ -85,6 +86,54 @@ export async function logProgress(actionId: string, note: string, percent?: numb
     await prisma.improvementAction.update({ where: { id: actionId }, data: { status } });
   }
   return log;
+}
+
+/**
+ * Tạo kế hoạch cải tiến TỪ ĐIỂM TỒN TẠI của một SAR (C3/D6).
+ * Quét từng tiêu chí: gộp "điểm tồn tại" do người dùng nhập + các khoảng trống tự phát hiện
+ * (chưa có minh chứng / chưa phân tích / chưa chấm điểm) thành "vấn đề" của một kế hoạch PDCA.
+ * Idempotent: bỏ qua tiêu chí đã có kế hoạch (chưa xóa) gắn với nó để tránh trùng lặp.
+ */
+export async function createPlansFromSarWeaknesses(sarId: string) {
+  const ctx = requireTenantContext();
+  const sar = await getSar(sarId);
+  const created: { id: string; title: string; criterionId: string }[] = [];
+  const skipped: { criterion: string; reason: string }[] = [];
+
+  for (const r of sar.responses) {
+    const code = r.criterion ? `${r.criterion.code}. ${r.criterion.titleVi}` : r.criterionId;
+    const issues: string[] = [];
+    if (r.weaknesses?.trim()) issues.push(r.weaknesses.trim());
+    const evidenceCount = await prisma.evidenceCriterionMapping.count({ where: { criterionId: r.criterionId } });
+    if (evidenceCount === 0) issues.push("Chưa có minh chứng liên kết với tiêu chí.");
+    if (!r.analysis?.trim()) issues.push("Chưa có phân tích mức độ đáp ứng.");
+    if (r.selfScore == null) issues.push("Chưa chấm điểm tự đánh giá.");
+
+    if (issues.length === 0) {
+      skipped.push({ criterion: code, reason: "không phát hiện điểm tồn tại" });
+      continue;
+    }
+    // Idempotent: đã có kế hoạch cho tiêu chí này.
+    const existing = await prisma.improvementPlan.findFirst({
+      where: { criterionId: r.criterionId, deletedAt: null },
+    });
+    if (existing) {
+      skipped.push({ criterion: code, reason: "đã có kế hoạch cải tiến" });
+      continue;
+    }
+    const plan = await prisma.improvementPlan.create({
+      data: withTenantId({
+        title: `Cải tiến: ${code}`,
+        criterionId: r.criterionId,
+        issue: issues.join("\n"),
+        cause: r.weaknesses?.trim() || undefined,
+        createdBy: ctx.actorId,
+      }),
+    });
+    await writeAudit({ action: "improvement.plan.from_sar", entity: "ImprovementPlan", entityId: plan.id, meta: { sarId } });
+    created.push({ id: plan.id, title: plan.title, criterionId: r.criterionId });
+  }
+  return { sarId, createdCount: created.length, created, skipped };
 }
 
 export async function deletePlan(id: string) {

@@ -95,6 +95,16 @@ export default function SarEditorPage() {
     }
   }
 
+  async function createImprovementPlans() {
+    if (!confirm("Tạo kế hoạch cải tiến từ điểm tồn tại + khoảng trống của các tiêu chí?")) return;
+    try {
+      const res = await api.post<{ createdCount: number }>(`/api/sars/${id}/improvement-plans`, {});
+      setMsg(`Đã tạo ${res?.createdCount ?? 0} kế hoạch cải tiến (xem mục Kế hoạch cải tiến).`);
+    } catch (e) {
+      setMsg(e instanceof ApiClientError ? e.message : "Lỗi tạo kế hoạch cải tiến");
+    }
+  }
+
   if (error) return <ErrorBox message={error} />;
   if (!sar) return <Spinner />;
 
@@ -111,6 +121,7 @@ export default function SarEditorPage() {
             {nextStates.map((s) => (
               <button key={s} className="btn-outline" onClick={() => changeStatus(s)}>→ {sarStatusVi(s)}</button>
             ))}
+            <button className="btn-outline" onClick={createImprovementPlans}>Tạo cải tiến từ điểm tồn tại</button>
             <ExportButton type="sar_docx" sarId={sar.id} label="Xuất Word" />
             <ExportButton type="sar_dossier_docx" sarId={sar.id} label="Xuất hồ sơ đầy đủ" />
             <ExportButton type="sar_pdf" sarId={sar.id} label="Xuất PDF" />

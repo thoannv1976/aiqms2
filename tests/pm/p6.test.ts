@@ -4,7 +4,7 @@ import { createTenantFixture, seedRbac } from "../helpers/fixtures";
 import { seedAunqa } from "@/lib/standards/seed";
 import { runWithTenant } from "@/lib/tenant/context";
 import { boardView, createTask, updateTask } from "@/lib/tasks/service";
-import { addAction, addKpi, createPlan, getPlan, logProgress } from "@/lib/improvement/service";
+import { addAction, addKpi, createPlan, createPlansFromSarWeaknesses, getPlan, logProgress } from "@/lib/improvement/service";
 import { personalDashboard, programmeDashboard, tenantDashboard } from "@/lib/dashboard/service";
 import { createProgramme } from "@/lib/programmes/service";
 import { createCycle, createSar, getSar, updateCriterionResponse } from "@/lib/sar/service";
@@ -48,6 +48,27 @@ describe("P6 — Nhiệm vụ + Cải tiến PDCA + Dashboard", () => {
       expect(full.actions[0].status).toBe("done");
       expect(full.kpis).toHaveLength(1);
       expect(full.actions[0].progress).toHaveLength(1);
+    });
+  });
+
+  it("tạo kế hoạch cải tiến từ điểm tồn tại của SAR (C3/D6), idempotent", async () => {
+    const t = await createTenantFixture("demo");
+    await asTenant(t.id, "u1", async () => {
+      const prog = await createProgramme({ code: "IT", name: "CNTT", level: "bachelor", initialVersion: "2024" });
+      const cycle = await createCycle({ name: "2024", standardVersionId: aunVersionId });
+      const sar = await createSar({ assessmentCycleId: cycle.id, programmeVersionId: prog.versions[0].id, title: "SAR" });
+      const detail = await getSar(sar.id);
+      await updateCriterionResponse(detail.responses[0].id, { weaknesses: "Thiếu rà soát PLO định kỳ" });
+
+      const res = await createPlansFromSarWeaknesses(sar.id);
+      // 8 tiêu chí đều có khoảng trống (chưa MC/phân tích/điểm) → 8 kế hoạch.
+      expect(res.createdCount).toBe(8);
+      const first = await getPlan(res.created[0].id);
+      expect(first.issue).toContain("Thiếu rà soát PLO");
+
+      // Chạy lại không tạo trùng.
+      const again = await createPlansFromSarWeaknesses(sar.id);
+      expect(again.createdCount).toBe(0);
     });
   });
 
