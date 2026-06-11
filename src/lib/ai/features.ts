@@ -210,8 +210,8 @@ async function documentText(
 }
 
 /**
- * AI TỔNG HỢP ma trận PLO-CLO từ tài liệu đã upload (đề án mở ngành/CTĐT + đề cương học phần).
- * Human-in-the-loop: chỉ TRẢ VỀ bản nháp (chưa ghi) để người dùng duyệt rồi mới áp dụng.
+ * AI TRÍCH XUẤT ma trận PLO × HỌC PHẦN (mức I/R/M) từ tài liệu Đề án mở ngành / CTĐT đã upload
+ * (kèm CLO–PLO từ đề cương nếu có). Human-in-the-loop: chỉ TRẢ VỀ bản nháp để người dùng duyệt.
  */
 export async function synthesizeMatrixFromDocs(
   programmeVersionId: string,
@@ -236,20 +236,26 @@ export async function synthesizeMatrixFromDocs(
 
   const ploCodes = new Set(plos.map((p) => p.code.toUpperCase()));
 
-  // Ngữ cảnh từ tài liệu: đề án/CTĐT (lấy vùng có nhắc PLO) + đề cương (lấy phần ma trận CLO–PLO).
-  const ctdtDocs = await prisma.document.findMany({ where: { category: "ctdt_source" }, orderBy: { createdAt: "desc" }, take: 1 });
-  const sylDocs = await prisma.document.findMany({ where: { category: "syllabus" }, orderBy: { createdAt: "desc" }, take: 12 });
+  // Trọng tâm: TRÍCH XUẤT ma trận PLO × học phần TỪ tài liệu Đề án mở ngành / CTĐT đã upload.
+  // Lấy vùng bảng ma trận (dòng có mã PLO, mã học phần, hoặc ô mức I/R/M, 1/2/3, I/T/U).
+  const ctdtDocs = await prisma.document.findMany({ where: { category: "ctdt_source" }, orderBy: { createdAt: "desc" }, take: 2 });
+  const sylDocs = await prisma.document.findMany({ where: { category: "syllabus" }, orderBy: { createdAt: "desc" }, take: 8 });
+
+  const isMatrixLine = (l: string) =>
+    /PLO\s*\d/i.test(l) ||
+    /\b[A-Z]{2,4}\d{2,3}[A-Z]?\b/.test(l) || // mã học phần
+    /(^|\t)\s*([IRMTU]|[123]|—|-)\s*(\t|$)/.test(l); // ô mức trong bảng
 
   let docContext = "";
   for (const d of ctdtDocs) {
-    const t = await documentText(d, 6000, (l) => /PLO\s*\d/i.test(l) || /\b[A-Z]{2,4}\d{2,3}[A-Z]?\b/.test(l));
+    const t = await documentText(d, 9000, isMatrixLine);
     if (t) docContext += `\n[ĐỀ ÁN/CTĐT: ${d.title}]\n${t}\n`;
   }
   for (const d of sylDocs) {
-    const t = await documentText(d, 1200, (l) => /CLO|PLO|tín chỉ|đóng góp/i.test(l));
+    const t = await documentText(d, 800, (l) => /CLO|PLO|đóng góp/i.test(l));
     if (t) docContext += `\n[ĐỀ CƯƠNG: ${d.title}]\n${t}\n`;
   }
-  docContext = docContext.slice(0, 16000);
+  docContext = docContext.slice(0, 18000);
 
   const ploList = plos.map((p) => `${p.code}: ${(p.description ?? "").slice(0, 120)}`).join("\n");
   const courseList = courses
@@ -262,29 +268,32 @@ export async function synthesizeMatrixFromDocs(
       {
         role: "system",
         content:
-          "Bạn là chuyên gia thiết kế chương trình đào tạo theo OBE/AUN-QA. Tổng hợp ma trận " +
-          "đóng góp của học phần vào chuẩn đầu ra (PLO). CHỈ dùng mã PLO và mã học phần trong danh sách " +
-          "được cung cấp; ưu tiên dữ liệu trong tài liệu; không bịa mã không có. Trả về JSON thuần.",
+          "Bạn là chuyên gia kiểm định CTĐT theo OBE/AUN-QA. Nhiệm vụ: TRÍCH XUẤT ma trận đóng góp " +
+          "của HỌC PHẦN vào CHUẨN ĐẦU RA CHƯƠNG TRÌNH (PLO) TỪ tài liệu Đề án mở ngành/CTĐT được cung cấp " +
+          "(tìm bảng ma trận có các cột PLO1..PLOn và các dòng học phần; ô ghi mức I/R/M hoặc 1/2/3 hoặc I/T/U). " +
+          "CHỈ dùng mã PLO và mã học phần trong danh sách cho sẵn; KHÔNG bịa. Nếu tài liệu không có ô tương ứng " +
+          "thì bỏ trống (đừng đoán bừa). Trả về JSON thuần.",
       },
       {
         role: "user",
         content:
-          "DANH SÁCH PLO:\n" + ploList +
-          "\n\nDANH SÁCH HỌC PHẦN:\n" + courseList +
-          "\n\nTRÍCH TÀI LIỆU (đề án/CTĐT + đề cương):\n" + (docContext || "(không có tài liệu — hãy suy luận hợp lý từ tên học phần)") +
+          "DANH SÁCH PLO (cột):\n" + ploList +
+          "\n\nDANH SÁCH HỌC PHẦN (dòng):\n" + courseList +
+          "\n\nTRÍCH TÀI LIỆU ĐỀ ÁN/CTĐT (chứa bảng ma trận PLO × học phần) + đề cương:\n" +
+          (docContext || "(không có tài liệu — hãy suy luận hợp lý từ tên học phần & PLO)") +
           '\n\nTrả JSON: {"ploCourse":[{"courseCode","ploCode","level":"I|R|M"}],' +
           '"cloPlo":[{"courseCode","cloCode","ploCode"}]}. ' +
-          "Mức I=giới thiệu, R=củng cố, M=thành thạo (chấp nhận 1/2/3 hoặc I/T/U, sẽ tự quy đổi). " +
-          "Mỗi học phần đóng góp vào 1–3 PLO phù hợp nhất. " +
-          "QUAN TRỌNG: trả JSON THUẦN, KHÔNG xuống dòng/khoảng trắng thừa, KHÔNG kèm văn bản giải thích.",
+          "ploCourse là PHẦN CHÍNH — trích đúng theo bảng trong tài liệu (mức I=giới thiệu, R=củng cố, " +
+          "M=thành thạo; quy đổi 1/2/3 hoặc I/T/U). cloPlo chỉ điền nếu đề cương có nêu. " +
+          "QUAN TRỌNG: JSON THUẦN, KHÔNG xuống dòng/khoảng trắng thừa, KHÔNG kèm giải thích.",
       },
     ],
     matrixDraftSchema,
   );
 
-  // Lọc bỏ mã PLO không thuộc phiên bản (AI lỡ bịa).
-  const ploCourse = draft.ploCourse.filter((m) => ploCodes.has(m.ploCode.trim().toUpperCase()));
-  const cloPlo = draft.cloPlo.filter((m) => ploCodes.has(m.ploCode.trim().toUpperCase()));
+  // Lọc bỏ mã PLO không thuộc phiên bản + item rỗng (.catch trả mã rỗng).
+  const ploCourse = draft.ploCourse.filter((m) => m.ploCode && ploCodes.has(m.ploCode.trim().toUpperCase()));
+  const cloPlo = draft.cloPlo.filter((m) => m.ploCode && ploCodes.has(m.ploCode.trim().toUpperCase()));
   await writeAudit({ action: "ai.synthesize_matrix", entity: "ProgrammeVersion", entityId: programmeVersionId, meta: { ploCourse: ploCourse.length, cloPlo: cloPlo.length } });
   return { ploCourse, cloPlo, ploCount: plos.length, courseCount: courses.length, docCount: ctdtDocs.length + sylDocs.length };
 }

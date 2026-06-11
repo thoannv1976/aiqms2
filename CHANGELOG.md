@@ -21,6 +21,14 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
 - **Lưu trữ GCS**: cài sẵn `@aws-sdk/client-s3` → driver S3 chạy với GCS (S3-compatible) chỉ
   bằng cấu hình env; hướng dẫn HMAC + bucket ở `DEPLOY.md` mục 7b.
 
+## [AI trích xuất ma trận PLO × Học phần từ Đề án/CTĐT] — ✅ Done
+
+- Đổi trọng tâm chức năng "AI tổng hợp ma trận" sang **trích xuất ma trận PLO × Học phần**
+  (mức I/R/M) **trực tiếp từ Đề án mở ngành / CTĐT** đã upload (CTĐT đã có sẵn bảng này),
+  thay vì suy luận. `synthesizeMatrixFromDocs` lấy rộng hơn vùng bảng ma trận trong tài liệu
+  (dòng có mã PLO / mã học phần / ô mức I-R-M-1-2-3-I-T-U), nhấn mạnh "trích theo bảng, không
+  bịa"; CLO–PLO chỉ là phụ (từ đề cương nếu có). Cập nhật tiêu đề/mô tả UI sang "PLO × Học phần".
+
 ## [Sửa lỗi AI tổng hợp ma trận PLO-CLO (JSON lớn bị cắt cụt)] — ✅ Done
 
 - **Lỗi**: AI tổng hợp ma trận báo "Output AI không đúng schema" — JSON nhiều dòng (nhiều

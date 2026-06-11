@@ -12,7 +12,7 @@ interface Draft {
 }
 interface ApplyResult { ploCourse: number; cloPlo: number; errors: string[] }
 
-/** AI tổng hợp ma trận PLO-CLO từ đề án/CTĐT + đề cương đã upload (xem trước -> áp dụng). */
+/** AI trích xuất ma trận PLO × học phần từ Đề án/CTĐT đã upload (xem trước -> áp dụng). */
 export function AiMatrixButton({ versionId, onApplied }: { versionId: string; onApplied?: () => void }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -55,14 +55,14 @@ export function AiMatrixButton({ versionId, onApplied }: { versionId: string; on
       >
         🤖 AI tổng hợp ma trận
       </button>
-      <Modal open={open} title="AI tổng hợp ma trận PLO-CLO" onClose={() => setOpen(false)}>
+      <Modal open={open} title="AI trích xuất ma trận PLO × Học phần" onClose={() => setOpen(false)}>
         <div className="space-y-4">
           {!draft && !result && (
             <>
               <p className="text-sm text-slate-600">
-                AI sẽ đọc <b>đề án mở ngành / CTĐT</b> và các <b>đề cương học phần</b> đã upload (kho Tài liệu)
-                để đề xuất mức đóng góp của từng học phần vào PLO (I/R/M) và liên kết CLO–PLO.
-                Kết quả là <b>bản nháp</b> để bạn duyệt trước khi ghi vào ma trận.
+                AI sẽ đọc <b>Đề án mở ngành / Chương trình đào tạo</b> đã upload (kho Tài liệu),
+                <b> trích xuất bảng ma trận PLO × học phần</b> (mức I/R/M) trong tài liệu (kèm CLO–PLO
+                từ đề cương nếu có). Kết quả là <b>bản nháp</b> để bạn duyệt trước khi ghi vào ma trận.
               </p>
               {err && <ErrorBox message={err} />}
               <div className="flex justify-end gap-2">
