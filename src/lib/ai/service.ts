@@ -80,6 +80,34 @@ async function resolveAi(): Promise<ResolvedAi> {
   };
 }
 
+/**
+ * Trạng thái cấu hình AI của trường (KHÔNG trả khóa) — dùng cho bước "kiểm tra trước khi gọi AI".
+ * `usingMock = true` nghĩa là chưa có API key → đang dùng provider giả lập (kết quả mẫu).
+ */
+export async function aiStatus() {
+  const ctx = requireTenantContext();
+  const settings = await prisma.aiSettings.findFirst({ where: { tenantId: ctx.tenantId } });
+  const enabled = settings ? settings.enabled : env.AI_ENABLED;
+  const model = settings?.model ?? env.AI_MODEL;
+  const baseUrl = settings?.baseUrl ?? env.AI_BASE_URL;
+  const hasKey = !!settings?.apiKeyEnc || !!env.AI_API_KEY;
+
+  let keyDecryptable = true;
+  if (settings?.apiKeyEnc) {
+    try { decryptSecret(settings.apiKeyEnc); } catch { keyDecryptable = false; }
+  }
+  const isAnthropic = /claude/i.test(model) || /anthropic\.com/i.test(baseUrl);
+  return {
+    enabled,
+    hasKey,
+    keyDecryptable,
+    usingMock: !hasKey,
+    provider: !hasKey ? "mock" : isAnthropic ? "anthropic" : "openai",
+    model,
+    baseUrl,
+  };
+}
+
 /** Tổng token đã dùng hôm nay của tenant. */
 async function tokensUsedToday(): Promise<number> {
   const start = new Date();
@@ -108,7 +136,7 @@ async function withRetry<T>(fn: () => Promise<T>, attempts = 2): Promise<T> {
 export async function aiComplete(
   module: string,
   messages: LlmMessage[],
-  opts: { json?: boolean; maxTokens?: number } = {},
+  opts: { json?: boolean; maxTokens?: number; timeoutMs?: number } = {},
 ): Promise<string> {
   const ctx = requireTenantContext();
   const cfg = await resolveAi();
@@ -128,7 +156,7 @@ export async function aiComplete(
   try {
     const result = await globalSemaphore.run(() =>
       withRetry(() =>
-        cfg.provider.complete(messages, { model: cfg.model, json: opts.json, maxTokens: opts.maxTokens }),
+        cfg.provider.complete(messages, { model: cfg.model, json: opts.json, maxTokens: opts.maxTokens, timeoutMs: opts.timeoutMs }),
       ),
     );
     const cost = ((result.tokensIn + result.tokensOut) / 1000) * COST_PER_1K;

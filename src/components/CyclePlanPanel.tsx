@@ -64,13 +64,30 @@ export function CyclePlanPanel({ cycleId }: { cycleId: string }) {
   }
 
   async function aiPlan() {
-    setBusy(true); setErr(null); setNote("⏳ AI đang lập kế hoạch kiểm định… (có thể mất 30–60 giây, vui lòng đợi)");
+    setBusy(true); setErr(null);
+    // Bước 1: kiểm tra cấu hình AI trước khi gọi (đỡ chờ vô ích nếu chưa cấu hình).
+    setNote("① Đang kiểm tra cấu hình AI…");
     try {
+      const st = await api.get<{ enabled: boolean; hasKey: boolean; keyDecryptable: boolean; usingMock: boolean; provider: string; model: string }>("/api/ai/status");
+      if (st && !st.enabled) {
+        setNote("⚠ AI chưa được bật cho trường. Bước cần làm: vào menu “AI hỗ trợ” → tích “Bật AI cho trường này” → Lưu cấu hình.");
+        return;
+      }
+      if (st && st.hasKey && !st.keyDecryptable) {
+        setNote("⚠ API key đã lưu không giải mã được (ENCRYPTION_KEY của server đã đổi). Bước cần làm: vào “AI hỗ trợ” → nhập lại API key → Lưu.");
+        return;
+      }
+      if (st && st.usingMock) {
+        setNote("ℹ Chưa có API key — sẽ tạo KẾ HOẠCH MẪU (mock, nhãn [AI-nháp]). Muốn dùng AI thật: vào “AI hỗ trợ” nhập API key. ② Đang tạo kế hoạch mẫu…");
+      } else {
+        setNote(`② Đã cấu hình AI (${st?.provider} · ${st?.model}). Đang lập kế hoạch… (model mạnh như Opus có thể mất 30–90 giây)`);
+      }
+      // Bước 2: gọi sinh kế hoạch.
       const r = (await api.post<{ tasks: PlanItem[] }>(`/api/ai/cycle-plan?cycleId=${cycleId}`, {}))?.tasks ?? [];
       setPlan(r);
-      setNote(r.length ? null : "AI không tạo được công việc nào — thử lại hoặc thêm thủ công.");
+      setNote(r.length ? `③ AI đề xuất ${r.length} công việc — chọn người theo vai trò rồi “Tạo & giao”.` : "AI trả về 0 công việc — thử lại, đổi model nhanh hơn, hoặc thêm thủ công.");
     } catch (e) {
-      setNote(e instanceof ApiClientError ? `Lỗi AI: ${e.message}` : "Lỗi gọi AI (cần bật AI + có quyền)");
+      setNote(e instanceof ApiClientError ? `Lỗi AI: ${e.message}` : "Lỗi gọi AI (cần bật AI + có quyền AI_USE)");
     } finally { setBusy(false); }
   }
   async function applyPlan() {

@@ -5,7 +5,7 @@ import { seedAunqa } from "@/lib/standards/seed";
 import { runWithTenant } from "@/lib/tenant/context";
 import { encryptSecret, decryptSecret } from "@/lib/ai/crypto";
 import { getSettings, updateSettings } from "@/lib/ai/settings";
-import { listProviderModels } from "@/lib/ai/service";
+import { aiStatus, listProviderModels } from "@/lib/ai/service";
 import {
   approveDraft,
   draftSarCriterion,
@@ -38,6 +38,25 @@ describe("P8 — Lớp AI (service có kiểm soát, human-in-the-loop)", () => 
   });
   beforeEach(resetDb);
   afterAll(() => prisma.$disconnect());
+
+  it("trạng thái AI: chưa key -> mock; có key claude -> provider anthropic (không lộ key)", async () => {
+    const t = await createTenantFixture("demo");
+    await asTenant(t.id, async () => {
+      await updateSettings({ enabled: true, model: "gpt-4o-mini" });
+      const s1 = await aiStatus();
+      expect(s1.enabled).toBe(true);
+      expect(s1.usingMock).toBe(true);
+      expect(s1.provider).toBe("mock");
+
+      await updateSettings({ apiKey: "sk-ant-xxx", model: "claude-3-5-sonnet-20241022", baseUrl: "https://api.anthropic.com" });
+      const s2 = await aiStatus();
+      expect(s2.hasKey).toBe(true);
+      expect(s2.usingMock).toBe(false);
+      expect(s2.provider).toBe("anthropic");
+      expect(s2.keyDecryptable).toBe(true);
+      expect(JSON.stringify(s2)).not.toContain("sk-ant-xxx");
+    });
+  });
 
   it("AI tạo kế hoạch đợt (MockProvider) trả công việc theo từng tiêu chí + áp dụng được", async () => {
     const t = await createTenantFixture("demo");

@@ -9,6 +9,8 @@ export interface CompleteOptions {
   maxTokens?: number;
   /** Ép trả JSON thuần (validate bằng Zod sau đó). */
   json?: boolean;
+  /** Giới hạn thời gian chờ (ms) cho một lần gọi LLM. */
+  timeoutMs?: number;
 }
 
 export interface LlmResult {

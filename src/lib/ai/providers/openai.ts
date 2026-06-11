@@ -1,4 +1,5 @@
 import type { CompleteOptions, LlmMessage, LlmProvider, LlmResult } from "./types";
+import { fetchWithTimeout } from "./http";
 
 /**
  * Provider OpenAI-compatible (OpenAI/Azure/local LLM cùng giao thức /chat/completions).
@@ -12,7 +13,7 @@ export class OpenAiProvider implements LlmProvider {
   ) {}
 
   async complete(messages: LlmMessage[], opts: CompleteOptions): Promise<LlmResult> {
-    const res = await fetch(`${this.baseUrl.replace(/\/$/, "")}/chat/completions`, {
+    const res = await fetchWithTimeout(`${this.baseUrl.replace(/\/$/, "")}/chat/completions`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -27,7 +28,7 @@ export class OpenAiProvider implements LlmProvider {
         max_tokens: opts.maxTokens,
         ...(opts.json ? { response_format: { type: "json_object" } } : {}),
       }),
-    });
+    }, opts.timeoutMs ?? 120_000);
     if (!res.ok) {
       throw new Error(`LLM lỗi ${res.status}: ${await res.text()}`);
     }

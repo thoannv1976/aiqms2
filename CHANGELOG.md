@@ -21,6 +21,15 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
 - **Lưu trữ GCS**: cài sẵn `@aws-sdk/client-s3` → driver S3 chạy với GCS (S3-compatible) chỉ
   bằng cấu hình env; hướng dẫn HMAC + bucket ở `DEPLOY.md` mục 7b.
 
+## [Chẩn đoán AI tạo kế hoạch: timeout + kiểm tra cấu hình theo bước] — ✅ Done
+- **Timeout gọi LLM** (`fetchWithTimeout`, mặc định 120s) cho cả Anthropic và OpenAI provider —
+  hết giờ trả lỗi rõ ràng thay vì treo vô hạn ở "Đang xử lý" (model mạnh như Opus rất chậm).
+- **Kiểm tra cấu hình AI** trước khi sinh kế hoạch: `aiStatus()` + `GET /api/ai/status` báo
+  đã-bật / có-key / giải-mã-được-key / đang-dùng-mock / provider / model (KHÔNG lộ key).
+- **CyclePlanPanel** chạy theo bước có thông báo: ① kiểm tra cấu hình → cảnh báo cụ thể (chưa bật,
+  key hỏng, chưa có key→mock) kèm bước cần làm; ② lập kế hoạch (nhắc model mạnh mất 30–90s);
+  ③ báo số công việc đề xuất. Test: `tests/ai/ai.test.ts` (aiStatus mock/anthropic, không lộ key).
+
 ## [Sửa AI tạo kế hoạch đợt trả 0 công việc] — ✅ Done
 - **Lỗi**: tenant chưa cấu hình API key AI → `resolveAi()` rơi về `MockProvider`, mà mock không
   trả khóa `tasks` nên "AI tạo kế hoạch" luôn báo "AI đề xuất 0 công việc".

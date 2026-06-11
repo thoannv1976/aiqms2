@@ -1,4 +1,5 @@
 import type { CompleteOptions, LlmMessage, LlmProvider, LlmResult } from "./types";
+import { fetchWithTimeout } from "./http";
 
 /**
  * Provider Anthropic (Claude) — Messages API.
@@ -22,7 +23,7 @@ export class AnthropicProvider implements LlmProvider {
     const sys = opts.json ? `${system}\n\nLUÔN trả về JSON thuần hợp lệ, KHÔNG kèm văn bản hay markdown.` : system;
 
     const base = this.baseUrl.replace(/\/$/, "").replace(/\/v1$/, "");
-    const res = await fetch(`${base}/v1/messages`, {
+    const res = await fetchWithTimeout(`${base}/v1/messages`, {
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -38,7 +39,7 @@ export class AnthropicProvider implements LlmProvider {
         ...(sys ? { system: sys } : {}),
         messages: turns.length ? turns : [{ role: "user", content: "." }],
       }),
-    });
+    }, opts.timeoutMs ?? 120_000);
     if (!res.ok) {
       throw new Error(`LLM lỗi ${res.status}: ${await res.text()}`);
     }
