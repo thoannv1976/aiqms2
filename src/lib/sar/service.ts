@@ -207,6 +207,54 @@ export async function updateCriterionResponse(
   return updated;
 }
 
+// ─── Workspace theo tiêu chí: yêu cầu con + minh chứng đã gắn + gợi ý minh chứng ──
+/** Dữ liệu hỗ trợ viết SAR cho MỘT tiêu chí: 53 yêu cầu (kèm đánh giá), minh chứng đã gắn, gợi ý. */
+export async function criterionWorkspace(sarId: string, criterionId: string) {
+  const sar = await prisma.selfAssessmentReport.findFirst({ where: { id: sarId } });
+  if (!sar) throw notFound("SAR không tồn tại");
+
+  const [requirements, suggested, evidence, reqResponses] = await Promise.all([
+    prisma.requirement.findMany({ where: { criterionId }, orderBy: { order: "asc" }, include: { indicators: { orderBy: { code: "asc" } } } }),
+    prisma.suggestedEvidence.findMany({ where: { criterionId } }),
+    prisma.evidence.findMany({
+      where: { deletedAt: null, criteria: { some: { criterionId } } },
+      select: { id: true, code: true, title: true, status: true, _count: { select: { files: true } } },
+      orderBy: { code: "asc" },
+    }),
+    prisma.sarRequirementResponse.findMany({ where: { sarId } }),
+  ]);
+  const respByReq = new Map(reqResponses.map((r) => [r.requirementId, r]));
+  return {
+    requirements: requirements.map((r) => ({
+      id: r.id, code: r.code, title: r.title, guidance: r.guidance,
+      indicators: r.indicators.map((i) => ({ code: i.code, description: i.description })),
+      status: respByReq.get(r.id)?.status ?? "not_assessed",
+      note: respByReq.get(r.id)?.note ?? "",
+    })),
+    suggestedEvidence: suggested.map((s) => ({ description: s.description, type: s.type })),
+    evidence: evidence.map((e) => ({ id: e.id, code: e.code, title: e.title, status: e.status, files: e._count.files })),
+  };
+}
+
+export const requirementResponseSchema = z.object({
+  requirementId: z.string().min(1),
+  status: z.enum(["not_assessed", "met", "partial", "not_met", "na"]),
+  note: z.string().optional(),
+});
+
+export async function setRequirementResponse(sarId: string, input: z.infer<typeof requirementResponseSchema>) {
+  const ctx = requireTenantContext();
+  const sar = await prisma.selfAssessmentReport.findFirst({ where: { id: sarId } });
+  if (!sar) throw notFound("SAR không tồn tại");
+  const row = await prisma.sarRequirementResponse.upsert({
+    where: { sarId_requirementId: { sarId, requirementId: input.requirementId } },
+    update: { status: input.status, note: input.note ?? null, updatedBy: ctx.actorId },
+    create: withTenantId({ sarId, requirementId: input.requirementId, status: input.status, note: input.note ?? null, updatedBy: ctx.actorId }),
+  });
+  await writeAudit({ action: "sar.requirement.set", entity: "SarRequirementResponse", entityId: row.id });
+  return row;
+}
+
 // ─── Góp ý / Nhận xét SAR (rà soát cấp khoa & cấp trường) ───────────────────
 export async function listSarComments(sarId: string) {
   return prisma.sarComment.findMany({

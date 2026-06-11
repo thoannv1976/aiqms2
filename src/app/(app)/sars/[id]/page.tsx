@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { api, ApiClientError } from "@/lib/api/client";
 import { PageHeader, StatusBadge, Spinner, ErrorBox } from "@/components/ui";
 import { ExportButton } from "@/components/ExportButton";
+import { CriterionWorkspace } from "@/components/CriterionWorkspace";
 import { SAR_TRANSITIONS, sarStateLabel } from "@/lib/sar/state";
 
 interface Criterion { code: string; titleVi: string }
@@ -207,6 +208,8 @@ export default function SarEditorPage() {
                 {msg && <span className="text-sm text-slate-500">{msg}</span>}
               </div>
             </div>
+
+            {selected.criterionId && <CriterionWorkspace sarId={sar.id} criterionId={selected.criterionId} />}
           </div>
 
           {/* Panel AI bên cạnh nội dung đang soạn (đặc tả mục 7) */}

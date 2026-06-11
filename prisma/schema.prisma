@@ -43,6 +43,7 @@ model Tenant {
   sars              SelfAssessmentReport[]
   sarResponses      SarCriterionResponse[]
   sarComments       SarComment[]
+  sarRequirementResponses SarRequirementResponse[]
   internalReviews   InternalReview[]
   internalReviewScores InternalReviewScore[]
   evidences            Evidence[]
@@ -614,6 +615,7 @@ model SelfAssessmentReport {
   responses SarCriterionResponse[]
   comments  SarComment[]
   reviews   InternalReview[]
+  requirementResponses SarRequirementResponse[]
 
   @@index([tenantId, status])
   @@index([tenantId, assessmentCycleId])
@@ -661,6 +663,26 @@ model SarComment {
 
   @@index([tenantId, sarId])
   @@map("sar_comments")
+}
+
+/// Đánh giá mức đáp ứng từng YÊU CẦU con (sub-criterion) trong một SAR.
+model SarRequirementResponse {
+  id            String   @id @default(cuid())
+  tenantId      String
+  sarId         String
+  requirementId String
+  status        String   @default("not_assessed") // not_assessed | met | partial | not_met | na
+  note          String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  updatedBy     String?
+
+  tenant Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sar    SelfAssessmentReport @relation(fields: [sarId], references: [id], onDelete: Cascade)
+
+  @@unique([sarId, requirementId])
+  @@index([tenantId, sarId])
+  @@map("sar_requirement_responses")
 }
 
 model InternalReview {

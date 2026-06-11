@@ -8,9 +8,12 @@ import {
   changeSarStatus,
   createCycle,
   createSar,
+  criterionWorkspace,
   getSar,
+  setRequirementResponse,
   updateCriterionResponse,
 } from "@/lib/sar/service";
+import { createEvidence } from "@/lib/evidence/service";
 import { aggregateScores, openReview, scoreCriterion } from "@/lib/sar/internal-review";
 
 let aunVersionId: string;
@@ -108,5 +111,27 @@ describe("P4 — Đợt tự đánh giá + SAR", () => {
     await setupSar(a.id);
     const inB = await asTenant(b.id, "u", () => prisma.selfAssessmentReport.findMany());
     expect(inB).toHaveLength(0);
+  });
+
+  it("workspace tiêu chí: yêu cầu con + minh chứng đã gắn; chấm mức đáp ứng yêu cầu", async () => {
+    const t = await createTenantFixture("demo");
+    const sar = await setupSar(t.id);
+    await asTenant(t.id, "u", async () => {
+      const detail = await getSar(sar.id);
+      const c1 = detail.responses[0];
+      // Gắn 1 minh chứng vào tiêu chí C1.
+      await createEvidence({ title: "MC C1", criterionIds: [c1.criterionId], requirementIds: [] });
+
+      const ws = await criterionWorkspace(sar.id, c1.criterionId);
+      expect(ws.requirements.length).toBeGreaterThan(0); // AUN-QA C1 có yêu cầu con
+      expect(ws.evidence.map((e) => e.title)).toContain("MC C1");
+      expect(ws.requirements[0].status).toBe("not_assessed");
+
+      // Chấm yêu cầu đầu tiên = đạt.
+      const req = ws.requirements[0];
+      await setRequirementResponse(sar.id, { requirementId: req.id, status: "met", note: "Có minh chứng" });
+      const ws2 = await criterionWorkspace(sar.id, c1.criterionId);
+      expect(ws2.requirements.find((r) => r.id === req.id)?.status).toBe("met");
+    });
   });
 });
