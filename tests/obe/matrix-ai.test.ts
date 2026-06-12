@@ -83,9 +83,14 @@ describe("AI tổng hợp ma trận PLO-CLO", () => {
       expect(sum.counts.peo).toBe(0);
       expect(sum.programme?.code).toBe("SBI");
 
-      const review = await evaluateProgramme(versionId);
-      expect(typeof review).toBe("string");
-      expect(review.length).toBeGreaterThan(0);
+      const r = await evaluateProgramme(versionId);
+      expect(typeof r.review).toBe("string");
+      expect(r.review.length).toBeGreaterThan(0);
+      expect(r.draftId).toBeTruthy();
+      // Bản nháp đã được lưu (human-in-the-loop).
+      const draft = await prisma.aiGeneratedDraft.findFirstOrThrow({ where: { id: r.draftId } });
+      expect(draft.status).toBe("draft");
+      expect(draft.module).toBe("evaluate_programme");
     });
   });
 

@@ -16,6 +16,11 @@ const fmtSize = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1
 export function ProgrammeOverviewPanel({ programmeId, versionId }: { programmeId: string; versionId: string }) {
   const [sum, setSum] = useState<Summary | null>(null);
   const [review, setReview] = useState<string | null>(null);
+  const [draftId, setDraftId] = useState<string | null>(null);
+  const [sars, setSars] = useState<{ id: string; title: string }[]>([]);
+  const [sarId, setSarId] = useState("");
+  const [critCode, setCritCode] = useState("C1");
+  const [field, setField] = useState("analysis");
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -25,6 +30,7 @@ export function ProgrammeOverviewPanel({ programmeId, versionId }: { programmeId
     catch (e) { setErr(e instanceof Error ? e.message : "Lỗi tải tổng quan"); }
   }, [versionId]);
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { api.get<{ items: { id: string; title: string }[] }>("/api/sars?pageSize=100").then((d) => setSars(d?.items ?? [])).catch(() => {}); }, []);
 
   async function uploadSource(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -51,11 +57,24 @@ export function ProgrammeOverviewPanel({ programmeId, versionId }: { programmeId
   }
 
   async function evaluate() {
-    setBusy(true); setErr(null); setReview(null); setNote("🤖 AI đang đánh giá CTĐT… (có thể mất 30–60s)");
+    setBusy(true); setErr(null); setReview(null); setDraftId(null); setNote("🤖 AI đang đánh giá CTĐT… (có thể mất 30–60s)");
     try {
-      const r = await api.post<{ review: string }>(`/api/ai/evaluate-programme?versionId=${versionId}`, {});
-      setReview(r?.review ?? null); setNote(null);
+      const r = await api.post<{ review: string; draftId: string }>(`/api/ai/evaluate-programme?versionId=${versionId}`, {});
+      setReview(r?.review ?? null); setDraftId(r?.draftId ?? null);
+      setNote("Đây là BẢN NHÁP — xem lại rồi “Duyệt & ghi vào SAR” để đưa vào tiêu chí C1/C2.");
     } catch (e) { setNote(null); setErr(e instanceof ApiClientError ? `Lỗi AI: ${e.message}` : "Lỗi AI đánh giá"); }
+    finally { setBusy(false); }
+  }
+
+  async function applyToSar() {
+    if (!draftId) return;
+    if (!sarId) { setErr("Hãy chọn một SAR để ghi nhận xét vào."); return; }
+    setBusy(true); setErr(null);
+    try {
+      await api.post("/api/ai/evaluate-programme/to-sar", { draftId, sarId, criterionCode: critCode, field });
+      setNote(`✅ Đã duyệt & ghi nhận xét vào ${critCode} (${field === "analysis" ? "Phân tích" : field === "strengths" ? "Điểm mạnh" : "Điểm tồn tại"}) của SAR.`);
+      setReview(null); setDraftId(null);
+    } catch (e) { setErr(e instanceof ApiClientError ? e.message : "Lỗi ghi vào SAR"); }
     finally { setBusy(false); }
   }
 
@@ -79,8 +98,35 @@ export function ProgrammeOverviewPanel({ programmeId, versionId }: { programmeId
       </div>
 
       {review && (
-        <div className="mb-4 whitespace-pre-wrap rounded-lg border border-indigo-100 bg-indigo-50/40 p-3 text-sm text-slate-700">
-          {review}
+        <div className="mb-4 rounded-lg border border-indigo-100 bg-indigo-50/40 p-3">
+          <p className="mb-1 text-xs font-semibold text-indigo-700">Bản nháp AI đánh giá CTĐT</p>
+          <div className="mb-3 whitespace-pre-wrap text-sm text-slate-700">{review}</div>
+          <div className="flex flex-wrap items-end gap-2 border-t border-indigo-100 pt-2">
+            <div>
+              <label className="label text-xs">Ghi vào SAR</label>
+              <select className="input h-9 py-0 text-sm" value={sarId} onChange={(e) => setSarId(e.target.value)}>
+                <option value="">— chọn SAR —</option>
+                {sars.map((s) => <option key={s.id} value={s.id}>{s.title}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="label text-xs">Tiêu chí</label>
+              <select className="input h-9 py-0 text-sm" value={critCode} onChange={(e) => setCritCode(e.target.value)}>
+                <option value="C1">C1 — Chuẩn đầu ra</option>
+                <option value="C2">C2 — Cấu trúc & nội dung</option>
+              </select>
+            </div>
+            <div>
+              <label className="label text-xs">Mục</label>
+              <select className="input h-9 py-0 text-sm" value={field} onChange={(e) => setField(e.target.value)}>
+                <option value="analysis">Phân tích</option>
+                <option value="strengths">Điểm mạnh</option>
+                <option value="weaknesses">Điểm tồn tại</option>
+              </select>
+            </div>
+            <button className="btn-primary h-9 py-0" disabled={busy} onClick={applyToSar}>Duyệt & ghi vào SAR</button>
+            <button className="btn-outline h-9 py-0" disabled={busy} onClick={() => { setReview(null); setDraftId(null); }}>Bỏ nháp</button>
+          </div>
         </div>
       )}
 

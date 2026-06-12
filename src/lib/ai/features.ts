@@ -379,8 +379,9 @@ export async function programmeExtractSummary(programmeVersionId: string) {
   };
 }
 
-/** AI ĐÁNH GIÁ CTĐT theo AUN-QA (C1 chuẩn đầu ra · C2 cấu trúc/độ phủ) — trả nhận xét + đề xuất. */
-export async function evaluateProgramme(programmeVersionId: string): Promise<string> {
+/** AI ĐÁNH GIÁ CTĐT theo AUN-QA (C1 chuẩn đầu ra · C2 cấu trúc/độ phủ).
+ *  Human-in-the-loop: LƯU BẢN NHÁP (status=draft) rồi người phụ trách duyệt → đưa vào SAR C1/C2. */
+export async function evaluateProgramme(programmeVersionId: string): Promise<{ review: string; draftId: string }> {
   const s = await programmeExtractSummary(programmeVersionId);
   if (s.counts.plo === 0) throw badRequest("Phiên bản CTĐT chưa có PLO để đánh giá.");
   const ploLines = s.plos.map((p) => `${p.code}: ${p.description}`).join("\n");
@@ -404,8 +405,36 @@ export async function evaluateProgramme(programmeVersionId: string): Promise<str
         `PEO:\n${peoLines}\n\nPLO:\n${ploLines}`,
     },
   ]);
+  const draft = await saveDraft({ module: "evaluate_programme", content: review, targetType: "ProgrammeVersion", targetId: programmeVersionId });
   await writeAudit({ action: "ai.evaluate_programme", entity: "ProgrammeVersion", entityId: programmeVersionId });
-  return review;
+  return { review, draftId: draft.id };
+}
+
+/**
+ * Duyệt bản nháp đánh giá CTĐT → GHI vào một tiêu chí SAR (vd C1/C2), human-in-the-loop.
+ * Ghi nối tiếp (không ghi đè) vào trường đã chọn của tiêu chí, đánh dấu nháp đã duyệt.
+ */
+export async function applyProgrammeEvalToSar(
+  draftId: string,
+  sarId: string,
+  criterionCode: string,
+  field: "analysis" | "strengths" | "weaknesses" = "analysis",
+) {
+  const ctx = requireTenantContext();
+  const draft = await prisma.aiGeneratedDraft.findFirst({ where: { id: draftId } });
+  if (!draft) throw notFound("Bản nháp không tồn tại");
+  if (draft.status !== "draft") throw badRequest("Bản nháp đã được xử lý");
+
+  const sar = await getSar(sarId);
+  const resp = sar.responses.find((r) => r.criterion?.code?.toUpperCase() === criterionCode.trim().toUpperCase());
+  if (!resp) throw badRequest(`SAR không có tiêu chí ${criterionCode}`);
+
+  const prev = (resp as Record<string, unknown>)[field] as string | null;
+  const merged = [prev?.trim(), `[AI đánh giá CTĐT]\n${draft.content}`].filter(Boolean).join("\n\n");
+  await prisma.sarCriterionResponse.update({ where: { id: resp.id }, data: { [field]: merged, updatedBy: ctx.actorId } });
+  await prisma.aiGeneratedDraft.update({ where: { id: draftId }, data: { status: "approved", approvedBy: ctx.actorId, approvedAt: new Date(), targetType: "SarCriterionResponse", targetId: resp.id, field } });
+  await writeAudit({ action: "ai.eval_to_sar", entity: "SarCriterionResponse", entityId: resp.id, meta: { criterionCode, field } });
+  return { sarId, criterionCode, field, responseId: resp.id };
 }
 
 /**

@@ -8,6 +8,8 @@ import { getSettings, updateSettings } from "@/lib/ai/settings";
 import { aiStatus, listProviderModels } from "@/lib/ai/service";
 import {
   approveDraft,
+  applyProgrammeEvalToSar,
+  evaluateProgramme,
   draftSarCriterion,
   gapCheck,
   summarizeEvidence,
@@ -22,7 +24,7 @@ import {
 } from "@/lib/ai/features";
 import { createPlan } from "@/lib/improvement/service";
 import { createEvidence } from "@/lib/evidence/service";
-import { createProgramme } from "@/lib/programmes/service";
+import { addPlo, createProgramme } from "@/lib/programmes/service";
 import { createCycle, createSar, getSar } from "@/lib/sar/service";
 import { applyCyclePlan, listCycleTasks } from "@/lib/cycle-plan/service";
 
@@ -120,6 +122,30 @@ describe("P8 — Lớp AI (service có kiểm soát, human-in-the-loop)", () => 
       const reqs = await prisma.aiRequest.findMany({ where: { module: "summarize_evidence" } });
       expect(reqs.length).toBe(1);
       expect(reqs[0].tokensOut).toBeGreaterThan(0);
+    });
+  });
+
+  it("AI đánh giá CTĐT (nháp) → duyệt & ghi vào tiêu chí SAR C1", async () => {
+    const t = await createTenantFixture("demo");
+    await asTenant(t.id, async () => {
+      await updateSettings({ enabled: true });
+      const prog = await createProgramme({ code: "IT", name: "CNTT", level: "bachelor", initialVersion: "2024" });
+      await addPlo(prog.versions[0].id, { code: "PLO1", description: "Năng lực X", order: 1 });
+      const cycle = await createCycle({ name: "2024", standardVersionId: aunVersionId });
+      const sar = await createSar({ assessmentCycleId: cycle.id, programmeVersionId: prog.versions[0].id, title: "SAR" });
+
+      const { draftId } = await evaluateProgramme(prog.versions[0].id);
+      // Trước khi duyệt: C1 analysis rỗng.
+      const d0 = await getSar(sar.id);
+      const c1Before = d0.responses.find((r) => r.criterion?.code === "C1")!;
+      expect(c1Before.analysis).toBeNull();
+
+      await applyProgrammeEvalToSar(draftId, sar.id, "C1", "analysis");
+      const d1 = await getSar(sar.id);
+      const c1After = d1.responses.find((r) => r.criterion?.code === "C1")!;
+      expect(c1After.analysis).toContain("[AI đánh giá CTĐT]");
+      const draft = await prisma.aiGeneratedDraft.findFirstOrThrow({ where: { id: draftId } });
+      expect(draft.status).toBe("approved");
     });
   });
 

@@ -48,6 +48,14 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
   tệp, dung lượng, ngày upload, trạng thái đã-trích-xuất (✓ mã học phần), phiên bản, nơi lưu (GCS/tạm)**,
   kèm tóm tắt "X đã trích xuất · lưu trữ …". Test trên Postgres (`tests/documents/documents.test.ts`).
 
+## [AI đánh giá CTĐT: bản nháp human-in-the-loop → duyệt vào SAR C1/C2] — ✅ Done
+- `evaluateProgramme` nay **lưu BẢN NHÁP** (AiGeneratedDraft, status=draft) thay vì chỉ hiển thị tạm,
+  trả `draftId`. Panel chi tiết CTĐT hiển thị nháp + form **chọn SAR · tiêu chí (C1/C2) · mục (Phân tích/
+  Điểm mạnh/Điểm tồn tại)** → nút **"Duyệt & ghi vào SAR"**.
+- `applyProgrammeEvalToSar(draftId, sarId, criterionCode, field)`: ghi **nối tiếp** nội dung đã duyệt vào
+  tiêu chí SAR tương ứng + đánh dấu nháp `approved`. API `POST /api/ai/evaluate-programme/to-sar` (cần
+  quyền viết/rà soát/duyệt SAR). Test: `tests/ai/ai.test.ts`, `tests/obe/matrix-ai.test.ts`.
+
 ## [Chi tiết CTĐT: xem file gốc + AI đánh giá + tổng quan trích xuất] — ✅ Done
 - **Tổng quan trích xuất** trên trang chi tiết CTĐT (`programmeExtractSummary`): thẻ đếm **PEO/PLO/PI/
   Học phần/ô PLO×Học phần** + **danh sách tài liệu gốc CTĐT** (xem/tải/xóa) + nút tải lên thủ công.

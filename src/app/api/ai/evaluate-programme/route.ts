@@ -11,5 +11,5 @@ export const POST = authedRoute(async (req) => {
   requirePermission(PERMISSIONS.AI_USE);
   const versionId = new URL(req.url).searchParams.get("versionId");
   if (!versionId) throw badRequest("Thiếu versionId");
-  return ok({ review: await evaluateProgramme(versionId) });
+  return ok(await evaluateProgramme(versionId));
 });
