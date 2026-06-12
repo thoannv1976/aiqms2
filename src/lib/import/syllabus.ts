@@ -261,3 +261,28 @@ export async function extractAndApplyStored(documentId: string, programmeId?: st
   });
   return { code: data.code, name: data.name, created: result.created, updated: result.updated, clos: data.clos.length, courseId: result.courseId };
 }
+
+/**
+ * AI ĐỌC ĐỀ CƯƠNG của MỘT HỌC PHẦN → tạo CLO + ma trận CLO–PLO cho học phần đó.
+ * Tìm đề cương đã upload (đã gắn courseId, hoặc khớp mã học phần trong tên file/tiêu đề),
+ * trích xuất rồi ghi CLO + liên kết CLO–PLO. Trả số CLO & liên kết tạo được + cảnh báo.
+ */
+export async function generateCloPloForCourse(courseId: string) {
+  const course = await prisma.course.findFirst({ where: { id: courseId, deletedAt: null } });
+  if (!course) throw notFound("Học phần không tồn tại");
+
+  let doc = await prisma.document.findFirst({ where: { courseId, category: "syllabus", deletedAt: null }, orderBy: { createdAt: "desc" } });
+  if (!doc) {
+    doc = await prisma.document.findFirst({
+      where: { category: "syllabus", deletedAt: null, OR: [{ title: { contains: course.code, mode: "insensitive" } }, { fileName: { contains: course.code, mode: "insensitive" } }] },
+      orderBy: { createdAt: "desc" },
+    });
+  }
+  if (!doc) throw badRequest(`Học phần ${course.code} chưa có đề cương trong kho — hãy upload đề cương trước.`);
+
+  const { data, programmeId: docProg } = await extractStoredSyllabus(doc.id);
+  const result = await applyExtractedSyllabus(data, course.programmeId ?? docProg ?? undefined);
+  const ctx = requireTenantContext();
+  await prisma.document.update({ where: { id: doc.id }, data: { courseId: result.courseId, updatedBy: ctx.actorId } });
+  return { courseCode: course.code, clos: result.details.clos, cloPlo: result.details.clo_plo, errors: result.errors, source: doc.title };
+}

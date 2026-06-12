@@ -270,6 +270,8 @@ function AddCourse({ onAdded, count }: { onAdded: () => void; count: number }) {
 
 function CloPloSection({ courses, plos, onChanged }: { courses: Course[]; plos: Plo[]; onChanged: () => void }) {
   const [newClo, setNewClo] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState<string | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
 
   async function addClo(courseId: string, order: number) {
     const code = newClo[courseId];
@@ -283,17 +285,32 @@ function CloPloSection({ courses, plos, onChanged }: { courses: Course[]; plos: 
     await api.post("/api/matrices/clo-plo", { cloId, ploId });
     onChanged();
   }
+  async function aiFromSyllabus(courseId: string) {
+    setBusy(courseId); setMsg(null);
+    try {
+      const r = await api.post<{ courseCode: string; clos: number; cloPlo: number; errors: string[] }>(`/api/matrices/clo-plo/from-syllabus?courseId=${courseId}`, {});
+      setMsg(`✅ ${r?.courseCode}: tạo ${r?.clos ?? 0} CLO · ${r?.cloPlo ?? 0} liên kết CLO–PLO${r?.errors?.length ? ` · ${r.errors.length} cảnh báo` : ""}.`);
+      onChanged();
+    } catch (e) {
+      setMsg(e instanceof ApiClientError ? `Lỗi: ${e.message}` : "Lỗi tạo CLO–PLO từ đề cương");
+    } finally { setBusy(null); }
+  }
 
   if (courses.length === 0) return null;
   return (
     <div className="card p-5">
-      <h3 className="mb-3 text-sm font-semibold text-slate-700">CLO ↔ PLO (theo học phần)</h3>
+      <h3 className="mb-1 text-sm font-semibold text-slate-700">CLO ↔ PLO (theo học phần)</h3>
+      <p className="mb-3 text-xs text-slate-400">Bấm “🤖 AI từ đề cương” để AI đọc đề cương học phần và tạo CLO + liên kết CLO–PLO tự động.</p>
+      {msg && <p className="mb-2 text-sm text-emerald-600">{msg}</p>}
       <div className="space-y-4">
         {courses.map((c) => (
           <div key={c.id} className="rounded-lg border border-slate-100 p-3">
-            <div className="mb-2 flex items-center justify-between">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <span className="font-medium text-slate-800">{c.code} · {c.name}</span>
-              <span className="flex gap-2">
+              <span className="flex flex-wrap gap-2">
+                <button className="btn-outline text-emerald-600" disabled={busy === c.id} onClick={() => aiFromSyllabus(c.id)}>
+                  {busy === c.id ? "Đang đọc…" : "🤖 AI từ đề cương"}
+                </button>
                 <input
                   className="input h-8 w-28 py-1" placeholder="CLO1"
                   value={newClo[c.id] ?? ""} onChange={(e) => setNewClo({ ...newClo, [c.id]: e.target.value })}

@@ -48,6 +48,12 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
   tệp, dung lượng, ngày upload, trạng thái đã-trích-xuất (✓ mã học phần), phiên bản, nơi lưu (GCS/tạm)**,
   kèm tóm tắt "X đã trích xuất · lưu trữ …". Test trên Postgres (`tests/documents/documents.test.ts`).
 
+## [AI tạo ma trận CLO–PLO cho từng học phần từ đề cương] — ✅ Done
+- **AI đọc đề cương → tạo CLO + ma trận CLO–PLO cho từng học phần** (`generateCloPloForCourse`): tìm
+  đề cương đã upload của học phần (theo courseId hoặc khớp mã trong tên/tiêu đề), trích xuất rồi ghi
+  CLO + liên kết CLO–PLO. Nút **"🤖 AI từ đề cương"** mỗi học phần trong mục CLO↔PLO (trang Ma trận).
+  API `POST /api/matrices/clo-plo/from-syllabus`. Test: `tests/import/syllabus.test.ts`.
+
 ## [AI viết PLO + Trích xuất tài liệu tại CTĐT + tổng hợp ma trận theo CTĐT] — ✅ Done
 - **AI viết PLO** (`suggestPlos`): sinh/chuẩn hóa 8–12 PLO từ PEO + bối cảnh ngành, ánh xạ tới PEO —
   human-in-the-loop. Nút "✍️ AI viết PLO" + API `POST /api/ai/write-plo`.

@@ -4,8 +4,9 @@ import { prisma, resetDb } from "../helpers/db";
 import { createTenantFixture } from "../helpers/fixtures";
 import { runWithTenant } from "@/lib/tenant/context";
 import { docxToText } from "@/lib/import/docx";
-import { applyExtractedSyllabus, extractAndApplyStored, extractSyllabusByRules, extractStoredSyllabus, pdfToText } from "@/lib/import/syllabus";
+import { applyExtractedSyllabus, extractAndApplyStored, extractSyllabusByRules, extractStoredSyllabus, generateCloPloForCourse, pdfToText } from "@/lib/import/syllabus";
 import { createDocument } from "@/lib/documents/service";
+import { createCourse } from "@/lib/courses/service";
 import { createProgramme } from "@/lib/programmes/service";
 
 const asTenant = <T>(tenantId: string, fn: () => Promise<T>) =>
@@ -91,6 +92,25 @@ describe("Import đề cương học phần từ Word/PDF", () => {
       const res2 = await applyExtractedSyllabus(data);
       expect(res2.updated).toBe(1);
       expect(await prisma.courseLearningOutcome.count()).toBe(2);
+      expect(await prisma.cloPloMapping.count()).toBe(2);
+    });
+  });
+
+  it("generateCloPloForCourse: AI đọc đề cương của học phần → tạo CLO + CLO-PLO", async () => {
+    const t = await createTenantFixture("demo");
+    await asTenant(t.id, async () => {
+      const prog = await createProgramme({ code: "SBI", name: "TMĐT", level: "bachelor", initialVersion: "2026" });
+      for (const [i, code] of (["PLO1", "PLO2"] as const).entries()) {
+        await prisma.programmeLearningOutcome.create({ data: { tenantId: t.id, programmeVersionId: prog.versions[0].id, code, description: code, order: i + 1 } });
+      }
+      const course = await createCourse({ code: "TMAE306", name: "TMĐT", credits: 3, programmeId: prog.id });
+      // Đề cương đã upload (khớp mã trong tiêu đề), chưa gắn courseId.
+      await createDocument({ title: "Đề cương TMAE306", category: "syllabus", programmeId: prog.id }, { fileName: "tmae306.docx", body: await buildSyllabusDocx() });
+
+      const r = await generateCloPloForCourse(course.id);
+      expect(r.courseCode).toBe("TMAE306");
+      expect(r.clos).toBe(2);
+      expect(r.cloPlo).toBe(2);
       expect(await prisma.cloPloMapping.count()).toBe(2);
     });
   });
