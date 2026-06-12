@@ -21,6 +21,7 @@ const NAV: { section: string; items: NavItem[] }[] = [
       { href: "/programmes", label: "Chương trình đào tạo", ready: true },
       { href: "/matrices", label: "Ma trận PLO‑CLO", ready: true },
       { href: "/courses", label: "Đề cương học phần", ready: true },
+      { href: "/courses/syllabus", label: "Kho đề cương", ready: true },
       { href: "/standards", label: "Bộ tiêu chuẩn", ready: true },
       { href: "/cycles", label: "Đợt tự đánh giá", ready: true },
       { href: "/sars", label: "Báo cáo tự đánh giá (SAR)", ready: true },
@@ -81,11 +82,17 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 overflow-y-auto px-3 py-4">
-        {NAV.map((group) => (
+        {(() => {
+          // Mục active = href KHỚP DÀI NHẤT với đường dẫn hiện tại (để /courses không sáng khi ở /courses/syllabus).
+          const allHrefs = NAV.flatMap((g) => g.items.map((i) => i.href));
+          const bestMatch = allHrefs
+            .filter((h) => pathname === h || pathname.startsWith(h + "/"))
+            .sort((a, b) => b.length - a.length)[0];
+          return NAV.map((group) => (
           <div key={group.section} className="mb-5">
             <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400">{group.section}</p>
             {group.items.map((item) => {
-              const active = pathname === item.href || pathname.startsWith(item.href + "/");
+              const active = item.href === bestMatch;
               if (!item.ready) {
                 return (
                   <span key={item.href} className="flex cursor-not-allowed items-center justify-between rounded-lg px-3 py-2 text-sm text-slate-300">
@@ -107,7 +114,8 @@ export function Sidebar() {
               );
             })}
           </div>
-        ))}
+          ));
+        })()}
       </nav>
 
       <div className="border-t border-slate-200 p-3">
