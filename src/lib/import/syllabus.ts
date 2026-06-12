@@ -211,9 +211,11 @@ export async function applyExtractedSyllabus(
     assessmentMethods: data.assessmentMethods || null,
     materials: data.materials || null,
   };
-  let course = await prisma.course.findFirst({ where: { code: data.code, deletedAt: null } });
+  // Tìm cả bản ĐÃ XÓA MỀM (unique theo (tenant,code) không tính deletedAt) — nếu có thì KHÔI PHỤC + cập nhật,
+  // tránh lỗi vi phạm ràng buộc duy nhất khi tạo trùng mã.
+  let course = await prisma.course.findFirst({ where: { code: data.code, deletedAt: undefined } });
   if (course) {
-    course = await prisma.course.update({ where: { id: course.id }, data: { ...fields, updatedBy: ctx.actorId } });
+    course = await prisma.course.update({ where: { id: course.id }, data: { ...fields, deletedAt: null, updatedBy: ctx.actorId } });
     res.updated++;
   } else {
     course = await prisma.course.create({ data: withTenantId({ code: data.code, ...fields, createdBy: ctx.actorId }) });

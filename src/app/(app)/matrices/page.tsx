@@ -95,7 +95,7 @@ export default function MatricesPage() {
             ))}
           </div>
           {tab === "core"
-            ? <MatrixWorkspace key={`${versionId}:${refreshKey}`} versionId={versionId} />
+            ? <MatrixWorkspace key={`${versionId}:${refreshKey}`} versionId={versionId} programmeId={programmeId} />
             : tab === "attainment"
             ? <PloAttainmentPanel key={`${versionId}:attainment:${refreshKey}`} versionId={versionId} />
             : <PloMatrixGrid key={`${versionId}:${tab}:${refreshKey}`} versionId={versionId} dimension={tab} />}
@@ -107,7 +107,7 @@ export default function MatricesPage() {
   );
 }
 
-function MatrixWorkspace({ versionId }: { versionId: string }) {
+function MatrixWorkspace({ versionId, programmeId }: { versionId: string; programmeId: string }) {
   const [plos, setPlos] = useState<Plo[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [matrix, setMatrix] = useState<MatrixRow[]>([]);
@@ -118,9 +118,11 @@ function MatrixWorkspace({ versionId }: { versionId: string }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
+      // Học phần CHỈ lấy theo đúng CTĐT đang chọn (gắn programmeId) — không lẫn học phần CTĐT khác.
+      const courseQ = `/api/courses?pageSize=500${programmeId ? `&programmeId=${programmeId}` : ""}`;
       const [p, c, m, w] = await Promise.all([
         api.get<Plo[]>(`/api/plos?versionId=${versionId}`),
-        api.get<{ items: Course[] }>(`/api/courses?pageSize=500`),
+        api.get<{ items: Course[] }>(courseQ),
         api.get<MatrixRow[]>(`/api/matrices/plo-course?versionId=${versionId}`),
         api.get<Warning[]>(`/api/coverage?versionId=${versionId}`),
       ]);
@@ -133,21 +135,16 @@ function MatrixWorkspace({ versionId }: { versionId: string }) {
     } finally {
       setLoading(false);
     }
-  }, [versionId]);
+  }, [versionId, programmeId]);
   useEffect(() => { load(); }, [load]);
 
   function levelOf(ploId: string, courseId: string): string | undefined {
     return matrix.find((r) => r.ploId === ploId)?.courses.find((c) => c.courseId === courseId)?.level;
   }
 
-  // Cột ma trận = hợp của học phần tải về + học phần ĐÃ ÁNH XẠ (kể cả khi nằm ngoài trang đầu
-  // hoặc thuộc CTĐT khác) — đảm bảo ô I/R/M vừa áp dụng LUÔN có cột hiển thị.
-  const columns: Course[] = (() => {
-    const map = new Map<string, Course>();
-    for (const c of courses) map.set(c.id, c);
-    for (const row of matrix) for (const c of row.courses) if (!map.has(c.courseId)) map.set(c.courseId, { id: c.courseId, code: c.code, name: c.code, clos: [] });
-    return [...map.values()];
-  })();
+  // Cột ma trận = học phần gắn đúng CTĐT (đã lọc theo programmeId). Không thêm học phần lạ
+  // từ các liên kết ngoài CTĐT.
+  const columns: Course[] = courses;
   async function toggleCell(ploId: string, courseId: string) {
     const lvl = nextLevel(levelOf(ploId, courseId));
     try {

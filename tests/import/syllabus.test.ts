@@ -96,6 +96,23 @@ describe("Import đề cương học phần từ Word/PDF", () => {
     });
   });
 
+  it("applyExtractedSyllabus: học phần đã XÓA MỀM cùng mã -> khôi phục, không lỗi unique (500)", async () => {
+    const t = await createTenantFixture("demo");
+    await asTenant(t.id, async () => {
+      // Tạo rồi xóa mềm học phần TMAE306.
+      const c = await prisma.course.create({ data: { tenantId: t.id, code: "TMAE306", name: "cũ", credits: 3 } });
+      await prisma.course.update({ where: { id: c.id }, data: { deletedAt: new Date() } });
+
+      const data = extractSyllabusByRules(await docxToText(await buildSyllabusDocx()));
+      const res = await applyExtractedSyllabus(data); // KHÔNG được ném lỗi unique
+      expect(res.updated).toBe(1);
+      const fresh = await prisma.course.findFirstOrThrow({ where: { code: "TMAE306" } });
+      expect(fresh.deletedAt).toBeNull(); // đã khôi phục
+      // Không nhân bản (vẫn 1 bản ghi mã này).
+      expect(await prisma.course.count({ where: { code: "TMAE306" } })).toBe(1);
+    });
+  });
+
   it("generateCloPloForCourse: AI đọc đề cương của học phần → tạo CLO + CLO-PLO", async () => {
     const t = await createTenantFixture("demo");
     await asTenant(t.id, async () => {

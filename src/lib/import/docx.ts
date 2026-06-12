@@ -239,10 +239,10 @@ export async function applyExtractedProgramme(input: ExtractedProgramme): Promis
   }
   for (const c of data.courses) {
     if (!c.code) continue;
-    const existing = await prisma.course.findFirst({ where: { code: c.code, deletedAt: null } });
+    // Tìm cả bản đã xóa mềm (unique theo mã) -> khôi phục + gắn CTĐT, tránh lỗi tạo trùng.
+    const existing = await prisma.course.findFirst({ where: { code: c.code, deletedAt: undefined } });
     if (existing) {
-      // Gắn học phần vào CTĐT (nếu chưa gán) + cập nhật tên.
-      await prisma.course.update({ where: { id: existing.id }, data: { name: c.name || existing.name, programmeId: existing.programmeId ?? prog.id, updatedBy: ctx.actorId } });
+      await prisma.course.update({ where: { id: existing.id }, data: { name: c.name || existing.name, programmeId: existing.programmeId ?? prog.id, deletedAt: null, updatedBy: ctx.actorId } });
     } else {
       await prisma.course.create({ data: withTenantId({ code: c.code, name: c.name || c.code, credits: c.credits ?? 3, programmeId: prog.id, createdBy: ctx.actorId }) });
       res.details.courses++;

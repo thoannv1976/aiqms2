@@ -101,8 +101,15 @@ export async function deleteCoursesBulk(ids: string[]) {
 
 export async function createCourse(input: z.infer<typeof createCourseSchema>) {
   const ctx = requireTenantContext();
-  const dup = await prisma.course.findFirst({ where: { code: input.code, deletedAt: null } });
-  if (dup) throw badRequest("Mã học phần đã tồn tại", "code_taken");
+  // Unique theo (tenant, code) không tính deletedAt: nếu trùng mã đang hoạt động -> báo lỗi;
+  // nếu trùng mã ĐÃ XÓA MỀM -> khôi phục + cập nhật (tránh lỗi vi phạm ràng buộc duy nhất).
+  const existing = await prisma.course.findFirst({ where: { code: input.code, deletedAt: undefined } });
+  if (existing && existing.deletedAt === null) throw badRequest("Mã học phần đã tồn tại", "code_taken");
+  if (existing) {
+    const course = await prisma.course.update({ where: { id: existing.id }, data: { ...input, deletedAt: null, updatedBy: ctx.actorId } });
+    await writeAudit({ action: "course.restore", entity: "Course", entityId: course.id });
+    return course;
+  }
   const course = await prisma.course.create({
     data: withTenantId({ ...input, createdBy: ctx.actorId }),
   });

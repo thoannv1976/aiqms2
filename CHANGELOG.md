@@ -48,6 +48,14 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
   tệp, dung lượng, ngày upload, trạng thái đã-trích-xuất (✓ mã học phần), phiên bản, nơi lưu (GCS/tạm)**,
   kèm tóm tắt "X đã trích xuất · lưu trữ …". Test trên Postgres (`tests/documents/documents.test.ts`).
 
+## [Sửa: lỗi 500 khi ghi đề cương (mã trùng đã xóa mềm) + ma trận hiện học phần ngoài CTĐT] — ✅ Done
+- **Lỗi 500 "Lỗi hệ thống" khi ghi đề cương**: học phần cùng mã đã **xóa mềm** chặn tạo mới (unique
+  `(tenantId, code)` không tính deletedAt). Nay `applyExtractedSyllabus`/import CTĐT/`createCourse`
+  tìm cả bản đã xóa (`deletedAt: undefined` để bỏ qua bộ lọc soft-delete) → **khôi phục + cập nhật**
+  thay vì tạo trùng. Test: `tests/import/syllabus.test.ts`.
+- **Ma trận PLO×Học phần** nay chỉ hiện **học phần gắn đúng CTĐT** (`/api/courses?programmeId=`),
+  không lẫn học phần CTĐT khác / liên kết lạc.
+
 ## [Kho đề cương: chuyển từ popup sang trang full màn hình] — ✅ Done
 - Tách logic Kho đề cương thành `SyllabusRepoPanel` (tự tải khi mở) + **trang riêng `/courses/syllabus`**
   full màn hình (bảng rộng, thao tác thuận tiện). Nút "Kho đề cương" ở `/courses` nay **điều hướng** sang
