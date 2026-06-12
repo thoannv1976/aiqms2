@@ -15,6 +15,11 @@ interface Programme {
   name: string;
   level: string;
   versions: { version: string; status: string }[];
+  createdAt: string;
+  createdByName: string | null;
+  courseCount: number;
+  ploCount: number;
+  extracted: boolean;
 }
 interface PageData {
   items: Programme[];
@@ -29,11 +34,13 @@ export default function ProgrammesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const load = useCallback(async (p: number) => {
     setLoading(true);
     try {
       setData(await api.get<PageData>(`/api/programmes?page=${p}&pageSize=20`));
+      setSelected(new Set());
     } catch (e) {
       setError(e instanceof Error ? e.message : "Lỗi tải dữ liệu");
     } finally {
@@ -45,7 +52,28 @@ export default function ProgrammesPage() {
     load(page);
   }, [page, load]);
 
+  const rows = data?.items ?? [];
+  function toggle(id: string) { setSelected((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; }); }
+  function toggleAll() { setSelected((s) => (s.size === rows.length ? new Set() : new Set(rows.map((r) => r.id)))); }
+
+  async function removeProgramme(p: Programme) {
+    if (!confirm(`Xóa CTĐT ${p.code} — ${p.name}? (xóa mềm, kèm phiên bản/PLO/học phần gắn theo)`)) return;
+    setError(null);
+    try { await api.delete(`/api/programmes/${p.id}`); await load(page); }
+    catch (e) { setError(e instanceof ApiClientError ? `Không xóa được: ${e.message}` : "Lỗi xóa CTĐT"); }
+  }
+  async function removeSelected() {
+    if (selected.size === 0) return;
+    if (!confirm(`Xóa ${selected.size} CTĐT đã chọn? (xóa mềm)`)) return;
+    setError(null);
+    try { await api.post("/api/programmes/bulk-delete", { ids: [...selected] }); await load(page); }
+    catch (e) { setError(e instanceof ApiClientError ? `Không xóa được: ${e.message}` : "Lỗi xóa hàng loạt"); }
+  }
+
+  const allChecked = rows.length > 0 && selected.size === rows.length;
   const columns: Column<Programme>[] = [
+    { header: <input type="checkbox" checked={allChecked} onChange={toggleAll} aria-label="Chọn tất cả" />,
+      cell: (r) => <input type="checkbox" checked={selected.has(r.id)} onChange={() => toggle(r.id)} /> },
     { header: "Mã", cell: (r) => <span className="font-mono text-xs">{r.code}</span> },
     { header: "Tên chương trình", cell: (r) => <Link href={`/programmes/${r.id}`} className="font-medium text-indigo-600 hover:underline">{r.name}</Link> },
     { header: "Trình độ", cell: (r) => r.level },
@@ -62,6 +90,14 @@ export default function ProgrammesPage() {
         </div>
       ),
     },
+    { header: "Học phần", cell: (r) => <span className="text-slate-600">{r.courseCount}</span> },
+    { header: "PLO", cell: (r) => <span className="text-slate-600">{r.ploCount}</span> },
+    { header: "Số hóa", cell: (r) => r.extracted
+      ? <span className="badge bg-emerald-100 text-emerald-700">✓ Đã có HP/PLO</span>
+      : <span className="badge bg-slate-100 text-slate-400">Chưa</span> },
+    { header: "Ngày tạo", cell: (r) => <span className="whitespace-nowrap text-xs text-slate-500">{new Date(r.createdAt).toLocaleString("vi-VN")}</span> },
+    { header: "Người tạo", cell: (r) => <span className="text-xs text-slate-500">{r.createdByName ?? "—"}</span> },
+    { header: "", cell: (r) => <button className="text-rose-500 hover:underline" onClick={() => removeProgramme(r)}>Xóa</button> },
   ];
 
   return (
@@ -78,6 +114,13 @@ export default function ProgrammesPage() {
         }
       />
       {error && <div className="mb-4"><ErrorBox message={error} /></div>}
+      {selected.size > 0 && (
+        <div className="mb-3">
+          <button className="btn-outline border-rose-300 text-rose-600 hover:bg-rose-50" onClick={removeSelected}>
+            🗑 Xóa {selected.size} CTĐT đã chọn
+          </button>
+        </div>
+      )}
       <DataTable columns={columns} rows={data?.items ?? []} loading={loading} emptyMessage="Chưa có chương trình nào" />
       {data && <Pagination page={data.page} totalPages={data.totalPages} total={data.total} onChange={setPage} />}
 

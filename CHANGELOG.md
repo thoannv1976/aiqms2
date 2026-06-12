@@ -48,6 +48,13 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
   tệp, dung lượng, ngày upload, trạng thái đã-trích-xuất (✓ mã học phần), phiên bản, nơi lưu (GCS/tạm)**,
   kèm tóm tắt "X đã trích xuất · lưu trữ …". Test trên Postgres (`tests/documents/documents.test.ts`).
 
+## [/programmes: chọn-xóa nhiều CTĐT + cột số liệu/ngày/người tạo] — ✅ Done
+- Màn hình **Chương trình đào tạo** (`/programmes`): thêm **checkbox chọn nhiều** + nút **🗑 Xóa N CTĐT
+  đã chọn** (API `POST /api/programmes/bulk-delete`). Thêm cột **Học phần, PLO, Số hóa (✓ đã có HP/PLO),
+  Ngày tạo (giờ), Người tạo**. `listProgrammes` làm giàu (`createdByName/courseCount/ploCount/extracted`)
+  và **lọc bỏ CTĐT đã xóa mềm**. Sửa quyền xóa CTĐT: `DATA_DELETE` hoặc `DATA_UPDATE`. Test:
+  `tests/obe/programme.test.ts`.
+
 ## [/courses: chọn-xóa nhiều + cột ngày/người tạo/đã trích xuất] — ✅ Done
 - Màn hình **Đề cương học phần** (`/courses`): thêm **checkbox chọn nhiều** + nút **🗑 Xóa N học phần
   đã chọn** (API `POST /api/courses/bulk-delete`). Thêm cột **Ngày upload (giờ), Người tạo, Trích xuất**

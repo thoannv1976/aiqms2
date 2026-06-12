@@ -13,6 +13,8 @@ import {
   addPlo,
   changeVersionStatus,
   createProgramme,
+  deleteProgrammesBulk,
+  listProgrammes,
 } from "@/lib/programmes/service";
 import { mapCloPlo, mapPloCourse, ploCourseMatrix } from "@/lib/obe/matrix";
 import { coverageWarnings } from "@/lib/obe/coverage";
@@ -24,6 +26,30 @@ function asTenant<T>(tenantId: string, fn: () => Promise<T>) {
 describe("P3 — Chương trình đào tạo + OBE", () => {
   beforeEach(resetDb);
   afterAll(() => prisma.$disconnect());
+
+  it("listProgrammes làm giàu (số HP/PLO/người tạo) + xóa nhiều CTĐT", async () => {
+    const t = await createTenantFixture("demo");
+    await asTenant(t.id, async () => {
+      const a = await createProgramme({ code: "AAA", name: "CT A", level: "bachelor", initialVersion: "2024" });
+      const b = await createProgramme({ code: "BBB", name: "CT B", level: "bachelor", initialVersion: "2024" });
+      await addPlo(a.versions[0].id, { code: "PLO1", description: "x", order: 1 });
+      await createCourse({ code: "C-A", name: "HP A", credits: 3, programmeId: a.id });
+
+      const p1 = await listProgrammes({ page: 1, pageSize: 20, skip: 0, take: 20 });
+      const ra = p1.items.find((x) => x.id === a.id)!;
+      const rb = p1.items.find((x) => x.id === b.id)!;
+      expect(ra.ploCount).toBe(1);
+      expect(ra.courseCount).toBe(1);
+      expect(ra.extracted).toBe(true);
+      expect(rb.extracted).toBe(false);
+      expect(ra.createdByName !== undefined).toBe(true);
+
+      const del = await deleteProgrammesBulk([a.id, b.id]);
+      expect(del.deleted).toBe(2);
+      const p2 = await listProgrammes({ page: 1, pageSize: 20, skip: 0, take: 20 });
+      expect(p2.items.find((x) => x.id === a.id || x.id === b.id)).toBeUndefined();
+    });
+  });
 
   it("listCourses làm giàu (cloCount/extracted/người tạo) + xóa nhiều học phần", async () => {
     const t = await createTenantFixture("demo");

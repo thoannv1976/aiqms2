@@ -19,14 +19,13 @@ export const createProgrammeSchema = z.object({
 });
 
 export async function listProgrammes(p: PageParams) {
-  const where: Prisma.ProgrammeWhereInput = p.search
-    ? {
-        OR: [
-          { code: { contains: p.search, mode: "insensitive" } },
-          { name: { contains: p.search, mode: "insensitive" } },
-        ],
-      }
-    : {};
+  const where: Prisma.ProgrammeWhereInput = { deletedAt: null };
+  if (p.search) {
+    where.OR = [
+      { code: { contains: p.search, mode: "insensitive" } },
+      { name: { contains: p.search, mode: "insensitive" } },
+    ];
+  }
   const [items, total] = await Promise.all([
     prisma.programme.findMany({
       where,
@@ -37,7 +36,41 @@ export async function listProgrammes(p: PageParams) {
     }),
     prisma.programme.count({ where }),
   ]);
-  return paginated(items, total, p);
+
+  // Làm giàu: người tạo + số học phần + số PLO (đã số hóa CTĐT chưa).
+  const progIds = items.map((p) => p.id);
+  const versionIds = items.flatMap((p) => p.versions.map((v) => v.id));
+  const creatorIds = [...new Set(items.map((p) => p.createdBy).filter((v): v is string => !!v))];
+  const [users, courseGroups, ploGroups] = await Promise.all([
+    creatorIds.length ? prisma.user.findMany({ where: { id: { in: creatorIds } }, select: { id: true, fullName: true } }) : [],
+    progIds.length ? prisma.course.groupBy({ by: ["programmeId"], where: { programmeId: { in: progIds }, deletedAt: null }, _count: { _all: true } }) : [],
+    versionIds.length ? prisma.programmeLearningOutcome.groupBy({ by: ["programmeVersionId"], where: { programmeVersionId: { in: versionIds } }, _count: { _all: true } }) : [],
+  ]);
+  const nameById = new Map(users.map((u) => [u.id, u.fullName]));
+  const courseByProg = new Map(courseGroups.map((g) => [g.programmeId as string, g._count._all]));
+  const ploByVersion = new Map(ploGroups.map((g) => [g.programmeVersionId, g._count._all]));
+  const enriched = items.map((p) => {
+    const ploCount = p.versions.reduce((n, v) => n + (ploByVersion.get(v.id) ?? 0), 0);
+    const courseCount = courseByProg.get(p.id) ?? 0;
+    return {
+      ...p,
+      createdByName: p.createdBy ? nameById.get(p.createdBy) ?? null : null,
+      courseCount,
+      ploCount,
+      extracted: courseCount > 0 || ploCount > 0,
+    };
+  });
+  return paginated(enriched, total, p);
+}
+
+/** Xóa mềm nhiều CTĐT cùng lúc (quản lý). */
+export async function deleteProgrammesBulk(ids: string[]) {
+  const ctx = requireTenantContext();
+  const uniq = [...new Set(ids.filter(Boolean))];
+  if (uniq.length === 0) return { deleted: 0 };
+  const r = await prisma.programme.updateMany({ where: { id: { in: uniq }, deletedAt: null }, data: softDeleteData(ctx.actorId) });
+  await writeAudit({ action: "programme.bulk_delete", entity: "Programme", meta: { deleted: r.count } });
+  return { deleted: r.count };
 }
 
 export async function getProgramme(id: string) {
