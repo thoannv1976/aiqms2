@@ -48,6 +48,11 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
   tệp, dung lượng, ngày upload, trạng thái đã-trích-xuất (✓ mã học phần), phiên bản, nơi lưu (GCS/tạm)**,
   kèm tóm tắt "X đã trích xuất · lưu trữ …". Test trên Postgres (`tests/documents/documents.test.ts`).
 
+## [Kho đề cương: chuyển từ popup sang trang full màn hình] — ✅ Done
+- Tách logic Kho đề cương thành `SyllabusRepoPanel` (tự tải khi mở) + **trang riêng `/courses/syllabus`**
+  full màn hình (bảng rộng, thao tác thuận tiện). Nút "Kho đề cương" ở `/courses` nay **điều hướng** sang
+  trang này thay vì mở popup. Bỏ component `SyllabusManager` (modal cũ).
+
 ## [AI tạo ma trận CLO–PLO cho từng học phần từ đề cương] — ✅ Done
 - **AI đọc đề cương → tạo CLO + ma trận CLO–PLO cho từng học phần** (`generateCloPloForCourse`): tìm
   đề cương đã upload của học phần (theo courseId hoặc khớp mã trong tên/tiêu đề), trích xuất rồi ghi

@@ -8,7 +8,6 @@ import { DataTable, Pagination, type Column } from "@/components/DataTable";
 import { Modal } from "@/components/Modal";
 import { ImportButton } from "@/components/ImportButton";
 import { SyllabusImportButton } from "@/components/SyllabusImportButton";
-import { SyllabusManager } from "@/components/SyllabusManager";
 
 interface Programme { id: string; code: string; name: string }
 interface Course {
@@ -84,7 +83,7 @@ export default function CoursesPage() {
       <PageHeader title="Đề cương học phần" subtitle="Quản lý học phần theo chương trình đào tạo, CLO và đề cương chi tiết"
         action={
           <div className="flex items-center gap-2">
-            <SyllabusManager onChanged={() => load(1, progFilter)} />
+            <Link href="/courses/syllabus" className="btn-outline">Kho đề cương</Link>
             <SyllabusImportButton onDone={() => load(1, progFilter)} />
             <ImportButton endpoint="/api/import/courses" onDone={() => load(1, progFilter)} />
             <button className="btn-primary" onClick={() => setOpen(true)}>+ Thêm học phần</button>
