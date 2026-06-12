@@ -11,7 +11,10 @@ import { SyllabusImportButton } from "@/components/SyllabusImportButton";
 import { SyllabusManager } from "@/components/SyllabusManager";
 
 interface Programme { id: string; code: string; name: string }
-interface Course { id: string; code: string; name: string; credits: number; clos: { id: string }[]; programme: Programme | null }
+interface Course {
+  id: string; code: string; name: string; credits: number; clos: { id: string }[]; programme: Programme | null;
+  createdAt: string; createdByName: string | null; cloCount: number; extracted: boolean; hasSyllabus: boolean;
+}
 interface PageData { items: Course[]; total: number; page: number; totalPages: number }
 
 export default function CoursesPage() {
@@ -22,17 +25,23 @@ export default function CoursesPage() {
   const [open, setOpen] = useState(false);
   const [programmes, setProgrammes] = useState<Programme[]>([]);
   const [progFilter, setProgFilter] = useState("");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const load = useCallback(async (p: number, programmeId: string) => {
     setLoading(true);
     try {
       const q = `page=${p}&pageSize=20${programmeId ? `&programmeId=${programmeId}` : ""}`;
       setData(await api.get<PageData>(`/api/courses?${q}`));
+      setSelected(new Set());
     } catch (e) { setError(e instanceof Error ? e.message : "Lỗi tải dữ liệu"); }
     finally { setLoading(false); }
   }, []);
   useEffect(() => { load(page, progFilter); }, [page, progFilter, load]);
   useEffect(() => { api.get<{ items: Programme[] }>("/api/programmes?pageSize=100").then((d) => setProgrammes(d?.items ?? [])).catch(() => {}); }, []);
+
+  const rows = data?.items ?? [];
+  function toggle(id: string) { setSelected((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; }); }
+  function toggleAll() { setSelected((s) => (s.size === rows.length ? new Set() : new Set(rows.map((r) => r.id)))); }
 
   async function removeCourse(c: Course) {
     if (!confirm(`Xóa học phần ${c.code} — ${c.name}? (xóa mềm, có thể khôi phục)`)) return;
@@ -40,8 +49,18 @@ export default function CoursesPage() {
     try { await api.delete(`/api/courses/${c.id}`); await load(page, progFilter); }
     catch (e) { setError(e instanceof ApiClientError ? `Không xóa được: ${e.message}` : "Lỗi xóa học phần"); }
   }
+  async function removeSelected() {
+    if (selected.size === 0) return;
+    if (!confirm(`Xóa ${selected.size} học phần đã chọn? (xóa mềm)`)) return;
+    setError(null);
+    try { const r = await api.post<{ deleted: number }>("/api/courses/bulk-delete", { ids: [...selected] }); await load(page, progFilter); setError(null); void r; }
+    catch (e) { setError(e instanceof ApiClientError ? `Không xóa được: ${e.message}` : "Lỗi xóa hàng loạt"); }
+  }
 
+  const allChecked = rows.length > 0 && selected.size === rows.length;
   const columns: Column<Course>[] = [
+    { header: <input type="checkbox" checked={allChecked} onChange={toggleAll} aria-label="Chọn tất cả" />,
+      cell: (r) => <input type="checkbox" checked={selected.has(r.id)} onChange={() => toggle(r.id)} /> },
     { header: "Mã", cell: (r) => <span className="font-mono text-xs">{r.code}</span> },
     { header: "Tên học phần", cell: (r) => <Link href={`/courses/${r.id}`} className="font-medium text-indigo-600 hover:underline">{r.name}</Link> },
     {
@@ -51,7 +70,12 @@ export default function CoursesPage() {
         : <span className="text-xs text-slate-400">— chưa gán —</span>,
     },
     { header: "Tín chỉ", cell: (r) => r.credits },
-    { header: "CLO", cell: (r) => r.clos.length },
+    { header: "CLO", cell: (r) => r.cloCount },
+    { header: "Trích xuất", cell: (r) => r.extracted
+      ? <span className="badge bg-emerald-100 text-emerald-700">✓ Đã có đề cương</span>
+      : <span className="badge bg-slate-100 text-slate-400">Chưa</span> },
+    { header: "Ngày upload", cell: (r) => <span className="whitespace-nowrap text-xs text-slate-500">{new Date(r.createdAt).toLocaleString("vi-VN")}</span> },
+    { header: "Người tạo", cell: (r) => <span className="text-xs text-slate-500">{r.createdByName ?? "—"}</span> },
     { header: "", cell: (r) => <button className="text-rose-500 hover:underline" onClick={() => removeCourse(r)}>Xóa</button> },
   ];
 
@@ -77,6 +101,11 @@ export default function CoursesPage() {
             {programmes.map((p) => <option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}
           </select>
         </div>
+        {selected.size > 0 && (
+          <button className="btn-outline border-rose-300 text-rose-600 hover:bg-rose-50" onClick={removeSelected}>
+            🗑 Xóa {selected.size} học phần đã chọn
+          </button>
+        )}
       </div>
 
       <DataTable columns={columns} rows={data?.items ?? []} loading={loading} emptyMessage="Chưa có học phần" />

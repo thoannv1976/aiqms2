@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { Spinner, EmptyState } from "./ui";
 
 export interface Column<T> {
-  header: string;
+  header: ReactNode;
   cell: (row: T) => ReactNode;
   className?: string;
 }

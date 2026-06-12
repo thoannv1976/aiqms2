@@ -48,6 +48,13 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
   tệp, dung lượng, ngày upload, trạng thái đã-trích-xuất (✓ mã học phần), phiên bản, nơi lưu (GCS/tạm)**,
   kèm tóm tắt "X đã trích xuất · lưu trữ …". Test trên Postgres (`tests/documents/documents.test.ts`).
 
+## [/courses: chọn-xóa nhiều + cột ngày/người tạo/đã trích xuất] — ✅ Done
+- Màn hình **Đề cương học phần** (`/courses`): thêm **checkbox chọn nhiều** + nút **🗑 Xóa N học phần
+  đã chọn** (API `POST /api/courses/bulk-delete`). Thêm cột **Ngày upload (giờ), Người tạo, Trích xuất**
+  (✓ Đã có đề cương nếu có CLO hoặc tài liệu syllabus gắn học phần). `listCourses` làm giàu
+  (`createdByName/cloCount/extracted/hasSyllabus`) và **lọc bỏ học phần đã xóa mềm** (trước đây vẫn hiện).
+  `Column.header` nay nhận `ReactNode`. Test: `tests/obe/programme.test.ts`.
+
 ## [Sửa tiếp: trưởng khoa (faculty) nộp được minh chứng] — ✅ Done
 - Endpoint nộp tài liệu nay chấp nhận thêm **`DATA_UPDATE`** (vai trò khoa/trưởng khoa có) bên cạnh
   `DATA_CREATE`/`EVIDENCE_UPLOAD`, giữ luồng "người được giao việc" cho các vai trò không có quyền nào.

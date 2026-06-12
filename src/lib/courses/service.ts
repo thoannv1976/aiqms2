@@ -49,7 +49,7 @@ export async function updateCourse(id: string, input: z.infer<typeof updateCours
 }
 
 export async function listCourses(p: PageParams, filters: { programmeId?: string } = {}) {
-  const where: Prisma.CourseWhereInput = {};
+  const where: Prisma.CourseWhereInput = { deletedAt: null };
   if (p.search) {
     where.OR = [
       { code: { contains: p.search, mode: "insensitive" } },
@@ -69,7 +69,34 @@ export async function listCourses(p: PageParams, filters: { programmeId?: string
     }),
     prisma.course.count({ where }),
   ]);
-  return paginated(items, total, p);
+
+  // Làm giàu: tên người tạo + đã trích xuất từ đề cương (có Document syllabus gắn courseId).
+  const creatorIds = [...new Set(items.map((c) => c.createdBy).filter((v): v is string => !!v))];
+  const courseIds = items.map((c) => c.id);
+  const [users, syllabusDocs] = await Promise.all([
+    creatorIds.length ? prisma.user.findMany({ where: { id: { in: creatorIds } }, select: { id: true, fullName: true } }) : [],
+    courseIds.length ? prisma.document.groupBy({ by: ["courseId"], where: { courseId: { in: courseIds }, category: "syllabus", deletedAt: null }, _count: { _all: true } }) : [],
+  ]);
+  const nameById = new Map(users.map((u) => [u.id, u.fullName]));
+  const withSyllabus = new Set(syllabusDocs.map((d) => d.courseId as string));
+  const enriched = items.map((c) => ({
+    ...c,
+    createdByName: c.createdBy ? nameById.get(c.createdBy) ?? null : null,
+    cloCount: c.clos.length,
+    hasSyllabus: withSyllabus.has(c.id),
+    extracted: c.clos.length > 0 || withSyllabus.has(c.id),
+  }));
+  return paginated(enriched, total, p);
+}
+
+/** Xóa mềm nhiều học phần cùng lúc (quản lý kho). */
+export async function deleteCoursesBulk(ids: string[]) {
+  const ctx = requireTenantContext();
+  const uniq = [...new Set(ids.filter(Boolean))];
+  if (uniq.length === 0) return { deleted: 0 };
+  const r = await prisma.course.updateMany({ where: { id: { in: uniq }, deletedAt: null }, data: softDeleteData(ctx.actorId) });
+  await writeAudit({ action: "course.bulk_delete", entity: "Course", meta: { deleted: r.count } });
+  return { deleted: r.count };
 }
 
 export async function createCourse(input: z.infer<typeof createCourseSchema>) {

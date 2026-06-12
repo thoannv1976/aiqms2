@@ -5,6 +5,7 @@ import { runWithTenant } from "@/lib/tenant/context";
 import {
   addClo,
   createCourse,
+  deleteCoursesBulk,
   listCourses,
   updateCourse,
 } from "@/lib/courses/service";
@@ -23,6 +24,28 @@ function asTenant<T>(tenantId: string, fn: () => Promise<T>) {
 describe("P3 — Chương trình đào tạo + OBE", () => {
   beforeEach(resetDb);
   afterAll(() => prisma.$disconnect());
+
+  it("listCourses làm giàu (cloCount/extracted/người tạo) + xóa nhiều học phần", async () => {
+    const t = await createTenantFixture("demo");
+    await asTenant(t.id, async () => {
+      const c1 = await createCourse({ code: "AINE100", name: "AI", credits: 3 });
+      const c2 = await createCourse({ code: "AINE110", name: "Python", credits: 3 });
+      await addClo(c1.id, { code: "CLO1", description: "x", order: 1 }); // c1 -> đã có CLO -> extracted
+
+      const p1 = await listCourses({ page: 1, pageSize: 20, skip: 0, take: 20 });
+      const r1 = p1.items.find((c) => c.id === c1.id)!;
+      const r2 = p1.items.find((c) => c.id === c2.id)!;
+      expect(r1.cloCount).toBe(1);
+      expect(r1.extracted).toBe(true);
+      expect(r2.extracted).toBe(false);
+      expect(r1.createdByName !== undefined).toBe(true);
+
+      const del = await deleteCoursesBulk([c1.id, c2.id]);
+      expect(del.deleted).toBe(2);
+      const p2 = await listCourses({ page: 1, pageSize: 20, skip: 0, take: 20 });
+      expect(p2.items.find((c) => c.id === c1.id || c.id === c2.id)).toBeUndefined();
+    });
+  });
 
   it("tạo CTĐT kèm phiên bản đầu; vòng đời trạng thái", async () => {
     const t = await createTenantFixture("demo");
