@@ -22,9 +22,10 @@ export function DocxImportButton({ onDone }: { onDone?: () => void }) {
   const [data, setData] = useState<Extracted | null>(null);
   const [source, setSource] = useState<"ai" | "rule" | null>(null);
   const [result, setResult] = useState<ApplyResult | null>(null);
+  const [docId, setDocId] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  function reset() { setData(null); setSource(null); setResult(null); setErr(null); }
+  function reset() { setData(null); setSource(null); setResult(null); setErr(null); setDocId(null); }
 
   async function extract() {
     const file = fileRef.current?.files?.[0];
@@ -36,6 +37,7 @@ export function DocxImportButton({ onDone }: { onDone?: () => void }) {
       const r = await apiUpload<ExtractResp>("/api/import/programmes/docx", form);
       setData(r?.extracted ?? null);
       setSource(r?.source ?? null);
+      setDocId(r?.documentId ?? null);
     } catch (e) {
       setErr(e instanceof ApiClientError ? e.message : "Lỗi trích xuất file");
     } finally { setBusy(false); }
@@ -45,7 +47,7 @@ export function DocxImportButton({ onDone }: { onDone?: () => void }) {
     if (!data) return;
     setBusy(true); setErr(null);
     try {
-      const r = await api.post<ApplyResult>("/api/import/programmes/docx/apply", data);
+      const r = await api.post<ApplyResult>("/api/import/programmes/docx/apply", { ...data, documentId: docId ?? undefined });
       setResult(r);
       onDone?.();
     } catch (e) {

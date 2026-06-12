@@ -53,6 +53,7 @@ export const extractedProgrammeSchema = z.object({
   peos: z.array(z.object({ code: z.string(), description: z.string().default("") })).default([]),
   plos: z.array(z.object({ code: z.string(), description: z.string().default("") })).default([]),
   courses: z.array(z.object({ code: z.string(), name: z.string().default(""), credits: num })).default([]),
+  documentId: z.string().optional(), // file gốc đã lưu ở bước trích xuất → gắn vào CTĐT khi apply
 });
 export type ExtractedProgramme = z.infer<typeof extractedProgrammeSchema>;
 
@@ -240,11 +241,17 @@ export async function applyExtractedProgramme(input: ExtractedProgramme): Promis
     if (!c.code) continue;
     const existing = await prisma.course.findFirst({ where: { code: c.code, deletedAt: null } });
     if (existing) {
-      if (c.name) await prisma.course.update({ where: { id: existing.id }, data: { name: c.name, updatedBy: ctx.actorId } });
+      // Gắn học phần vào CTĐT (nếu chưa gán) + cập nhật tên.
+      await prisma.course.update({ where: { id: existing.id }, data: { name: c.name || existing.name, programmeId: existing.programmeId ?? prog.id, updatedBy: ctx.actorId } });
     } else {
-      await prisma.course.create({ data: withTenantId({ code: c.code, name: c.name || c.code, credits: c.credits ?? 3, createdBy: ctx.actorId }) });
+      await prisma.course.create({ data: withTenantId({ code: c.code, name: c.name || c.code, credits: c.credits ?? 3, programmeId: prog.id, createdBy: ctx.actorId }) });
       res.details.courses++;
     }
+  }
+
+  // Gắn FILE GỐC (đã lưu ở bước trích xuất) vào CTĐT để xem/đối chiếu sau.
+  if (data.documentId) {
+    await prisma.document.updateMany({ where: { id: data.documentId, deletedAt: null }, data: { programmeId: prog.id, updatedBy: ctx.actorId } });
   }
 
   await writeAudit({ action: "import.programme.docx", entity: "Programme", entityId: prog.id, meta: res.details });

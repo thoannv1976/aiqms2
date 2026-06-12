@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { api, ApiClientError } from "@/lib/api/client";
 import { PageHeader, StatusBadge, Spinner, ErrorBox } from "@/components/ui";
 import { Modal } from "@/components/Modal";
+import { ProgrammeOverviewPanel } from "@/components/ProgrammeOverviewPanel";
 
 interface Outcome { id: string; code: string; description: string }
 interface Version { id: string; version: string; status: string; year: number | null; peos: Outcome[]; plos: Outcome[] }
@@ -75,6 +76,8 @@ export default function ProgrammeDetailPage() {
               <Link className="btn-outline" href={`/matrices`}>Ma trận PLO‑CLO</Link>
             </div>
           </div>
+
+          <ProgrammeOverviewPanel programmeId={prog.id} versionId={version.id} />
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <OutcomePanel

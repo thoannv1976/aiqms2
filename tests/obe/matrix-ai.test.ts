@@ -4,7 +4,7 @@ import { createTenantFixture } from "../helpers/fixtures";
 import { runWithTenant } from "@/lib/tenant/context";
 import { createProgramme } from "@/lib/programmes/service";
 import { applyMatrixMappings } from "@/lib/obe/matrix";
-import { synthesizeMatrixFromDocs } from "@/lib/ai/features";
+import { synthesizeMatrixFromDocs, programmeExtractSummary, evaluateProgramme } from "@/lib/ai/features";
 import { updateSettings } from "@/lib/ai/settings";
 
 const asTenant = <T>(tenantId: string, fn: () => Promise<T>) =>
@@ -70,6 +70,22 @@ describe("AI tổng hợp ma trận PLO-CLO", () => {
       expect(res.errors.length).toBe(0);
       const m = await prisma.ploCourseMapping.findFirst({ where: { plo: { code: "PLO1" } } });
       expect(m?.level).toBe("M");
+    });
+  });
+
+  it("tổng quan trích xuất + AI đánh giá CTĐT (mock)", async () => {
+    const t = await createTenantFixture("demo");
+    const { versionId } = await seedProgramme(t.id);
+    await asTenant(t.id, async () => {
+      await updateSettings({ enabled: true });
+      const sum = await programmeExtractSummary(versionId);
+      expect(sum.counts.plo).toBe(3);
+      expect(sum.counts.peo).toBe(0);
+      expect(sum.programme?.code).toBe("SBI");
+
+      const review = await evaluateProgramme(versionId);
+      expect(typeof review).toBe("string");
+      expect(review.length).toBeGreaterThan(0);
     });
   });
 

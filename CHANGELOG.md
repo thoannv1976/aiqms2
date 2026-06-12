@@ -48,6 +48,15 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
   tệp, dung lượng, ngày upload, trạng thái đã-trích-xuất (✓ mã học phần), phiên bản, nơi lưu (GCS/tạm)**,
   kèm tóm tắt "X đã trích xuất · lưu trữ …". Test trên Postgres (`tests/documents/documents.test.ts`).
 
+## [Chi tiết CTĐT: xem file gốc + AI đánh giá + tổng quan trích xuất] — ✅ Done
+- **Tổng quan trích xuất** trên trang chi tiết CTĐT (`programmeExtractSummary`): thẻ đếm **PEO/PLO/PI/
+  Học phần/ô PLO×Học phần** + **danh sách tài liệu gốc CTĐT** (xem/tải/xóa) + nút tải lên thủ công.
+- **Xem file gốc CTĐT đã upload**: import Word nay **gắn file gốc vào CTĐT** (truyền `documentId` từ
+  bước trích xuất → apply), và **gắn học phần import vào CTĐT** (programmeId) để hiện đúng độ phủ.
+- **AI đánh giá CTĐT** (`evaluateProgramme`): nhận xét theo AUN-QA C1 (chất lượng PLO, liên kết PEO–PLO)
+  & C2 (cấu trúc/độ phủ). API `POST /api/ai/evaluate-programme`, `GET /api/programme-versions/[id]/summary`.
+  Test: `tests/obe/matrix-ai.test.ts`.
+
 ## [/programmes: chọn-xóa nhiều CTĐT + cột số liệu/ngày/người tạo] — ✅ Done
 - Màn hình **Chương trình đào tạo** (`/programmes`): thêm **checkbox chọn nhiều** + nút **🗑 Xóa N CTĐT
   đã chọn** (API `POST /api/programmes/bulk-delete`). Thêm cột **Học phần, PLO, Số hóa (✓ đã có HP/PLO),

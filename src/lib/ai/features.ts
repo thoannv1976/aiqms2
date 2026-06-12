@@ -352,6 +352,62 @@ export async function evaluateMatrices(programmeVersionId: string): Promise<stri
   return review;
 }
 
+/** Tổng quan dữ liệu đã TRÍCH XUẤT của một phiên bản CTĐT (PEO/PLO/PI/học phần/ma trận). */
+export async function programmeExtractSummary(programmeVersionId: string) {
+  const version = await prisma.programmeVersion.findFirst({
+    where: { id: programmeVersionId },
+    include: { programme: { select: { id: true, code: true, name: true } }, peos: { orderBy: { order: "asc" } }, plos: { orderBy: { order: "asc" } } },
+  });
+  if (!version) throw notFound("Phiên bản CTĐT không tồn tại");
+  const [courseCount, ploCourseCells, piCells, sourceDocs] = await Promise.all([
+    version.programme?.id ? prisma.course.count({ where: { programmeId: version.programme.id, deletedAt: null } }) : 0,
+    prisma.ploCourseMapping.count({ where: { plo: { programmeVersionId } } }),
+    prisma.ploMatrixCell.count({ where: { programmeVersionId, dimension: "pi" } }),
+    version.programme?.id ? prisma.document.findMany({
+      where: { programmeId: version.programme.id, deletedAt: null, isCurrent: true },
+      select: { id: true, title: true, fileName: true, category: true, size: true, createdAt: true },
+      orderBy: { createdAt: "desc" },
+    }) : [],
+  ]);
+  return {
+    programme: version.programme,
+    version: { id: version.id, version: version.version, status: version.status },
+    counts: { peo: version.peos.length, plo: version.plos.length, pi: piCells, courses: courseCount, ploCourseCells },
+    peos: version.peos.map((p) => ({ code: p.code, description: p.description })),
+    plos: version.plos.map((p) => ({ code: p.code, description: p.description })),
+    documents: sourceDocs,
+  };
+}
+
+/** AI ĐÁNH GIÁ CTĐT theo AUN-QA (C1 chuẩn đầu ra · C2 cấu trúc/độ phủ) — trả nhận xét + đề xuất. */
+export async function evaluateProgramme(programmeVersionId: string): Promise<string> {
+  const s = await programmeExtractSummary(programmeVersionId);
+  if (s.counts.plo === 0) throw badRequest("Phiên bản CTĐT chưa có PLO để đánh giá.");
+  const ploLines = s.plos.map((p) => `${p.code}: ${p.description}`).join("\n");
+  const peoLines = s.peos.map((p) => `${p.code}: ${p.description}`).join("\n") || "(chưa có PEO)";
+
+  const review = await aiComplete("evaluate_programme", [
+    {
+      role: "system",
+      content:
+        "Bạn là đánh giá viên AUN-QA. Đánh giá CHƯƠNG TRÌNH ĐÀO TẠO theo các tiêu chí: " +
+        "C1 — chuẩn đầu ra mong đợi (PLO rõ ràng, đo lường được, cân bằng chuyên môn/tổng quát, phản ánh bên liên quan, " +
+        "bao gồm cả kết quả tổng quát); liên kết PEO–PLO; C2 — cấu trúc & nội dung (độ phủ học phần, tính cập nhật). " +
+        "Nhận xét NGẮN GỌN theo gạch đầu dòng: điểm đạt, điểm cần cải thiện, và đề xuất cụ thể. Tiếng Việt học thuật.",
+    },
+    {
+      role: "user",
+      content:
+        `Chương trình: ${s.programme?.code} — ${s.programme?.name} (phiên bản ${s.version.version}).\n` +
+        `Số liệu: ${s.counts.peo} PEO, ${s.counts.plo} PLO, ${s.counts.courses} học phần, ` +
+        `${s.counts.ploCourseCells} ô PLO×Học phần, ${s.counts.pi} chỉ số PI.\n\n` +
+        `PEO:\n${peoLines}\n\nPLO:\n${ploLines}`,
+    },
+  ]);
+  await writeAudit({ action: "ai.evaluate_programme", entity: "ProgrammeVersion", entityId: programmeVersionId });
+  return review;
+}
+
 /**
  * AI NÂNG CẤP / GỢI Ý ô cho một ma trận PLO (peo|teaching|assessment|measurement) — dùng
  * DỮ LIỆU THẬT: PEO/PLO đã import + phương pháp dạy/đánh giá trong đề cương đã upload.
