@@ -6,7 +6,12 @@ import { Modal } from "@/components/Modal";
 import { ErrorBox } from "@/components/ui";
 
 interface Programme { id: string; code: string; name: string }
-interface Doc { id: string; title: string; fileName: string; createdAt: string }
+interface Doc {
+  id: string; title: string; fileName: string; createdAt: string;
+  size: number; version: number; extracted: boolean; courseCode: string | null; courseName: string | null;
+}
+interface RepoData { items: Doc[]; total: number; extractedCount: number; storage: { driver: string; durable: boolean } }
+const fmtSize = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
 interface Extracted {
   code: string; name: string; credits?: number; prerequisites?: string;
   clos: { code: string; description: string }[];
@@ -32,17 +37,20 @@ export function SyllabusManager({ onChanged }: { onChanged?: () => void }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [progress, setProgress] = useState<string | null>(null);
   const [durable, setDurable] = useState<boolean | null>(null);
+  const [extractedCount, setExtractedCount] = useState(0);
 
   const loadDocs = useCallback(async () => {
     try {
-      const q = `category=syllabus&pageSize=100${programmeId ? `&programmeId=${programmeId}` : ""}`;
-      setDocs((await api.get<{ items: Doc[] }>(`/api/documents?${q}`))?.items ?? []);
+      const q = programmeId ? `?programmeId=${programmeId}` : "";
+      const r = await api.get<RepoData>(`/api/documents/syllabus${q}`);
+      setDocs(r?.items ?? []);
+      setExtractedCount(r?.extractedCount ?? 0);
+      if (r?.storage) setDurable(r.storage.durable);
     } catch { /* bỏ qua */ }
   }, [programmeId]);
 
   useEffect(() => { if (open) api.get<{ items: Programme[] }>("/api/programmes?pageSize=100").then((d) => setProgrammes(d?.items ?? [])).catch(() => {}); }, [open]);
   useEffect(() => { if (open) loadDocs(); }, [open, loadDocs]);
-  useEffect(() => { if (open) api.get<{ durable: boolean }>("/api/storage/status").then((s) => setDurable(s?.durable ?? null)).catch(() => {}); }, [open]);
 
   async function upload() {
     const files = fileRef.current?.files;
@@ -93,7 +101,9 @@ export function SyllabusManager({ onChanged }: { onChanged?: () => void }) {
 
   async function remove(docId: string) {
     if (!confirm("Xóa đề cương này khỏi kho?")) return;
-    try { await api.delete(`/api/documents/${docId}`); await loadDocs(); } catch { /* bỏ qua */ }
+    setErr(null);
+    try { await api.delete(`/api/documents/${docId}`); setNote("Đã xóa đề cương."); await loadDocs(); }
+    catch (e) { setErr(e instanceof ApiClientError ? `Không xóa được: ${e.message}` : "Lỗi xóa đề cương"); }
   }
 
   function toggleSel(id: string) {
@@ -173,8 +183,11 @@ export function SyllabusManager({ onChanged }: { onChanged?: () => void }) {
             </div>
           ) : (
             <div>
-              <div className="mb-1 flex items-center justify-between">
-                <p className="text-sm font-medium text-slate-700">Đề cương đã upload ({docs.length})</p>
+              <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm font-medium text-slate-700">
+                  Đề cương đã upload ({docs.length}) · <span className="text-emerald-600">{extractedCount} đã trích xuất</span> ·
+                  <span className={durable ? "text-emerald-600" : "text-amber-600"}> lưu trữ: {durable ? "GCS (bền vững)" : "tạm (local)"}</span>
+                </p>
                 {docs.length > 0 && (
                   <div className="flex items-center gap-2">
                     <label className="flex items-center gap-1 text-xs text-slate-500">
@@ -188,23 +201,49 @@ export function SyllabusManager({ onChanged }: { onChanged?: () => void }) {
               </div>
               {progress && <p className="mb-1 text-xs text-indigo-600">{progress}</p>}
               {docs.length === 0 ? (
-                <p className="text-sm text-slate-400">Chưa có đề cương trong kho.</p>
+                <p className="text-sm text-slate-400">Chưa có đề cương trong kho cho chương trình này.</p>
               ) : (
-                <ul className="max-h-60 space-y-1 overflow-y-auto">
-                  {docs.map((d) => (
-                    <li key={d.id} className="flex items-center justify-between gap-2 rounded border border-slate-100 px-2 py-1.5 text-sm">
-                      <label className="flex min-w-0 flex-1 items-center gap-2">
-                        <input type="checkbox" checked={selected.has(d.id)} onChange={() => toggleSel(d.id)} />
-                        <span className="line-clamp-1 text-slate-700" title={d.fileName}>{d.title}</span>
-                      </label>
-                      <span className="flex shrink-0 gap-3 text-xs">
-                        <button className="text-indigo-600 hover:underline disabled:text-slate-300" disabled={busy} onClick={() => extract(d.id)}>Trích xuất</button>
-                        <a className="text-slate-500 hover:underline" href={authedUrl(`/api/documents/${d.id}/download`)}>Tải</a>
-                        <button className="text-rose-500 hover:underline" onClick={() => remove(d.id)}>Xóa</button>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+                <div className="max-h-72 overflow-auto rounded border border-slate-100">
+                  <table className="w-full text-sm">
+                    <thead className="sticky top-0 bg-slate-50 text-xs text-slate-500">
+                      <tr>
+                        <th className="th w-6"></th>
+                        <th className="th">Đề cương / Tệp</th>
+                        <th className="th">Dung lượng</th>
+                        <th className="th">Ngày upload</th>
+                        <th className="th">Trích xuất</th>
+                        <th className="th">PB</th>
+                        <th className="th"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {docs.map((d) => (
+                        <tr key={d.id} className="border-t border-slate-50 align-top hover:bg-slate-50/50">
+                          <td className="td"><input type="checkbox" checked={selected.has(d.id)} onChange={() => toggleSel(d.id)} /></td>
+                          <td className="td">
+                            <p className="line-clamp-1 font-medium text-slate-700" title={d.title}>{d.title}</p>
+                            <p className="line-clamp-1 text-xs text-slate-400" title={d.fileName}>{d.fileName}</p>
+                          </td>
+                          <td className="td whitespace-nowrap text-slate-500">{fmtSize(d.size)}</td>
+                          <td className="td whitespace-nowrap text-slate-500">{new Date(d.createdAt).toLocaleDateString("vi-VN")}</td>
+                          <td className="td">
+                            {d.extracted
+                              ? <span className="badge bg-emerald-100 text-emerald-700" title={d.courseName ?? ""}>✓ {d.courseCode}</span>
+                              : <span className="badge bg-slate-100 text-slate-400">Chưa</span>}
+                          </td>
+                          <td className="td text-center text-slate-400">v{d.version}</td>
+                          <td className="td">
+                            <span className="flex gap-2 text-xs">
+                              <button className="text-indigo-600 hover:underline disabled:text-slate-300" disabled={busy} onClick={() => extract(d.id)}>Trích xuất</button>
+                              <a className="text-slate-500 hover:underline" href={authedUrl(`/api/documents/${d.id}/download`)}>Tải</a>
+                              <button className="text-rose-500 hover:underline" onClick={() => remove(d.id)}>Xóa</button>
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
           )}

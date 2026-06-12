@@ -31,6 +31,15 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
   Cách khắc phục triệt để: chạy `scripts/setup-gcs.sh` để bật `STORAGE_DRIVER=s3` (GCS). Test:
   `tests/storage/storage-status.test.ts`.
 
+## [Kho đề cương: sửa Xóa + giao diện quản lý giàu thông tin] — ✅ Done
+- **Sửa lỗi Xóa không hoạt động**: route xóa tài liệu trước chỉ chấp nhận `data.delete` (qa_office/ban CN
+  KHÔNG có) → nay cho phép **`DATA_DELETE` hoặc `DATA_UPDATE`** (hoặc xóa file do chính mình nộp). Nút
+  Xóa cũng **hiện lỗi rõ** thay vì im lặng.
+- **Lưu & lọc theo chương trình**: kho đề cương lọc theo CTĐT đang chọn (upload gắn `programmeId`).
+- **Giao diện quản lý mới** (`listSyllabusRepo` + `/api/documents/syllabus`): bảng hiển thị **tên đề cương /
+  tệp, dung lượng, ngày upload, trạng thái đã-trích-xuất (✓ mã học phần), phiên bản, nơi lưu (GCS/tạm)**,
+  kèm tóm tắt "X đã trích xuất · lưu trữ …". Test trên Postgres (`tests/documents/documents.test.ts`).
+
 ## [Sửa: giảng viên không nộp được minh chứng (Thiếu quyền data.create)] — ✅ Done
 - **Nguyên nhân**: endpoint nộp tài liệu (`POST /api/documents`) yêu cầu `data.create`, nhưng vai trò
   **lecturer** chỉ có `evidence.upload` (+ `data.update`) → giảng viên nộp minh chứng cho công việc

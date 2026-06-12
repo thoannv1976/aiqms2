@@ -2,7 +2,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { prisma, resetDb } from "../helpers/db";
 import { createTenantFixture } from "../helpers/fixtures";
 import { runWithTenant } from "@/lib/tenant/context";
-import { createDocument, downloadDocument, listDocumentVersions, listDocuments, promoteDocumentToEvidence, uploadNewVersion } from "@/lib/documents/service";
+import { createDocument, downloadDocument, listDocumentVersions, listDocuments, listSyllabusRepo, promoteDocumentToEvidence, uploadNewVersion } from "@/lib/documents/service";
 import { fileCountByTask } from "@/lib/tasks/service";
 
 const asTenant = <T>(tenantId: string, fn: () => Promise<T>) =>
@@ -94,6 +94,26 @@ describe("Kho tài liệu (upload/lưu trữ/quản lý)", () => {
       expect(history[0].version).toBe(3);
       expect(history.filter((h) => h.isCurrent)).toHaveLength(1);
       expect(history.find((h) => h.isCurrent)?.id).toBe(v3.id);
+    });
+  });
+
+  it("kho đề cương theo CTĐT: lọc theo programmeId + cờ đã-trích-xuất + nơi lưu", async () => {
+    const t = await createTenantFixture("demo");
+    await asTenant(t.id, async () => {
+      const course = await prisma.course.create({ data: { tenantId: t.id, code: "TMAE306", name: "TMĐT", credits: 3 } });
+      // 1 đề cương đã trích xuất (gắn courseId) + 1 chưa, cùng CTĐT "P1".
+      await createDocument({ title: "ĐC TMAE306", category: "syllabus", programmeId: "P1", courseId: course.id }, { fileName: "a.docx", body: Buffer.from("x".repeat(2048)) });
+      await createDocument({ title: "ĐC chưa xử lý", category: "syllabus", programmeId: "P1" }, { fileName: "b.docx", body: Buffer.from("y") });
+      // 1 đề cương CTĐT khác -> không lọt khi lọc P1.
+      await createDocument({ title: "ĐC P2", category: "syllabus", programmeId: "P2" }, { fileName: "c.docx", body: Buffer.from("z") });
+
+      const repo = await listSyllabusRepo("P1");
+      expect(repo.total).toBe(2);
+      expect(repo.extractedCount).toBe(1);
+      const ex = repo.items.find((i) => i.extracted)!;
+      expect(ex.courseCode).toBe("TMAE306");
+      expect(ex.size).toBeGreaterThan(0);
+      expect(repo.storage.driver).toBe("local");
     });
   });
 

@@ -5,7 +5,7 @@ import { requireTenantContext } from "@/lib/tenant/context";
 import { withTenantId } from "@/lib/prisma/tenant-create";
 import { writeAudit } from "@/lib/audit/log";
 import { softDeleteData } from "@/lib/prisma/soft-delete";
-import { getStorage, safePut, storageMissingError, tenantKey } from "@/lib/storage";
+import { getStorage, safePut, storageMissingError, storageStatus, tenantKey } from "@/lib/storage";
 import { badRequest, notFound } from "@/lib/http/responses";
 import { paginated, type PageParams } from "@/lib/http/pagination";
 import { addFile, createEvidence } from "@/lib/evidence/service";
@@ -84,6 +84,38 @@ export async function listDocuments(
     prisma.document.count({ where }),
   ]);
   return paginated(items, total, p);
+}
+
+/**
+ * Kho ĐỀ CƯƠNG (category=syllabus) giàu thông tin để quản lý & kiểm định AUN-QA:
+ * mã học phần đã trích xuất (courseId), dung lượng, ngày upload, phiên bản, nơi lưu (bền vững?).
+ */
+export async function listSyllabusRepo(programmeId?: string) {
+  const where: Prisma.DocumentWhereInput = { category: "syllabus", deletedAt: null, isCurrent: true };
+  if (programmeId) where.programmeId = programmeId;
+  const docs = await prisma.document.findMany({ where, orderBy: { createdAt: "desc" }, take: 500 });
+
+  const courseIds = [...new Set(docs.map((d) => d.courseId).filter((v): v is string => !!v))];
+  const courses = courseIds.length
+    ? await prisma.course.findMany({ where: { id: { in: courseIds } }, select: { id: true, code: true, name: true } })
+    : [];
+  const courseById = new Map(courses.map((c) => [c.id, c]));
+
+  const items = docs.map((d) => {
+    const course = d.courseId ? courseById.get(d.courseId) ?? null : null;
+    return {
+      id: d.id, title: d.title, fileName: d.fileName, size: d.size,
+      contentType: d.contentType, createdAt: d.createdAt, version: d.version,
+      programmeId: d.programmeId, note: d.note,
+      extracted: !!course, courseCode: course?.code ?? null, courseName: course?.name ?? null,
+    };
+  });
+  return {
+    items,
+    total: items.length,
+    extractedCount: items.filter((i) => i.extracted).length,
+    storage: storageStatus(),
+  };
 }
 
 export async function getDocument(id: string) {
