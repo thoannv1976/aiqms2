@@ -118,6 +118,29 @@ export async function listSyllabusRepo(programmeId?: string) {
   };
 }
 
+/**
+ * Dọn các đề cương "mồ côi" (bản ghi còn nhưng FILE ĐÃ MẤT khỏi kho — vd /tmp Cloud Run bị xóa).
+ * Kiểm tra từng file bằng storage.exists; file không còn → xóa mềm để danh sách chỉ hiện đề cương
+ * thực sự còn lưu trữ. Trả về số đã kiểm tra / số đã dọn.
+ */
+export async function cleanupMissingSyllabi(programmeId?: string) {
+  const ctx = requireTenantContext();
+  const where: Prisma.DocumentWhereInput = { category: "syllabus", deletedAt: null, isCurrent: true };
+  if (programmeId) where.programmeId = programmeId;
+  const docs = await prisma.document.findMany({ where, select: { id: true, storageKey: true, title: true } });
+  const storage = getStorage();
+  const removed: string[] = [];
+  for (const d of docs) {
+    const exists = await storage.exists(d.storageKey).catch(() => false);
+    if (!exists) {
+      await prisma.document.update({ where: { id: d.id }, data: softDeleteData(ctx.actorId) });
+      removed.push(d.title);
+    }
+  }
+  await writeAudit({ action: "document.cleanup_missing", entity: "Document", meta: { checked: docs.length, removed: removed.length } });
+  return { checked: docs.length, removed: removed.length };
+}
+
 export async function getDocument(id: string) {
   const doc = await prisma.document.findFirst({ where: { id } });
   if (!doc) throw notFound("Tài liệu không tồn tại");

@@ -2,7 +2,8 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { prisma, resetDb } from "../helpers/db";
 import { createTenantFixture } from "../helpers/fixtures";
 import { runWithTenant } from "@/lib/tenant/context";
-import { createDocument, downloadDocument, listDocumentVersions, listDocuments, listSyllabusRepo, promoteDocumentToEvidence, uploadNewVersion } from "@/lib/documents/service";
+import { cleanupMissingSyllabi, createDocument, downloadDocument, listDocumentVersions, listDocuments, listSyllabusRepo, promoteDocumentToEvidence, uploadNewVersion } from "@/lib/documents/service";
+import { getStorage } from "@/lib/storage";
 import { fileCountByTask } from "@/lib/tasks/service";
 
 const asTenant = <T>(tenantId: string, fn: () => Promise<T>) =>
@@ -114,6 +115,24 @@ describe("Kho tài liệu (upload/lưu trữ/quản lý)", () => {
       expect(ex.courseCode).toBe("TMAE306");
       expect(ex.size).toBeGreaterThan(0);
       expect(repo.storage.driver).toBe("local");
+    });
+  });
+
+  it("dọn đề cương mất file: xóa bản ghi mồ côi, giữ đề cương còn lưu trữ", async () => {
+    const t = await createTenantFixture("demo");
+    await asTenant(t.id, async () => {
+      const keep = await createDocument({ title: "Còn file", category: "syllabus", programmeId: "P1" }, { fileName: "k.docx", body: Buffer.from("x") });
+      const lost = await createDocument({ title: "Mất file", category: "syllabus", programmeId: "P1" }, { fileName: "l.docx", body: Buffer.from("y") });
+      // Mô phỏng file của "lost" bị xóa khỏi kho (như /tmp Cloud Run bị dọn).
+      await getStorage().delete(lost.storageKey);
+
+      const r = await cleanupMissingSyllabi("P1");
+      expect(r.checked).toBe(2);
+      expect(r.removed).toBe(1);
+
+      const repo = await listSyllabusRepo("P1");
+      expect(repo.total).toBe(1);
+      expect(repo.items[0].id).toBe(keep.id);
     });
   });
 

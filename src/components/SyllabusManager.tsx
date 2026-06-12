@@ -106,6 +106,18 @@ export function SyllabusManager({ onChanged }: { onChanged?: () => void }) {
     catch (e) { setErr(e instanceof ApiClientError ? `Không xóa được: ${e.message}` : "Lỗi xóa đề cương"); }
   }
 
+  async function cleanupMissing() {
+    if (!confirm("Quét và dọn các đề cương đã MẤT FILE (bản ghi mồ côi) khỏi danh sách?")) return;
+    setBusy(true); setErr(null); setNote("Đang kiểm tra file trong kho…");
+    try {
+      const r = await api.post<{ checked: number; removed: number }>(`/api/documents/syllabus/cleanup${programmeId ? `?programmeId=${programmeId}` : ""}`, {});
+      setNote(`Đã kiểm tra ${r?.checked ?? 0} đề cương · dọn ${r?.removed ?? 0} bản đã mất file.`);
+      await loadDocs();
+    } catch (e) {
+      setErr(e instanceof ApiClientError ? e.message : "Lỗi dọn kho");
+    } finally { setBusy(false); }
+  }
+
   function toggleSel(id: string) {
     setSelected((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   }
@@ -188,16 +200,20 @@ export function SyllabusManager({ onChanged }: { onChanged?: () => void }) {
                   Đề cương đã upload ({docs.length}) · <span className="text-emerald-600">{extractedCount} đã trích xuất</span> ·
                   <span className={durable ? "text-emerald-600" : "text-amber-600"}> lưu trữ: {durable ? "GCS (bền vững)" : "tạm (local)"}</span>
                 </p>
-                {docs.length > 0 && (
-                  <div className="flex items-center gap-2">
-                    <label className="flex items-center gap-1 text-xs text-slate-500">
-                      <input type="checkbox" checked={selected.size === docs.length && docs.length > 0} onChange={toggleAll} /> Chọn tất cả
-                    </label>
-                    <button className="btn-primary h-8 py-0 text-xs disabled:opacity-50" disabled={busy || selected.size === 0} onClick={bulkExtract}>
-                      Trích xuất & ghi đã chọn ({selected.size})
-                    </button>
-                  </div>
-                )}
+                <div className="flex flex-wrap items-center gap-2">
+                  <button className="btn-outline h-8 py-0 text-xs" disabled={busy} onClick={loadDocs} title="Tải lại danh sách mới nhất">🔄 Làm mới</button>
+                  <button className="btn-outline h-8 py-0 text-xs" disabled={busy} onClick={cleanupMissing} title="Xóa khỏi danh sách những đề cương đã mất file">🧹 Dọn file đã mất</button>
+                  {docs.length > 0 && (
+                    <>
+                      <label className="flex items-center gap-1 text-xs text-slate-500">
+                        <input type="checkbox" checked={selected.size === docs.length && docs.length > 0} onChange={toggleAll} /> Chọn tất cả
+                      </label>
+                      <button className="btn-primary h-8 py-0 text-xs disabled:opacity-50" disabled={busy || selected.size === 0} onClick={bulkExtract}>
+                        Trích xuất & ghi đã chọn ({selected.size})
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
               {progress && <p className="mb-1 text-xs text-indigo-600">{progress}</p>}
               {docs.length === 0 ? (

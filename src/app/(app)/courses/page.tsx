@@ -34,6 +34,13 @@ export default function CoursesPage() {
   useEffect(() => { load(page, progFilter); }, [page, progFilter, load]);
   useEffect(() => { api.get<{ items: Programme[] }>("/api/programmes?pageSize=100").then((d) => setProgrammes(d?.items ?? [])).catch(() => {}); }, []);
 
+  async function removeCourse(c: Course) {
+    if (!confirm(`Xóa học phần ${c.code} — ${c.name}? (xóa mềm, có thể khôi phục)`)) return;
+    setError(null);
+    try { await api.delete(`/api/courses/${c.id}`); await load(page, progFilter); }
+    catch (e) { setError(e instanceof ApiClientError ? `Không xóa được: ${e.message}` : "Lỗi xóa học phần"); }
+  }
+
   const columns: Column<Course>[] = [
     { header: "Mã", cell: (r) => <span className="font-mono text-xs">{r.code}</span> },
     { header: "Tên học phần", cell: (r) => <Link href={`/courses/${r.id}`} className="font-medium text-indigo-600 hover:underline">{r.name}</Link> },
@@ -45,6 +52,7 @@ export default function CoursesPage() {
     },
     { header: "Tín chỉ", cell: (r) => r.credits },
     { header: "CLO", cell: (r) => r.clos.length },
+    { header: "", cell: (r) => <button className="text-rose-500 hover:underline" onClick={() => removeCourse(r)}>Xóa</button> },
   ];
 
   return (

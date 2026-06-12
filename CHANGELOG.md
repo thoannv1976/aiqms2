@@ -31,6 +31,14 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
   Cách khắc phục triệt để: chạy `scripts/setup-gcs.sh` để bật `STORAGE_DRIVER=s3` (GCS). Test:
   `tests/storage/storage-status.test.ts`.
 
+## [Kho đề cương: làm mới, dọn file đã mất, xóa học phần ở /courses] — ✅ Done
+- **Làm mới** kho đề cương (tải lại danh sách mới nhất) + **🧹 Dọn file đã mất** (`cleanupMissingSyllabi`):
+  quét từng đề cương bằng `storage.exists`, **xóa mềm bản ghi mồ côi** (file đã mất ở /tmp Cloud Run) →
+  danh sách chỉ còn đề cương thực sự đang lưu trữ. API `POST /api/documents/syllabus/cleanup`.
+- **Xóa học phần ngay ở màn hình Đề cương học phần** (`/courses`): thêm cột "Xóa" mỗi dòng. Sửa quyền
+  xóa học phần: chấp nhận **`DATA_DELETE` hoặc `DATA_UPDATE`** (qa_office/ban CN xóa được). Test:
+  `tests/documents/documents.test.ts`.
+
 ## [Kho đề cương: sửa Xóa + giao diện quản lý giàu thông tin] — ✅ Done
 - **Sửa lỗi Xóa không hoạt động**: route xóa tài liệu trước chỉ chấp nhận `data.delete` (qa_office/ban CN
   KHÔNG có) → nay cho phép **`DATA_DELETE` hoặc `DATA_UPDATE`** (hoặc xóa file do chính mình nộp). Nút
