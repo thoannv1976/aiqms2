@@ -13,7 +13,7 @@ const CAT_VI: Record<string, string> = { ctdt_source: "CTĐT gốc", syllabus: "
 const fmtSize = (n: number) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
 
 /** Tổng quan trích xuất CTĐT + tài liệu gốc + AI đánh giá (trên trang chi tiết CTĐT). */
-export function ProgrammeOverviewPanel({ programmeId, versionId }: { programmeId: string; versionId: string }) {
+export function ProgrammeOverviewPanel({ programmeId, versionId, onChanged }: { programmeId: string; versionId: string; onChanged?: () => void }) {
   const [sum, setSum] = useState<Summary | null>(null);
   const [review, setReview] = useState<string | null>(null);
   const [draftId, setDraftId] = useState<string | null>(null);
@@ -21,6 +21,7 @@ export function ProgrammeOverviewPanel({ programmeId, versionId }: { programmeId
   const [sarId, setSarId] = useState("");
   const [critCode, setCritCode] = useState("C1");
   const [field, setField] = useState("analysis");
+  const [upgrade, setUpgrade] = useState<{ peos: { code: string; description: string }[]; plos: { code: string; description: string }[]; notes?: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -66,6 +67,26 @@ export function ProgrammeOverviewPanel({ programmeId, versionId }: { programmeId
     finally { setBusy(false); }
   }
 
+  async function aiUpgrade() {
+    setBusy(true); setErr(null); setUpgrade(null); setNote("🚀 AI đang đề xuất nâng cấp PEO/PLO…");
+    try {
+      const r = await api.post<{ peos: { code: string; description: string }[]; plos: { code: string; description: string }[]; notes?: string }>(`/api/ai/upgrade-programme?versionId=${versionId}`, {});
+      setUpgrade(r ?? null);
+      setNote("Bản nháp nâng cấp — xem lại rồi “Áp dụng” để ghi PEO/PLO vào CTĐT.");
+    } catch (e) { setNote(null); setErr(e instanceof ApiClientError ? `Lỗi AI: ${e.message}` : "Lỗi AI nâng cấp"); }
+    finally { setBusy(false); }
+  }
+  async function applyUpgrade() {
+    if (!upgrade) return;
+    setBusy(true); setErr(null);
+    try {
+      const r = await api.post<{ peos: number; plos: number }>("/api/ai/upgrade-programme/apply", { versionId, peos: upgrade.peos, plos: upgrade.plos });
+      setNote(`✅ Đã ghi ${r?.peos ?? 0} PEO và ${r?.plos ?? 0} PLO vào CTĐT.`);
+      setUpgrade(null); await load(); onChanged?.();
+    } catch (e) { setErr(e instanceof ApiClientError ? e.message : "Lỗi áp dụng nâng cấp"); }
+    finally { setBusy(false); }
+  }
+
   async function applyToSar() {
     if (!draftId) return;
     if (!sarId) { setErr("Hãy chọn một SAR để ghi nhận xét vào."); return; }
@@ -83,8 +104,30 @@ export function ProgrammeOverviewPanel({ programmeId, versionId }: { programmeId
     <div className="card p-5">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-semibold text-slate-700">Tổng quan trích xuất & tài liệu CTĐT</h3>
-        <button className="btn-outline" disabled={busy} onClick={evaluate}>✨ AI đánh giá CTĐT</button>
+        <div className="flex gap-2">
+          <button className="btn-outline" disabled={busy} onClick={evaluate}>✨ AI đánh giá CTĐT</button>
+          <button className="btn-outline" disabled={busy} onClick={aiUpgrade}>🚀 AI nâng cấp CTĐT</button>
+        </div>
       </div>
+
+      {upgrade && (
+        <div className="mb-4 rounded-lg border border-emerald-100 bg-emerald-50/40 p-3">
+          <p className="mb-1 text-xs font-semibold text-emerald-700">Bản nháp nâng cấp PEO/PLO ({upgrade.peos.length} PEO · {upgrade.plos.length} PLO)</p>
+          {upgrade.notes && <p className="mb-2 text-xs italic text-slate-500">{upgrade.notes}</p>}
+          <div className="grid max-h-56 grid-cols-1 gap-3 overflow-y-auto sm:grid-cols-2">
+            <ul className="space-y-1 text-xs text-slate-600">
+              {upgrade.peos.map((p, i) => <li key={i}><b>{p.code}</b>: {p.description}</li>)}
+            </ul>
+            <ul className="space-y-1 text-xs text-slate-600">
+              {upgrade.plos.map((p, i) => <li key={i}><b>{p.code}</b>: {p.description}</li>)}
+            </ul>
+          </div>
+          <div className="mt-3 flex gap-2 border-t border-emerald-100 pt-2">
+            <button className="btn-primary h-9 py-0" disabled={busy} onClick={applyUpgrade}>Áp dụng vào CTĐT</button>
+            <button className="btn-outline h-9 py-0" disabled={busy} onClick={() => setUpgrade(null)}>Bỏ</button>
+          </div>
+        </div>
+      )}
       {err && <p className="mb-2 text-sm text-rose-600">{err}</p>}
       {note && <p className="mb-2 text-sm text-amber-600">{note}</p>}
 

@@ -7,6 +7,7 @@ import { api, ApiClientError } from "@/lib/api/client";
 import { PageHeader, StatusBadge, Spinner, ErrorBox } from "@/components/ui";
 import { Modal } from "@/components/Modal";
 import { ProgrammeOverviewPanel } from "@/components/ProgrammeOverviewPanel";
+import { DocxImportButton } from "@/components/DocxImportButton";
 
 interface Outcome { id: string; code: string; description: string }
 interface Version { id: string; version: string; status: string; year: number | null; peos: Outcome[]; plos: Outcome[] }
@@ -51,7 +52,12 @@ export default function ProgrammeDetailPage() {
       <PageHeader
         title={`${prog.code} · ${prog.name}`}
         subtitle={`${prog.level}${prog.totalCredits ? ` · ${prog.totalCredits} tín chỉ` : ""}`}
-        action={<button className="btn-primary" onClick={() => setOpenVer(true)}>+ Tạo phiên bản</button>}
+        action={
+          <div className="flex items-center gap-2">
+            <DocxImportButton onDone={load} />
+            <button className="btn-primary" onClick={() => setOpenVer(true)}>+ Tạo phiên bản</button>
+          </div>
+        }
       />
 
       {/* Chọn phiên bản */}
@@ -77,7 +83,7 @@ export default function ProgrammeDetailPage() {
             </div>
           </div>
 
-          <ProgrammeOverviewPanel programmeId={prog.id} versionId={version.id} />
+          <ProgrammeOverviewPanel programmeId={prog.id} versionId={version.id} onChanged={load} />
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <OutcomePanel

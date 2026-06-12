@@ -48,6 +48,14 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
   tệp, dung lượng, ngày upload, trạng thái đã-trích-xuất (✓ mã học phần), phiên bản, nơi lưu (GCS/tạm)**,
   kèm tóm tắt "X đã trích xuất · lưu trữ …". Test trên Postgres (`tests/documents/documents.test.ts`).
 
+## [AI nâng cấp CTĐT + import ngay trên trang chi tiết] — ✅ Done
+- **AI nâng cấp CTĐT** (`suggestProgrammeUpgrade` + `applyProgrammeUpgrade`): AI đề xuất bộ **PEO/PLO
+  hoàn thiện theo AUN-QA** (rõ ràng, đo lường được, cân bằng, phản ánh bên liên quan) — human-in-the-loop,
+  xem trước rồi **Áp dụng (upsert theo mã)** vào phiên bản. Nút "🚀 AI nâng cấp CTĐT" trong panel.
+  MockProvider trả PEO/PLO mẫu để demo chạy không cần key. API `POST /api/ai/upgrade-programme(/apply)`.
+- **Import CTĐT ngay trên trang chi tiết**: thêm nút "Import Word (CTĐT)" (upload + trích xuất AI) ở
+  header trang chi tiết CTĐT. Test: `tests/obe/matrix-ai.test.ts`.
+
 ## [AI đánh giá CTĐT: bản nháp human-in-the-loop → duyệt vào SAR C1/C2] — ✅ Done
 - `evaluateProgramme` nay **lưu BẢN NHÁP** (AiGeneratedDraft, status=draft) thay vì chỉ hiển thị tạm,
   trả `draftId`. Panel chi tiết CTĐT hiển thị nháp + form **chọn SAR · tiêu chí (C1/C2) · mục (Phân tích/

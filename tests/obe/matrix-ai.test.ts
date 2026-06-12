@@ -4,7 +4,7 @@ import { createTenantFixture } from "../helpers/fixtures";
 import { runWithTenant } from "@/lib/tenant/context";
 import { createProgramme } from "@/lib/programmes/service";
 import { applyMatrixMappings } from "@/lib/obe/matrix";
-import { synthesizeMatrixFromDocs, programmeExtractSummary, evaluateProgramme } from "@/lib/ai/features";
+import { synthesizeMatrixFromDocs, programmeExtractSummary, evaluateProgramme, suggestProgrammeUpgrade, applyProgrammeUpgrade } from "@/lib/ai/features";
 import { updateSettings } from "@/lib/ai/settings";
 
 const asTenant = <T>(tenantId: string, fn: () => Promise<T>) =>
@@ -91,6 +91,24 @@ describe("AI tổng hợp ma trận PLO-CLO", () => {
       const draft = await prisma.aiGeneratedDraft.findFirstOrThrow({ where: { id: r.draftId } });
       expect(draft.status).toBe("draft");
       expect(draft.module).toBe("evaluate_programme");
+    });
+  });
+
+  it("AI nâng cấp CTĐT (mock): đề xuất PEO/PLO -> áp dụng upsert vào phiên bản", async () => {
+    const t = await createTenantFixture("demo");
+    const { versionId } = await seedProgramme(t.id);
+    await asTenant(t.id, async () => {
+      await updateSettings({ enabled: true });
+      const draft = await suggestProgrammeUpgrade(versionId);
+      expect(draft.plos.length).toBeGreaterThan(0);
+      expect(draft.peos.length).toBeGreaterThan(0);
+
+      const res = await applyProgrammeUpgrade(versionId, { peos: draft.peos, plos: draft.plos });
+      expect(res.peos).toBe(draft.peos.length);
+      expect(res.plos).toBe(draft.plos.length);
+      // PEO mới được tạo; PLO trùng mã được cập nhật (seed có PLO1..3).
+      const peoCount = await prisma.programmeObjective.count({ where: { programmeVersionId: versionId } });
+      expect(peoCount).toBe(draft.peos.length);
     });
   });
 

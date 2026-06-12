@@ -28,6 +28,20 @@ export class MockProvider implements LlmProvider {
         kpis: [
           { name: "[AI-nháp] Tỷ lệ hoàn thành hành động cải tiến", unit: "%", target: 100 },
         ],
+        // Nâng cấp CTĐT (đề xuất PEO/PLO mẫu) — chỉ dùng khi prompt là yêu cầu nâng cấp.
+        ...(/upgrade_programme|PEO1|PLO1/.test(user) ? {
+          peos: [
+            { code: "PEO1", description: "[AI-nháp] Vận dụng kiến thức nền tảng và chuyên ngành để giải quyết vấn đề thực tiễn." },
+            { code: "PEO2", description: "[AI-nháp] Phát triển nghề nghiệp, học tập suốt đời và thích ứng môi trường số." },
+          ],
+          plos: [
+            { code: "PLO1", description: "[AI-nháp] Áp dụng kiến thức cơ sở ngành để phân tích và giải quyết vấn đề chuyên môn." },
+            { code: "PLO2", description: "[AI-nháp] Thiết kế và triển khai giải pháp đáp ứng yêu cầu thực tế." },
+            { code: "PLO3", description: "[AI-nháp] Làm việc nhóm và giao tiếp hiệu quả bằng tiếng Việt và tiếng Anh chuyên ngành." },
+            { code: "PLO4", description: "[AI-nháp] Thể hiện đạo đức nghề nghiệp, trách nhiệm xã hội và năng lực số." },
+          ],
+          notes: "[AI-nháp] Bộ PEO/PLO mẫu — hãy chỉnh sửa cho phù hợp ngành.",
+        } : {}),
         // Kế hoạch đợt tự đánh giá: chỉ sinh khi prompt là yêu cầu lập kế hoạch
         // (đặc trưng bởi khóa "dueOffsetDays"). Trích mã tiêu chí C1..Cn từ prompt.
         tasks: /dueOffsetDays/.test(user) ? buildPlanTasks(user) : [],

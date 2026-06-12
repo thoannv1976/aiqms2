@@ -437,6 +437,73 @@ export async function applyProgrammeEvalToSar(
   return { sarId, criterionCode, field, responseId: resp.id };
 }
 
+// ─── AI NÂNG CẤP CTĐT (đề xuất PEO/PLO chuẩn AUN-QA) ────────────────────────
+const upgradeItem = z.object({ code: z.string(), description: z.string().default("") }).catch({ code: "", description: "" });
+const programmeUpgradeSchema = z.object({
+  peos: z.array(upgradeItem).max(12).default([]),
+  plos: z.array(upgradeItem).max(20).default([]),
+  notes: z.string().optional(),
+});
+export type ProgrammeUpgradeDraft = z.infer<typeof programmeUpgradeSchema>;
+
+/**
+ * AI NÂNG CẤP CTĐT: đề xuất bộ PEO/PLO hoàn thiện theo chuẩn AUN-QA (rõ ràng, đo lường được,
+ * cân bằng chuyên môn/tổng quát, phản ánh bên liên quan). GIỮ mã hiện có, bổ sung/cải thiện mô tả.
+ * Human-in-the-loop: chỉ TRẢ BẢN NHÁP; người dùng duyệt rồi áp dụng (upsert theo mã).
+ */
+export async function suggestProgrammeUpgrade(programmeVersionId: string): Promise<ProgrammeUpgradeDraft & { ploCount: number; peoCount: number }> {
+  const s = await programmeExtractSummary(programmeVersionId);
+  const peoLines = s.peos.map((p) => `${p.code}: ${p.description}`).join("\n") || "(chưa có)";
+  const ploLines = s.plos.map((p) => `${p.code}: ${p.description}`).join("\n") || "(chưa có)";
+
+  const draft = await aiCompleteJson(
+    "upgrade_programme",
+    [
+      { role: "system", content: "Bạn là chuyên gia thiết kế CTĐT theo AUN-QA. Đề xuất bộ PEO và PLO HOÀN THIỆN: rõ ràng, đo lường được (động từ Bloom), cân bằng kiến thức/kỹ năng/thái độ, phản ánh nhu cầu bên liên quan, bao gồm cả năng lực tổng quát (số, ngoại ngữ, đạo đức)." },
+      {
+        role: "user",
+        content:
+          `Chương trình: ${s.programme?.code} — ${s.programme?.name}.\nPEO hiện có:\n${peoLines}\n\nPLO hiện có:\n${ploLines}\n\n` +
+          'Trả JSON thuần: {"peos":[{"code":"PEO1","description"}],"plos":[{"code":"PLO1","description"}],"notes":"nhận xét ngắn"}. ' +
+          "Giữ mã đang có; cải thiện mô tả; bổ sung PEO/PLO còn thiếu (tổng 3–5 PEO, 8–12 PLO). Tiếng Việt.",
+      },
+    ],
+    programmeUpgradeSchema,
+  );
+  const peos = draft.peos.filter((x) => x.code?.trim() && x.description?.trim());
+  const plos = draft.plos.filter((x) => x.code?.trim() && x.description?.trim());
+  await writeAudit({ action: "ai.upgrade_programme", entity: "ProgrammeVersion", entityId: programmeVersionId, meta: { peos: peos.length, plos: plos.length } });
+  return { peos, plos, notes: draft.notes, peoCount: peos.length, ploCount: plos.length };
+}
+
+/** Áp dụng bản nâng cấp đã DUYỆT: upsert PEO/PLO theo mã vào phiên bản CTĐT. */
+export async function applyProgrammeUpgrade(programmeVersionId: string, input: ProgrammeUpgradeDraft) {
+  const data = programmeUpgradeSchema.parse(input);
+  const version = await prisma.programmeVersion.findFirst({ where: { id: programmeVersionId } });
+  if (!version) throw notFound("Phiên bản CTĐT không tồn tại");
+  let peos = 0, plos = 0;
+  for (const [i, peo] of data.peos.entries()) {
+    if (!peo.code?.trim() || !peo.description?.trim()) continue;
+    await prisma.programmeObjective.upsert({
+      where: { programmeVersionId_code: { programmeVersionId, code: peo.code.trim() } },
+      update: { description: peo.description.trim() },
+      create: withTenantId({ programmeVersionId, code: peo.code.trim(), description: peo.description.trim(), order: i + 1 }),
+    });
+    peos++;
+  }
+  for (const [i, plo] of data.plos.entries()) {
+    if (!plo.code?.trim() || !plo.description?.trim()) continue;
+    await prisma.programmeLearningOutcome.upsert({
+      where: { programmeVersionId_code: { programmeVersionId, code: plo.code.trim() } },
+      update: { description: plo.description.trim() },
+      create: withTenantId({ programmeVersionId, code: plo.code.trim(), description: plo.description.trim(), order: i + 1 }),
+    });
+    plos++;
+  }
+  await writeAudit({ action: "ai.upgrade_programme.apply", entity: "ProgrammeVersion", entityId: programmeVersionId, meta: { peos, plos } });
+  return { peos, plos };
+}
+
 /**
  * AI NÂNG CẤP / GỢI Ý ô cho một ma trận PLO (peo|teaching|assessment|measurement) — dùng
  * DỮ LIỆU THẬT: PEO/PLO đã import + phương pháp dạy/đánh giá trong đề cương đã upload.
