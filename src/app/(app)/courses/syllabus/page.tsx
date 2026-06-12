@@ -8,9 +8,9 @@ export default function SyllabusRepoPage() {
   return (
     <div>
       <PageHeader
-        title="Kho đề cương học phần"
-        subtitle="Tải lên nhiều · trích xuất AI · quản lý theo chương trình đào tạo"
-        action={<Link href="/courses" className="btn-outline">← Về Đề cương học phần</Link>}
+        title="Kho đề cương (file upload)"
+        subtitle="Kho chứa FILE đề cương (.docx/.pdf) đã upload. Bấm “Trích xuất” để tạo/cập nhật HỌC PHẦN + CLO ở mục “Học phần & đề cương”. (Đây KHÔNG phải danh sách học phần.)"
+        action={<Link href="/courses" className="btn-outline">← Học phần & đề cương</Link>}
       />
       <SyllabusRepoPanel />
     </div>

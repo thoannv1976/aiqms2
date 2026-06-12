@@ -80,10 +80,10 @@ export default function CoursesPage() {
 
   return (
     <div>
-      <PageHeader title="Đề cương học phần" subtitle="Quản lý học phần theo chương trình đào tạo, CLO và đề cương chi tiết"
+      <PageHeader title="Học phần & đề cương" subtitle="Danh sách HỌC PHẦN của CTĐT (mã, tín chỉ, CLO). Cột “Trích xuất” = học phần đã có đề cương/CLO. File đề cương gốc (.docx/.pdf) nằm ở “Kho đề cương”."
         action={
           <div className="flex items-center gap-2">
-            <Link href="/courses/syllabus" className="btn-outline">Kho đề cương</Link>
+            <Link href="/courses/syllabus" className="btn-outline">📁 Kho đề cương (file)</Link>
             <SyllabusImportButton onDone={() => load(1, progFilter)} />
             <ImportButton endpoint="/api/import/courses" onDone={() => load(1, progFilter)} />
             <button className="btn-primary" onClick={() => setOpen(true)}>+ Thêm học phần</button>
