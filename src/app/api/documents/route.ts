@@ -41,10 +41,14 @@ export const POST = authedRoute(async (req) => {
   });
 
   // Phân quyền nộp:
-  //  - Có quyền tạo dữ liệu / nộp minh chứng → được nộp mọi tài liệu.
-  //  - Không có quyền nhưng là NGƯỜI ĐƯỢC GIAO công việc → được nộp minh chứng cho ĐÚNG việc đó
-  //    (mọi vai trò: hội đồng rà soát, lãnh đạo… do AI/Admin phân công đều nộp được).
-  const canUpload = hasPermission(ctx, PERMISSIONS.DATA_CREATE) || hasPermission(ctx, PERMISSIONS.EVIDENCE_UPLOAD);
+  //  - Có quyền quản lý dữ liệu (tạo/sửa) hoặc nộp minh chứng → nộp được mọi tài liệu
+  //    (qa_office, ban CN, khoa/trưởng khoa, giảng viên…).
+  //  - Không có quyền nào nhưng là NGƯỜI ĐƯỢC GIAO công việc → nộp minh chứng cho ĐÚNG việc đó
+  //    (hội đồng rà soát, lãnh đạo… do AI/Admin phân công đều nộp được).
+  const canUpload =
+    hasPermission(ctx, PERMISSIONS.DATA_CREATE) ||
+    hasPermission(ctx, PERMISSIONS.DATA_UPDATE) ||
+    hasPermission(ctx, PERMISSIONS.EVIDENCE_UPLOAD);
   if (!canUpload) {
     const task = meta.taskId ? await prisma.task.findFirst({ where: { id: meta.taskId }, select: { assigneeId: true } }) : null;
     if (!task || task.assigneeId !== ctx.actorId) {

@@ -17,4 +17,10 @@ describe("RBAC — quyền nộp minh chứng của giảng viên", () => {
     expect(reviewer.permissions).not.toContain(PERMISSIONS.EVIDENCE_UPLOAD);
     // => endpoint nộp tài liệu phải cho phép người được giao task tự nộp minh chứng cho task đó.
   });
+
+  it("faculty (trưởng khoa) có data.update → được nộp tài liệu trực tiếp", () => {
+    const faculty = ROLES.find((r) => r.code === "faculty")!;
+    expect(faculty.permissions).toContain(PERMISSIONS.DATA_UPDATE);
+    expect(faculty.permissions).not.toContain(PERMISSIONS.DATA_CREATE);
+  });
 });

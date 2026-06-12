@@ -48,6 +48,11 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
   tệp, dung lượng, ngày upload, trạng thái đã-trích-xuất (✓ mã học phần), phiên bản, nơi lưu (GCS/tạm)**,
   kèm tóm tắt "X đã trích xuất · lưu trữ …". Test trên Postgres (`tests/documents/documents.test.ts`).
 
+## [Sửa tiếp: trưởng khoa (faculty) nộp được minh chứng] — ✅ Done
+- Endpoint nộp tài liệu nay chấp nhận thêm **`DATA_UPDATE`** (vai trò khoa/trưởng khoa có) bên cạnh
+  `DATA_CREATE`/`EVIDENCE_UPLOAD`, giữ luồng "người được giao việc" cho các vai trò không có quyền nào.
+  → mọi vai trò trong quy trình kiểm định đều nộp được minh chứng cho việc của mình.
+
 ## [Sửa: mọi người được giao việc đều nộp được minh chứng (kể cả hội đồng rà soát)] — ✅ Done
 - **Nguyên nhân**: hội đồng rà soát (`internal_reviewer`) và một số vai trò do AI/Admin tạo không có
   `data.create` lẫn `evidence.upload` → bị chặn khi nộp minh chứng cho công việc được giao.
