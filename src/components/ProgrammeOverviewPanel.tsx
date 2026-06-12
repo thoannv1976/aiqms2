@@ -85,6 +85,24 @@ export function ProgrammeOverviewPanel({ programmeId, versionId, onChanged }: { 
     } catch (e) { setNote(null); setErr(e instanceof ApiClientError ? `Lỗi AI: ${e.message}` : "Lỗi AI viết PEO"); }
     finally { setBusy(false); }
   }
+  async function aiWritePlo() {
+    setBusy(true); setErr(null); setUpgrade(null); setNote("✍️ AI đang viết PLO từ PEO…");
+    try {
+      const r = await api.post<{ plos: { code: string; description: string }[]; notes?: string }>(`/api/ai/write-plo?versionId=${versionId}`, {});
+      setUpgrade({ peos: [], plos: r?.plos ?? [], notes: r?.notes });
+      setNote("Bản nháp PLO — xem lại rồi “Áp dụng” để ghi vào CTĐT.");
+    } catch (e) { setNote(null); setErr(e instanceof ApiClientError ? `Lỗi AI: ${e.message}` : "Lỗi AI viết PLO"); }
+    finally { setBusy(false); }
+  }
+  async function extractDoc(id: string) {
+    setBusy(true); setErr(null); setNote("Đang trích xuất đề cương → ghi học phần…");
+    try {
+      const r = await api.post<{ code: string; created: number; updated: number }>("/api/import/courses/doc/extract-apply", { documentId: id, programmeId });
+      setNote(`✅ Đã trích xuất & ghi học phần ${r?.code ?? ""} (tạo ${r?.created ?? 0}, cập nhật ${r?.updated ?? 0}).`);
+      await load(); onChanged?.();
+    } catch (e) { setNote(null); setErr(e instanceof ApiClientError ? e.message : "Lỗi trích xuất"); }
+    finally { setBusy(false); }
+  }
   async function applyUpgrade() {
     if (!upgrade) return;
     setBusy(true); setErr(null);
@@ -116,6 +134,7 @@ export function ProgrammeOverviewPanel({ programmeId, versionId, onChanged }: { 
         <div className="flex flex-wrap gap-2">
           <button className="btn-outline" disabled={busy} onClick={evaluate}>✨ AI đánh giá CTĐT</button>
           <button className="btn-outline" disabled={busy} onClick={aiWritePeo}>✍️ AI viết PEO</button>
+          <button className="btn-outline" disabled={busy} onClick={aiWritePlo}>✍️ AI viết PLO</button>
           <button className="btn-outline" disabled={busy} onClick={aiUpgrade}>🚀 AI nâng cấp CTĐT</button>
         </div>
       </div>
@@ -201,6 +220,7 @@ export function ProgrammeOverviewPanel({ programmeId, versionId, onChanged }: { 
                 <span className="text-xs text-slate-400">{CAT_VI[d.category] ?? d.category} · {fmtSize(d.size)} · {new Date(d.createdAt).toLocaleDateString("vi-VN")}</span>
               </span>
               <span className="flex shrink-0 gap-3 text-xs">
+                {d.category === "syllabus" && <button className="text-emerald-600 hover:underline disabled:text-slate-300" disabled={busy} onClick={() => extractDoc(d.id)}>Trích xuất</button>}
                 <a className="text-indigo-600 hover:underline" href={authedUrl(`/api/documents/${d.id}/download`)}>Xem/Tải</a>
                 <button className="text-rose-500 hover:underline" onClick={() => removeDoc(d.id)}>Xóa</button>
               </span>

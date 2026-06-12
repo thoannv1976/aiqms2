@@ -246,8 +246,8 @@ export async function synthesizeMatrixFromDocs(
 
   // Trọng tâm: TRÍCH XUẤT ma trận PLO × học phần TỪ tài liệu Đề án mở ngành / CTĐT đã upload.
   // Lấy vùng bảng ma trận (dòng có mã PLO, mã học phần, hoặc ô mức I/R/M, 1/2/3, I/T/U).
-  const ctdtDocs = await prisma.document.findMany({ where: { category: "ctdt_source" }, orderBy: { createdAt: "desc" }, take: 2 });
-  const sylDocs = await prisma.document.findMany({ where: { category: "syllabus" }, orderBy: { createdAt: "desc" }, take: 8 });
+  const ctdtDocs = await prisma.document.findMany({ where: { category: "ctdt_source", deletedAt: null, ...(version?.programmeId ? { programmeId: version.programmeId } : {}) }, orderBy: { createdAt: "desc" }, take: 2 });
+  const sylDocs = await prisma.document.findMany({ where: { category: "syllabus", deletedAt: null, ...(version?.programmeId ? { programmeId: version.programmeId } : {}) }, orderBy: { createdAt: "desc" }, take: 12 });
 
   const isMatrixLine = (l: string) =>
     /PLO\s*\d/i.test(l) ||
@@ -499,6 +499,32 @@ export async function suggestPeos(programmeVersionId: string): Promise<Programme
   const peos = draft.peos.filter((x) => x.code?.trim() && x.description?.trim());
   await writeAudit({ action: "ai.write_peo", entity: "ProgrammeVersion", entityId: programmeVersionId, meta: { peos: peos.length } });
   return { peos, plos: [], notes: draft.notes, peoCount: peos.length };
+}
+
+/**
+ * AI VIẾT PLO: sinh/chuẩn hóa chuẩn đầu ra (PLO) TỪ các PEO hiện có + bối cảnh ngành (và đề án nếu có).
+ * Human-in-the-loop: trả bản nháp PLO, người dùng duyệt rồi áp dụng (upsert theo mã).
+ */
+export async function suggestPlos(programmeVersionId: string): Promise<ProgrammeUpgradeDraft & { ploCount: number }> {
+  const s = await programmeExtractSummary(programmeVersionId);
+  const peoLines = s.peos.map((p) => `${p.code}: ${p.description}`).join("\n") || "(chưa có PEO)";
+  const ploLines = s.plos.map((p) => `${p.code}: ${p.description}`).join("\n") || "(chưa có)";
+  const draft = await aiCompleteJson(
+    "write_plo",
+    [
+      { role: "system", content: "Bạn là chuyên gia thiết kế CTĐT theo AUN-QA/OBE. Viết CHUẨN ĐẦU RA CHƯƠNG TRÌNH (PLO): phát biểu năng lực người học đạt khi tốt nghiệp, ĐO LƯỜNG ĐƯỢC (động từ Bloom), cân bằng kiến thức/kỹ năng/thái độ, có năng lực số/ngoại ngữ/đạo đức, và ÁNH XẠ được tới các PEO." },
+      {
+        role: "user",
+        content:
+          `Chương trình: ${s.programme?.code} — ${s.programme?.name}.\nPEO:\n${peoLines}\n\nPLO hiện có (chuẩn hóa nếu có):\n${ploLines}\n\n` +
+          'Trả JSON thuần: {"plos":[{"code":"PLO1","description"}]}. Viết 8–12 PLO, mỗi PLO 1 câu, tiếng Việt.',
+      },
+    ],
+    programmeUpgradeSchema,
+  );
+  const plos = draft.plos.filter((x) => x.code?.trim() && x.description?.trim());
+  await writeAudit({ action: "ai.write_plo", entity: "ProgrammeVersion", entityId: programmeVersionId, meta: { plos: plos.length } });
+  return { peos: [], plos, notes: draft.notes, ploCount: plos.length };
 }
 
 /** Áp dụng bản nâng cấp đã DUYỆT: upsert PEO/PLO theo mã vào phiên bản CTĐT. */

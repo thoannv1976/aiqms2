@@ -48,6 +48,14 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
   tệp, dung lượng, ngày upload, trạng thái đã-trích-xuất (✓ mã học phần), phiên bản, nơi lưu (GCS/tạm)**,
   kèm tóm tắt "X đã trích xuất · lưu trữ …". Test trên Postgres (`tests/documents/documents.test.ts`).
 
+## [AI viết PLO + Trích xuất tài liệu tại CTĐT + tổng hợp ma trận theo CTĐT] — ✅ Done
+- **AI viết PLO** (`suggestPlos`): sinh/chuẩn hóa 8–12 PLO từ PEO + bối cảnh ngành, ánh xạ tới PEO —
+  human-in-the-loop. Nút "✍️ AI viết PLO" + API `POST /api/ai/write-plo`.
+- **Nút "Trích xuất"** cạnh từng đề cương trong "Tài liệu gốc CTĐT" (trang chi tiết CTĐT) → trích xuất
+  & ghi học phần + CLO ngay (gọi `extract-apply`).
+- **Tổng hợp ma trận PLO–Học phần theo CTĐT**: `synthesizeMatrixFromDocs` nay **lọc tài liệu đề án/đề
+  cương theo programmeId** (chỉ dùng tài liệu gắn đúng CTĐT, lấy tới 12 đề cương). Test: `tests/obe/matrix-ai.test.ts`.
+
 ## [AI viết PEO] — ✅ Done
 - **AI viết PEO** (`suggestPeos`): sinh 3–5 mục tiêu giáo dục (PEO) bám theo sứ mạng ngành + **nhất quán
   với các PLO hiện có** — human-in-the-loop, xem trước rồi áp dụng (upsert). Nút "✍️ AI viết PEO" trong
