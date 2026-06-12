@@ -31,6 +31,14 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
   Cách khắc phục triệt để: chạy `scripts/setup-gcs.sh` để bật `STORAGE_DRIVER=s3` (GCS). Test:
   `tests/storage/storage-status.test.ts`.
 
+## [Sửa: giảng viên không nộp được minh chứng (Thiếu quyền data.create)] — ✅ Done
+- **Nguyên nhân**: endpoint nộp tài liệu (`POST /api/documents`) yêu cầu `data.create`, nhưng vai trò
+  **lecturer** chỉ có `evidence.upload` (+ `data.update`) → giảng viên nộp minh chứng cho công việc
+  được giao bị chặn 403.
+- **Sửa**: nộp tài liệu nay chấp nhận **`DATA_CREATE` HOẶC `EVIDENCE_UPLOAD`**; giảng viên cũng được
+  **xóa file do chính mình nộp** (createdBy = mình) dù không có `data.delete`. Test:
+  `tests/rbac/lecturer-upload.test.ts`.
+
 ## [Sửa: áp dụng ma trận AI không hiện I/R/M trong lưới] — ✅ Done
 - **Nguyên nhân**: (1) lưới ma trận chỉ lấy 100 học phần đầu của tenant làm cột → học phần do AI
   trích xuất có thể bị cắt khỏi cột nên ô đã ghi không hiển thị; (2) khớp mã học phần khi áp dụng là

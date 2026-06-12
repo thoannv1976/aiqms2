@@ -1,8 +1,9 @@
 import { authedRoute } from "@/lib/http/route";
-import { requirePermission } from "@/lib/rbac/check";
+import { requirePermission, hasPermission } from "@/lib/rbac/check";
 import { PERMISSIONS } from "@/lib/rbac/permissions";
+import { requireTenantContext } from "@/lib/tenant/context";
 import { parsePagination } from "@/lib/http/pagination";
-import { ok, created, badRequest } from "@/lib/http/responses";
+import { ok, created, badRequest, forbidden } from "@/lib/http/responses";
 import { createDocument, createDocumentSchema, listDocuments } from "@/lib/documents/service";
 
 export const runtime = "nodejs";
@@ -23,7 +24,12 @@ export const GET = authedRoute(async (req) => {
 
 // Upload tài liệu (multipart/form-data: field "file" + meta title/category/note/programmeId).
 export const POST = authedRoute(async (req) => {
-  requirePermission(PERMISSIONS.DATA_CREATE);
+  // Nộp minh chứng/tải tài liệu: chấp nhận quyền tạo dữ liệu HOẶC quyền nộp minh chứng
+  // (giảng viên chỉ có EVIDENCE_UPLOAD vẫn nộp được file cho công việc được giao).
+  const ctx = requireTenantContext();
+  if (!hasPermission(ctx, PERMISSIONS.DATA_CREATE) && !hasPermission(ctx, PERMISSIONS.EVIDENCE_UPLOAD)) {
+    throw forbidden("Cần quyền tạo dữ liệu hoặc nộp minh chứng");
+  }
   const form = await req.formData().catch(() => null);
   if (!form) throw badRequest("Cần multipart/form-data");
   const file = form.get("file");

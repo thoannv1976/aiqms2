@@ -1,7 +1,8 @@
 import { authedRoute } from "@/lib/http/route";
-import { requirePermission } from "@/lib/rbac/check";
+import { requirePermission, hasPermission } from "@/lib/rbac/check";
 import { PERMISSIONS } from "@/lib/rbac/permissions";
-import { ok, noContent } from "@/lib/http/responses";
+import { requireTenantContext } from "@/lib/tenant/context";
+import { ok, noContent, forbidden } from "@/lib/http/responses";
 import { deleteDocument, getDocument } from "@/lib/documents/service";
 
 export const runtime = "nodejs";
@@ -13,7 +14,16 @@ export const GET = authedRoute(async (_req, _ctx, { params }: Params) => {
 });
 
 export const DELETE = authedRoute(async (_req, _ctx, { params }: Params) => {
-  requirePermission(PERMISSIONS.DATA_DELETE);
-  await deleteDocument((await params).id);
+  const ctx = requireTenantContext();
+  const id = (await params).id;
+  if (!hasPermission(ctx, PERMISSIONS.DATA_DELETE)) {
+    // Người chỉ có quyền nộp minh chứng (giảng viên) được xóa file DO CHÍNH MÌNH nộp.
+    const doc = await getDocument(id);
+    if (!(hasPermission(ctx, PERMISSIONS.EVIDENCE_UPLOAD) && doc.createdBy === ctx.actorId)) {
+      throw forbidden("Chỉ được xóa minh chứng do chính bạn nộp");
+    }
+  }
+  await deleteDocument(id);
   return noContent();
 });
+
