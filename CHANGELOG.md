@@ -40,6 +40,14 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
   tệp, dung lượng, ngày upload, trạng thái đã-trích-xuất (✓ mã học phần), phiên bản, nơi lưu (GCS/tạm)**,
   kèm tóm tắt "X đã trích xuất · lưu trữ …". Test trên Postgres (`tests/documents/documents.test.ts`).
 
+## [Sửa: mọi người được giao việc đều nộp được minh chứng (kể cả hội đồng rà soát)] — ✅ Done
+- **Nguyên nhân**: hội đồng rà soát (`internal_reviewer`) và một số vai trò do AI/Admin tạo không có
+  `data.create` lẫn `evidence.upload` → bị chặn khi nộp minh chứng cho công việc được giao.
+- **Sửa**: endpoint nộp tài liệu nay cho phép **người được giao công việc tự nộp minh chứng cho ĐÚNG
+  công việc đó** (kiểm tra `task.assigneeId === người dùng`), bất kể vai trò — bao trùm cả tài khoản AI
+  tạo và Admin tạo tay. Xóa: cho phép xóa **tài liệu do chính mình nộp** với mọi vai trò. Test:
+  `tests/rbac/lecturer-upload.test.ts`.
+
 ## [Sửa: giảng viên không nộp được minh chứng (Thiếu quyền data.create)] — ✅ Done
 - **Nguyên nhân**: endpoint nộp tài liệu (`POST /api/documents`) yêu cầu `data.create`, nhưng vai trò
   **lecturer** chỉ có `evidence.upload` (+ `data.update`) → giảng viên nộp minh chứng cho công việc

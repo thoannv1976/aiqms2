@@ -2,6 +2,7 @@ import { authedRoute } from "@/lib/http/route";
 import { requirePermission, hasPermission } from "@/lib/rbac/check";
 import { PERMISSIONS } from "@/lib/rbac/permissions";
 import { requireTenantContext } from "@/lib/tenant/context";
+import { prisma } from "@/lib/prisma/client";
 import { parsePagination } from "@/lib/http/pagination";
 import { ok, created, badRequest, forbidden } from "@/lib/http/responses";
 import { createDocument, createDocumentSchema, listDocuments } from "@/lib/documents/service";
@@ -22,14 +23,9 @@ export const GET = authedRoute(async (req) => {
   );
 });
 
-// Upload tài liệu (multipart/form-data: field "file" + meta title/category/note/programmeId).
+// Upload tài liệu (multipart/form-data: field "file" + meta title/category/note/programmeId/taskId).
 export const POST = authedRoute(async (req) => {
-  // Nộp minh chứng/tải tài liệu: chấp nhận quyền tạo dữ liệu HOẶC quyền nộp minh chứng
-  // (giảng viên chỉ có EVIDENCE_UPLOAD vẫn nộp được file cho công việc được giao).
   const ctx = requireTenantContext();
-  if (!hasPermission(ctx, PERMISSIONS.DATA_CREATE) && !hasPermission(ctx, PERMISSIONS.EVIDENCE_UPLOAD)) {
-    throw forbidden("Cần quyền tạo dữ liệu hoặc nộp minh chứng");
-  }
   const form = await req.formData().catch(() => null);
   if (!form) throw badRequest("Cần multipart/form-data");
   const file = form.get("file");
@@ -43,6 +39,19 @@ export const POST = authedRoute(async (req) => {
     taskId: (form.get("taskId") as string) || undefined,
     note: (form.get("note") as string) || undefined,
   });
+
+  // Phân quyền nộp:
+  //  - Có quyền tạo dữ liệu / nộp minh chứng → được nộp mọi tài liệu.
+  //  - Không có quyền nhưng là NGƯỜI ĐƯỢC GIAO công việc → được nộp minh chứng cho ĐÚNG việc đó
+  //    (mọi vai trò: hội đồng rà soát, lãnh đạo… do AI/Admin phân công đều nộp được).
+  const canUpload = hasPermission(ctx, PERMISSIONS.DATA_CREATE) || hasPermission(ctx, PERMISSIONS.EVIDENCE_UPLOAD);
+  if (!canUpload) {
+    const task = meta.taskId ? await prisma.task.findFirst({ where: { id: meta.taskId }, select: { assigneeId: true } }) : null;
+    if (!task || task.assigneeId !== ctx.actorId) {
+      throw forbidden("Bạn chỉ được nộp minh chứng cho công việc được giao cho mình");
+    }
+  }
+
   const body = Buffer.from(await file.arrayBuffer());
   return created(await createDocument(meta, { fileName: file.name, body, contentType: file.type || undefined }));
 });
