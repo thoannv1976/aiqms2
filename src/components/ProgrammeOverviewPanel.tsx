@@ -76,6 +76,15 @@ export function ProgrammeOverviewPanel({ programmeId, versionId, onChanged }: { 
     } catch (e) { setNote(null); setErr(e instanceof ApiClientError ? `Lỗi AI: ${e.message}` : "Lỗi AI nâng cấp"); }
     finally { setBusy(false); }
   }
+  async function aiWritePeo() {
+    setBusy(true); setErr(null); setUpgrade(null); setNote("✍️ AI đang viết PEO bám theo PLO…");
+    try {
+      const r = await api.post<{ peos: { code: string; description: string }[]; notes?: string }>(`/api/ai/write-peo?versionId=${versionId}`, {});
+      setUpgrade({ peos: r?.peos ?? [], plos: [], notes: r?.notes });
+      setNote("Bản nháp PEO — xem lại rồi “Áp dụng” để ghi vào CTĐT.");
+    } catch (e) { setNote(null); setErr(e instanceof ApiClientError ? `Lỗi AI: ${e.message}` : "Lỗi AI viết PEO"); }
+    finally { setBusy(false); }
+  }
   async function applyUpgrade() {
     if (!upgrade) return;
     setBusy(true); setErr(null);
@@ -104,8 +113,9 @@ export function ProgrammeOverviewPanel({ programmeId, versionId, onChanged }: { 
     <div className="card p-5">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-semibold text-slate-700">Tổng quan trích xuất & tài liệu CTĐT</h3>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button className="btn-outline" disabled={busy} onClick={evaluate}>✨ AI đánh giá CTĐT</button>
+          <button className="btn-outline" disabled={busy} onClick={aiWritePeo}>✍️ AI viết PEO</button>
           <button className="btn-outline" disabled={busy} onClick={aiUpgrade}>🚀 AI nâng cấp CTĐT</button>
         </div>
       </div>

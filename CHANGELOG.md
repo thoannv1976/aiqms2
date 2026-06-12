@@ -48,6 +48,11 @@ Mỗi phase chỉ "xong" khi đạt **Definition of Done** (mục 10).
   tệp, dung lượng, ngày upload, trạng thái đã-trích-xuất (✓ mã học phần), phiên bản, nơi lưu (GCS/tạm)**,
   kèm tóm tắt "X đã trích xuất · lưu trữ …". Test trên Postgres (`tests/documents/documents.test.ts`).
 
+## [AI viết PEO] — ✅ Done
+- **AI viết PEO** (`suggestPeos`): sinh 3–5 mục tiêu giáo dục (PEO) bám theo sứ mạng ngành + **nhất quán
+  với các PLO hiện có** — human-in-the-loop, xem trước rồi áp dụng (upsert). Nút "✍️ AI viết PEO" trong
+  panel chi tiết CTĐT. API `POST /api/ai/write-peo`. Test: `tests/obe/matrix-ai.test.ts`.
+
 ## [AI nâng cấp CTĐT + import ngay trên trang chi tiết] — ✅ Done
 - **AI nâng cấp CTĐT** (`suggestProgrammeUpgrade` + `applyProgrammeUpgrade`): AI đề xuất bộ **PEO/PLO
   hoàn thiện theo AUN-QA** (rõ ràng, đo lường được, cân bằng, phản ánh bên liên quan) — human-in-the-loop,

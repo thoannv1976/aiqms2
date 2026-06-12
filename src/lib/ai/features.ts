@@ -476,6 +476,31 @@ export async function suggestProgrammeUpgrade(programmeVersionId: string): Promi
   return { peos, plos, notes: draft.notes, peoCount: peos.length, ploCount: plos.length };
 }
 
+/**
+ * AI VIẾT PEO: sinh 3–5 mục tiêu giáo dục (PEO — thành tựu/năng lực người tốt nghiệp sau 3–5 năm)
+ * NHẤT QUÁN với các PLO hiện có. Human-in-the-loop: trả bản nháp PEO, người dùng duyệt rồi áp dụng.
+ */
+export async function suggestPeos(programmeVersionId: string): Promise<ProgrammeUpgradeDraft & { peoCount: number }> {
+  const s = await programmeExtractSummary(programmeVersionId);
+  const ploLines = s.plos.map((p) => `${p.code}: ${p.description}`).join("\n") || "(chưa có PLO)";
+  const draft = await aiCompleteJson(
+    "write_peo",
+    [
+      { role: "system", content: "Bạn là chuyên gia thiết kế CTĐT theo AUN-QA. Viết MỤC TIÊU GIÁO DỤC CTĐT (PEO): mô tả khái quát thành tựu nghề nghiệp/năng lực của người tốt nghiệp sau 3–5 năm, phản ánh sứ mạng ngành và nhu cầu bên liên quan, NHẤT QUÁN với chuẩn đầu ra (PLO)." },
+      {
+        role: "user",
+        content:
+          `Chương trình: ${s.programme?.code} — ${s.programme?.name}.\nCác PLO hiện có:\n${ploLines}\n\n` +
+          'Trả JSON thuần: {"peos":[{"code":"PEO1","description"}]}. Viết 3–5 PEO, mỗi PEO 1–2 câu, tiếng Việt.',
+      },
+    ],
+    programmeUpgradeSchema,
+  );
+  const peos = draft.peos.filter((x) => x.code?.trim() && x.description?.trim());
+  await writeAudit({ action: "ai.write_peo", entity: "ProgrammeVersion", entityId: programmeVersionId, meta: { peos: peos.length } });
+  return { peos, plos: [], notes: draft.notes, peoCount: peos.length };
+}
+
 /** Áp dụng bản nâng cấp đã DUYỆT: upsert PEO/PLO theo mã vào phiên bản CTĐT. */
 export async function applyProgrammeUpgrade(programmeVersionId: string, input: ProgrammeUpgradeDraft) {
   const data = programmeUpgradeSchema.parse(input);
